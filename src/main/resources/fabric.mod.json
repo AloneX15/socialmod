@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "description": "A complete social layer for Fabric servers: private messages with offline mailbox, friends and blocks, groups (clans) with roles and channels, parties, presence, toasts, Quick-Reply, coordinate and item sharing, and moderation tools. Server-side is required; the client is optional (vanilla and Bedrock players use commands).",
+  "authors": ["TakumiStudios"],
+  "license": "MIT",
+  "icon": "assets/socialmod/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.takumistudios.socialmod.SocialMod"],
+    "client": ["com.takumistudios.socialmod.client.SocialModClient"],
+    "modmenu": ["com.takumistudios.socialmod.client.compat.ModMenuIntegration"]
+  },
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "minecraft": "${minecraft}",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "recommends": {
+    "luckperms": "*"
+  },
+  "suggests": {
+    "placeholder-api": "*",
+    "modmenu": "*",
+    "xaerominimap": "*",
+    "journeymap": "*"
+  }
+}

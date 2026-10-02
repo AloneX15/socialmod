@@ -1,0 +1,128 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: MC ${{ matrix.minecraft }}${{ matrix.compat && ' (compat pack)' || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: __VERSIONS_JSON__
+        compat: [false, true]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build and unit tests
+        if: ${{ !matrix.compat }}
+        run: ./gradlew :${{ matrix.minecraft }}:build --stacktrace
+
+      - name: Gametests (bypass suite)
+        run: ./gradlew :${{ matrix.minecraft }}:runGameTest ${{ matrix.compat && '-PcompatPack' || '' }} --stacktrace
+
+      - name: Upload jar
+        if: ${{ !matrix.compat }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: __MOD_ID__-mc${{ matrix.minecraft }}
+          path: |
+            versions/${{ matrix.minecraft }}/build/libs/*.jar
+            !versions/${{ matrix.minecraft }}/build/libs/*-sources.jar
+          if-no-files-found: error
+
+      - name: Upload test reports
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-mc${{ matrix.minecraft }}${{ matrix.compat && '-compat' || '' }}
+          path: |
+            versions/${{ matrix.minecraft }}/build/reports/
+            versions/${{ matrix.minecraft }}/build/run/gameTest/logs/
+          if-no-files-found: ignore
+
+  client:
+    name: Client test MC ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    # Si el juego se cuelga (p. ej. sin contexto OpenGL), el job no puede bloquear la CI
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: __VERSIONS_JSON__
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Install virtual display
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils mesa-vulkan-drivers vulkan-tools
+
+      - name: Graphics diagnostics
+        continue-on-error: true
+        run: |
+          xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX +render" glxinfo -B || true
+          xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX +render" vulkaninfo --summary || true
+
+      - name: Client gametest (renders every block and screen, restarts the world)
+        env:
+          # Renderizado por software (Mesa llvmpipe): 26.3 necesita un visual GLX de 24 bits
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX +render" ./gradlew :${{ matrix.minecraft }}:runClientGameTest --stacktrace
+
+      - name: Upload screenshots
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-mc${{ matrix.minecraft }}
+          path: versions/${{ matrix.minecraft }}/build/run/clientGameTest/screenshots/
+          if-no-files-found: ignore
+
+  dev-release:
+    name: Publish dev build
+    # Solo en pushes a main y solo si todas las pruebas pasaron
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [test, client]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: __MOD_ID__-mc*
+          path: jars
+          merge-multiple: true
+
+      - name: Replace the "dev" pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete dev --cleanup-tag --yes || true
+          gh release create dev jars/*.jar \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Dev build ($(echo "$GITHUB_SHA" | cut -c1-7))" \
+            --notes "Build automática de la rama main, generada tras pasar todas las pruebas (unitarias, gametests, compat pack y cliente) en MC 26.1.2, 26.2 y 26.3.
+
+          Puede tener cambios sin publicar oficialmente. Elige el jar de tu versión de Minecraft y necesitas Fabric API.
+
+          Commit: $GITHUB_SHA"

@@ -1,0 +1,19 @@
+{
+  "layout": "three_column",
+  "columns": [
+    { "id": "conversations", "weight": 1, "min_width": 110 },
+    { "id": "chat",          "weight": 2, "min_width": 160 },
+    { "id": "players",       "weight": 1, "min_width": 90, "collapsible": true }
+  ],
+  "colors": {
+    "text": "#E0E0E0",
+    "muted": "#909090",
+    "accent": "#55FF55",
+    "unread": "#FFAA00",
+    "background": "#C0000000",
+    "panel": "#80101010",
+    "border": "#404040",
+    "highlight": "#40FFFFFF"
+  },
+  "toast": { "background": "#E0101010", "border": "#555555", "width": 160 }
+}

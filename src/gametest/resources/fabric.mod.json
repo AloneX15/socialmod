@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "socialmod-test",
+  "version": "1.0.0",
+  "name": "SocialMod GameTests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": ["com.takumistudios.socialmod.test.SocialModGameTests"],
+    "fabric-client-gametest": ["com.takumistudios.socialmod.test.SocialModClientGameTest"]
+  },
+  "depends": {
+    "socialmod": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}

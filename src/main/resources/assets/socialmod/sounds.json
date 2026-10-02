@@ -1,0 +1,26 @@
+{
+  "notify.private": {
+    "subtitle": "subtitles.socialmod.notify",
+    "sounds": [{ "name": "minecraft:block.note_block.chime", "type": "event" }]
+  },
+  "notify.mention": {
+    "subtitle": "subtitles.socialmod.notify",
+    "sounds": [{ "name": "minecraft:block.note_block.bell", "type": "event" }]
+  },
+  "notify.invite": {
+    "subtitle": "subtitles.socialmod.notify",
+    "sounds": [{ "name": "minecraft:entity.experience_orb.pickup", "type": "event" }]
+  },
+  "notify.event": {
+    "subtitle": "subtitles.socialmod.notify",
+    "sounds": [{ "name": "minecraft:block.note_block.pling", "type": "event" }]
+  },
+  "notify.group": {
+    "subtitle": "subtitles.socialmod.notify",
+    "sounds": [{ "name": "minecraft:block.amethyst_block.chime", "type": "event" }]
+  },
+  "notify.system": {
+    "subtitle": "subtitles.socialmod.notify",
+    "sounds": [{ "name": "minecraft:ui.toast.in", "type": "event" }]
+  }
+}
