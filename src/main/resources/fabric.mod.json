@@ -5,13 +5,20 @@
   "name": "${name}",
   "description": "A complete social layer for Fabric servers: private messages with offline mailbox, friends and blocks, groups (clans) with roles and channels, parties, presence, toasts, Quick-Reply, coordinate and item sharing, and moderation tools. Server-side is required; the client is optional (vanilla and Bedrock players use commands).",
   "authors": ["TakumiStudios"],
+  "contact": {
+    "homepage": "https://github.com/AloneX15/socialmod",
+    "sources": "https://github.com/AloneX15/socialmod",
+    "issues": "https://github.com/AloneX15/socialmod/issues"
+  },
   "license": "MIT",
   "icon": "assets/socialmod/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": ["com.takumistudios.socialmod.SocialMod"],
     "client": ["com.takumistudios.socialmod.client.SocialModClient"],
-    "modmenu": ["com.takumistudios.socialmod.client.compat.ModMenuIntegration"]
+    "modmenu": ["com.takumistudios.socialmod.client.compat.ModMenuIntegration"],
+    "voicechat": ["com.takumistudios.socialmod.server.integration.VoiceChatPlugin"],
+    "journeymap": ["com.takumistudios.socialmod.client.compat.JourneyMapIntegration"]
   },
   "depends": {
     "fabricloader": ">=${loader}",
@@ -26,6 +33,9 @@
     "placeholder-api": "*",
     "modmenu": "*",
     "xaerominimap": "*",
-    "journeymap": "*"
+    "xaeroworldmap": "*",
+    "journeymap": "*",
+    "voicechat": "*",
+    "openpartiesandclaims": "*"
   }
 }

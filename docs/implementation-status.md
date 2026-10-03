@@ -1,95 +1,106 @@
-# Estado de la implementación (versión 0.1.0)
+# Estado de la implementación (versión 0.2.0)
 
-Comparación con `SOCIALMOD_PLAN.md`. Las fases 0–4 de la hoja de ruta (hasta la **v1.0**) están implementadas salvo los
-puntos marcados; las fases 5 y 6 (v1.x y v2.0) quedan pendientes salvo la API pública.
+Comparación con `SOCIALMOD_PLAN.md`. La 0.2.0 corrige los 4 errores de `SOCIALMOD_ERRORES.md`, completa todos los
+puntos pendientes de las fases 0–4 y las fases 5 y 6 en lo que depende de mods disponibles para 26.1.2, 26.2 y 26.3.
+Lo que no se puede hacer todavía (mod inexistente para 26.x, solo beta sin API, o proyecto aparte) está en la wiki:
+[Integraciones](wiki/18-integraciones.md). El detalle de cada error encontrado y su solución está en
+[registro-de-errores.md](registro-de-errores.md).
 
-Leyenda: ✅ hecho · 🟡 parcial · ⏳ pendiente
+Leyenda: ✅ hecho · 🟡 parcial · ⏳ pendiente (con motivo)
+
+> **Protocolo de red 2.** Cliente y servidor deben tener la 0.2.0. Con versiones distintas el cliente pasa a modo
+> "solo chat" sin errores. La API pública (`api.*`) no cambia.
+
+## Errores de `SOCIALMOD_ERRORES.md`
+
+| # | Error | Estado | Solución |
+|---|---|---|---|
+| 1 | El estado no rota al pulsarlo | ✅ | El servidor reenvía el snapshot tras `SET_STATUS`; el cliente aplica estado, privacidad, dimensión, leído y "escribiendo" al instante. |
+| 2 | Formato de textos inconsistente | ✅ | Guía de estilo en `Ui` (títulos, cabeceras en mayúsculas por código, colores legibles); 4 idiomas en frase normal. |
+| 3 | Tag del grupo: posición y personalización | ✅ | Etiqueta **debajo** del nombre (línea `scoreText`, sin mixins), emblemas, rol, selector visual de color con vista previa. |
+| 4 | Placeholders sin procesar en toasts | ✅ | `MessageFormatter.preview` resuelve `[coords]` → `x: 120, z: -450` e `[item]` → nombre; acepta `[CORDS]`/`[ITEM]`. |
 
 ## Fase 0 — Base
 
 | Punto | Estado | Notas |
 |---|---|---|
 | Multiversión con Stonecutter (26.1.2, 26.2, 26.3) | ✅ | Un jar por versión. |
-| CI en GitHub Actions | ✅ | `.github/workflows/build.yml` y `release.yml` (skill `fabric-mod-github-ci`). |
-| `StorageBackend` `file` | ✅ | JSON comprimido por documento, escritura atómica, hilo de E/S propio, cuarentena de archivos corruptos. |
-| Handshake con versión de protocolo | ✅ | Protocolo distinto → modo "solo chat", sin crash. |
+| CI en GitHub Actions | ✅ | `build.yml` y `release.yml`; la release publica también la API en Maven si hay `vars.MAVEN_URL`. |
+| `StorageBackend` `file` | ✅ | JSON comprimido por documento, escritura atómica, cuarentena de corruptos. |
+| Handshake con versión de protocolo | ✅ | Protocolo 2 en la 0.2.0. |
 
 ## Fase 1 — MVP
 
 | Punto | Estado | Notas |
 |---|---|---|
-| Mensajes privados con historial | ✅ | Paginación (lazy loading) al hacer scroll. |
-| Buzón | ✅ | Contador de no leídos persistente, resumen al conectarse, `/socialmod inbox` para vanilla. |
-| Editar y borrar (2 min) | ✅ | El staff con `mod.history` puede borrar cualquiera (queda en auditoría). |
-| "Escribiendo..." y "leído" | ✅ | Desactivables por el servidor y por cada jugador (recíproco). |
-| Amigos, favoritos, notas, bloqueos | ✅ | Bloqueo en el servidor: privados, invitaciones, menciones, estado y mensajes de grupo. |
-| Privacidad (quién me escribe / quién ve mi estado) | ✅ | |
-| Presencia: en línea, AFK (servidor), DND, invisible, estado y dimensión opt-in | ✅ | Interés: amigos, compañeros y panel abierto; deltas cada 250 ms. |
-| Toasts | ✅ | Posición, márgenes, duración, animaciones, apilado, agrupación por remitente, prioridades, DND inteligente (combate y pantallas), sonidos por tipo, narrador. |
-| Comandos para vanilla/Bedrock | ✅ | `/pm`, `/r`, `/g`, `/p`, `/party`, `/friend`, `/block`, `/status`, `/socialmod`. |
-| Anti-spam | ✅ | Ventana, repeticiones, silencio automático. |
+| Mensajes privados, buzón, editar/borrar, "escribiendo" y "leído" | ✅ | |
+| Amigos, favoritos, notas, bloqueos, privacidad | ✅ | |
+| Presencia (en línea, AFK, DND, invisible, estado, dimensión) | ✅ | Cambio instantáneo en el cliente (error 1). |
+| Toasts | ✅ | Marcadores resueltos (error 4). |
+| Comandos para vanilla/Bedrock | ✅ | Más `/social` (menú de cofre) en la 0.2.0. |
+| Anti-spam | ✅ | |
 
 ## Fase 2
 
 | Punto | Estado | Notas |
 |---|---|---|
-| Grupos: nombre, etiqueta, color, descripción, MOTD, fijado | ✅ | |
-| Emblema (icono o banner) | ⏳ | El campo `icon` existe en los datos; falta el selector y las texturas. |
-| Roles con permisos configurables | ✅ | `roles` en `server.json`. |
-| Canales con rol mínimo | ✅ | Silenciar por canal en el cliente: ⏳. |
-| Parties temporales | ✅ | Vida de los miembros en el HUD: ⏳. |
-| Eventos del grupo | ✅ | Aviso 5 min antes y al empezar; se borran 1 h después. |
-| Grupo principal | ✅ | |
-| Límites por config y por permiso | ✅ | `socialmod.limit.groups`, `socialmod.limit.friends`. |
-| Nametags | 🟡 | Con el mod: `[TAG]` delante del nombre en la misma línea (no encima/debajo), sin mixins; respeta invisibilidad, agacharse y distancia porque solo modifica el nametag que vanilla ya decidió mostrar. Fallback de teams opcional y desactivado. |
-| Menciones `@jugador` y `@grupo` | ✅ | `@TAG`/`@everyone` exige el permiso de rol `pin`. |
+| Grupos: nombre, etiqueta, color, descripción, MOTD, fijado | ✅ | `/g color` acepta `#RRGGBB`. |
+| Emblema | ✅ | 20 emblemas Unicode (`GroupIcon`, lista blanca en el servidor), en la lista de grupos, el chat, el perfil y el nametag; `/g icon`. Sin texturas: se ven también en el fallback de teams para vanilla. |
+| Roles con permisos configurables | ✅ | |
+| Canales con rol mínimo | ✅ | **Silenciar por canal** en el cliente (icono ♪/⊘ de la cabecera): sin toasts, sonidos ni contador. |
+| Parties temporales | ✅ | **Vida de los compañeros en el HUD** (borde izquierdo, a media altura). |
+| Eventos del grupo, grupo principal, límites | ✅ | |
+| Nametags | ✅ | Etiqueta debajo del nombre con emblema y rol; opción para ponerla delante. Fallback de teams con emblema. |
+| Menciones | ✅ | |
 
 ## Fase 3
 
 | Punto | Estado | Notas |
 |---|---|---|
-| Quick-Reply (`Y`) | ✅ | Tab entre las 5 últimas, historial con flechas, autocompletado de `@`, no pausa. Aviso de conflicto de teclas. |
-| HUD social | ✅ | No leídos, estado y silencio. Canal de voz: depende de la integración (fase 5). |
-| Compartir coordenadas | 🟡 | Distancia y dirección y copiar al portapapeles. Waypoints en Xaero/JourneyMap: ⏳ (fase 5). |
-| Compartir ítems | ✅ | Generado por el servidor, tooltip completo. |
-| Ping en el mundo | ⏳ | |
-| Temas JSON | ✅ | Colores, columnas y toasts con Codecs y recarga con F3+T. Texturas de fondo: ⏳. |
-| Accesibilidad | ✅ | Narrador, símbolos con forma propia (● ◐ ⊘ ○), alto contraste. Escala de texto propia: ⏳ (se usa la GUI Scale). |
-| Adaptación de pantalla 3/2/1 columnas | ✅ | Breakpoints en píxeles escalados y margen para minimapas. |
+| Quick-Reply (`Y`) | ✅ | Si otro mod usa la tecla (p. ej. Xaero's Minimap), se recoloca sola mientras esté en su valor por defecto. |
+| HUD social | ✅ | |
+| Compartir coordenadas | ✅ | Waypoint en **Xaero's Minimap/World Map** o **JourneyMap** (doble clic o botón Waypoint); sin mapa, copia al portapapeles. |
+| Compartir ítems | ✅ | |
+| Ping en el mundo | ✅ | Tecla `J`: haz de partículas 10 s y línea en el HUD con distancia y flecha; vanilla recibe las coordenadas en el chat. |
+| Temas JSON | ✅ | **Texturas** opcionales (`textures.background/panel/toast`, sprites nine-slice del resource pack). |
+| Accesibilidad | ✅ | **Escala de texto propia** del chat (75–150 %), además de narrador, símbolos y alto contraste. |
+| Adaptación de pantalla y margen para minimapas | ✅ | Márgenes automáticos con Xaero's Minimap; márgenes editables en Ajustes → Mapas. |
 
 ## Fase 4
 
-| Punto | Estado | Notas |
-|---|---|---|
-| Validación total en el servidor | ✅ | Permisos, bloqueos, límites, pertenencia, longitudes; rate limit de todos los paquetes. |
-| Filtro de palabras | ✅ | Lista, regex, datapacks y filtros externos por API. |
-| Reportes con contexto | ✅ | Guardados en `reports/`, aviso al staff conectado, `/socialmod mod reports`. |
-| Comandos de staff | ✅ | `mute`, `unmute`, `history`, `disband`, `inspect`, `reports`, `spy`. |
-| Spy opcional y visible | ✅ | Aviso en el panel de todos los jugadores cuando el servidor lo activa. |
-| Restricciones de chat del cliente | ✅ | Chat oculto o cuenta restringida: la UI no se abre y el servidor no entrega mensajes (quedan en el buzón). |
-| Exportar y borrar datos | ✅ | |
-| Auditoría | ✅ | `<mundo>/socialmod/audit.log`. |
-| LuckPerms | ✅ | Fabric Permission API. |
-| Text Placeholder API | ✅ | 5 placeholders. |
-
-## Fase 5 (v1.x) y 6 (v2.0)
-
 | Punto | Estado |
 |---|---|
-| API pública (`SocialModServerAPI`, `SocialModClientAPI`, eventos) | ✅ (dentro del jar; artefacto Maven aparte ⏳) |
-| Simple Voice Chat / Plasmo Voice | ⏳ |
-| Claims (OPAC, FTB Chunks, Cadmus) | ⏳ |
-| Mapas (Xaero, JourneyMap) | ⏳ |
-| Backends H2 y MySQL | ⏳ (la interfaz `StorageBackend` ya está; el servidor avisa y usa `file`) |
-| Caché local en el cliente por servidor | ⏳ |
-| Redes con proxy (Velocity), Polymer, addon de Discord | ⏳ |
+| Validación total en el servidor, filtro, reportes, staff, spy visible, restricciones de chat, exportar/borrar, auditoría, LuckPerms, Text Placeholder API | ✅ |
+
+## Fase 5 (v1.x)
+
+| Punto | Estado | Notas |
+|---|---|---|
+| API pública | ✅ | Artefacto Maven `socialmod-api` (`publishToMavenLocal` / `publish`). |
+| Simple Voice Chat | ✅ | Grupo de voz por grupo/party (`☏` en el panel, `/g voice`, `/party voice`). Plugin por entrypoint `voicechat`. |
+| Plasmo Voice | ⏳ | Para 26.x solo hay beta (2.2.0-beta.1) y los grupos están en `pv-addon-groups`, sin API pública. Ver la wiki. |
+| Claims: Open Parties and Claims | ✅ | Sincronización opcional (`integrations.claimsSync`: `to_claims` o `both`) por grupo con `/g claims link`. |
+| Claims: FTB Chunks, Cadmus | ⏳ | No existen para 26.1.2–26.3. |
+| Mapas: Xaero's Minimap / World Map | ✅ | Waypoints y márgenes automáticos (reflexión, sin dependencia). |
+| Mapas: JourneyMap | ✅ | Waypoints (plugin de la API v2, entrypoint `journeymap`). |
+| Backends H2, MySQL, MariaDB | ✅ | `JdbcStorageBackend`; driver en `config/socialmod/drivers/`; importa los datos de `file`. |
+| Caché local en el cliente por servidor | ✅ | `config/socialmod/cache/<hash>/snapshot.json`; se puede desactivar. |
+
+## Fase 6 (v2.0)
+
+| Punto | Estado | Notas |
+|---|---|---|
+| GUI para vanilla y Bedrock | ✅ | `/social`: menú de cofre vanilla del servidor (amigos, estado, buzón, grupos). No necesita Polymer: un menú de cofre ya funciona en Java vanilla y en Bedrock con Geyser. |
+| Polymer | ⏳ | No hace falta para el menú; queda como opción si se quieren ítems/bloques propios. Ver la wiki. |
+| Redes con proxy (Velocity) | ⏳ | No es un mod por versión: requiere un plugin de proxy y Redis/puente. Proyecto aparte. |
+| Addon de Discord Rich Presence | ⏳ | Jar aparte por diseño (PLAN 12), desactivado por defecto. Proyecto aparte. |
 
 ## Pruebas
 
 | Punto | Estado |
 |---|---|
-| Unitarias (JUnit) | ✅ 27 pruebas: markdown seguro, saneado, ids, roles, rate limit, anti-spam, filtro, almacenamiento, retención, paginación. |
-| Gametests de servidor | ✅ 15 pruebas con jugadores falsos (ver `docs/testing.md`). |
-| Test de cliente con capturas y reinicio del mundo | ✅ |
-| Compat pack en CI | 🟡 Lithium, FerriteCore y Text Placeholder API. Falta ampliar a la matriz completa de la sección 14. |
-| Carga con 200 bots | ⏳ |
+| Unitarias (JUnit) | ✅ 35 pruebas (nuevas: vista previa de marcadores, emblemas, backend H2). |
+| Gametests de servidor | ✅ 22 pruebas (nuevas: errores 1, 3 y 4; carga con 200 jugadores; OPAC; Simple Voice Chat; menú de cofre). |
+| Test de cliente con capturas y reinicio del mundo | ✅ Incluye selector de estilo, ping y waypoint real en Xaero (`-Pxaero`). |
+| Compat pack en CI | ✅ Lithium, FerriteCore, Text Placeholder API, Open Parties and Claims (+ Forge Config API Port) y Simple Voice Chat. Xaero, en el cliente con `-Pxaero`. |
+| Carga con 200 jugadores | ✅ `loadTwoHundredPlayers`: 1200 mensajes en ~270–380 ms. |

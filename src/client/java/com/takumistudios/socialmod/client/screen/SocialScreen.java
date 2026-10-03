@@ -5,6 +5,7 @@ import com.takumistudios.socialmod.client.ClientConfig;
 import com.takumistudios.socialmod.client.ClientNet;
 import com.takumistudios.socialmod.client.ClientState;
 import com.takumistudios.socialmod.client.Heads;
+import com.takumistudios.socialmod.client.compat.MapCompat;
 import com.takumistudios.socialmod.client.theme.Theme;
 import com.takumistudios.socialmod.common.model.ConversationId;
 import com.takumistudios.socialmod.common.model.PresenceStatus;
@@ -64,6 +65,13 @@ public class SocialScreen extends Screen {
     private final Ui.RowList right = new Ui.RowList();
     private final Ui.RowList chatRows = new Ui.RowList();
     private int chatScroll;
+    /** Botón de silenciar canal en la cabecera del chat (-1 = no se muestra). */
+    private int muteX = -1;
+    private int muteY;
+    /** Botón de chat de voz (Simple Voice Chat) en la cabecera (-1 = no se muestra). */
+    private int voiceX = -1;
+    private String voiceGroupId = "";
+    private boolean voiceActive;
     private EditBox input;
     private EditBox search;
     private String draft = "";
@@ -286,6 +294,14 @@ public class SocialScreen extends Screen {
                 selectedMessage = -1;
                 rebuildWidgets();
             }).build());
+            Payloads.AttachmentView coords = coordsOf(message);
+            if (coords != null && MapCompat.waypointsAvailable()) {
+                buttons.add(Button.builder(Component.translatable("socialmod.message.waypoint"), b -> {
+                    addWaypoint(message, coords);
+                    selectedMessage = -1;
+                    rebuildWidgets();
+                }).build());
+            }
             URI link = firstLink(message.text());
             Payloads.HelloS2C info = ClientState.get().hello();
             if (link != null && (info == null || info.linksAllowed())) {
@@ -488,6 +504,14 @@ public class SocialScreen extends Screen {
         boolean rightClick = event.button() == 1;
         double mx = event.x();
         double my = event.y();
+        if (voiceX >= 0 && Ui.inside(mx, my, voiceX - 1, muteY - 1, 10, 10)) {
+            ClientNet.action(voiceActive ? SocialAction.VOICE_LEAVE : SocialAction.VOICE_JOIN, voiceGroupId);
+            return true;
+        }
+        if (muteX >= 0 && selected != null && Ui.inside(mx, my, muteX - 1, muteY - 1, 10, 10)) {
+            ClientState.toggleMuted(selected);
+            return true;
+        }
         if (convW > 0 && left.click(mx, my, rightClick)) {
             return true;
         }
@@ -552,7 +576,7 @@ public class SocialScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Theme theme = Ui.theme();
-        graphics.fill(0, 0, this.width, this.height, theme.colors().background());
+        Ui.background(graphics, this.width, this.height);
         if (convW > 0) {
             Ui.panel(graphics, convX, top, convX + convW, bottom);
             drawConversations(graphics, mouseX, mouseY);
@@ -647,7 +671,7 @@ public class SocialScreen extends Screen {
                 unread += state.unreadOf(ConversationId.group(group.id, channel.name).key());
             }
             String label = group.party ? Component.translatable("socialmod.panel.party").getString()
-                    : "[" + group.tag + "] " + group.name;
+                    : emblem(group) + "[" + group.tag + "] " + group.name;
             int rowY = left.screenY(y);
             String firstChannel = group.channels.isEmpty() ? "general" : group.channels.getFirst().name;
             String firstKey = ConversationId.group(group.id, firstChannel).key();
@@ -655,7 +679,7 @@ public class SocialScreen extends Screen {
             if (groupSelected && group.channels.size() <= 1) {
                 graphics.fill(convX + 1, rowY - 1, convX + convW - 1, rowY + ROW - 1, theme.colors().highlight());
             }
-            graphics.text(font, Ui.trim(font, label, w - 24), x + 2, rowY, (group.color & 0xFFFFFF) | 0xFF000000);
+            graphics.text(font, Ui.trim(font, label, w - 24), x + 2, rowY, Ui.readable(group.color));
             if (unread > 0) {
                 String count = "(" + unread + ")";
                 graphics.text(font, count, x + w - font.width(count), rowY, theme.colors().unread());
@@ -669,11 +693,13 @@ public class SocialScreen extends Screen {
                     if (key.equals(selected)) {
                         graphics.fill(convX + 1, cy - 1, convX + convW - 1, cy + ROW - 1, theme.colors().highlight());
                     }
-                    graphics.text(font, Ui.trim(font, "#" + channel.name, w - 30), x + 12, cy, theme.colors().text());
+                    boolean channelMuted = ClientState.isMuted(key);
+                    graphics.text(font, Ui.trim(font, (channelMuted ? "⊘ #" : "#") + channel.name, w - 30), x + 12, cy,
+                            channelMuted ? theme.colors().muted() : theme.colors().text());
                     int channelUnread = state.unreadOf(key);
                     if (channelUnread > 0) {
                         String count = "(" + channelUnread + ")";
-                        graphics.text(font, count, x + w - font.width(count), cy, theme.colors().unread());
+                        graphics.text(font, count, x + w - font.width(count), cy, channelMuted ? theme.colors().muted() : theme.colors().unread());
                     }
                     left.rows.add(Ui.Row.of(convX, y, convW, ROW, () -> select(key)));
                     y += ROW;
@@ -692,8 +718,8 @@ public class SocialScreen extends Screen {
         Theme theme = Ui.theme();
         int rowY = left.screenY(y);
         graphics.text(font, Ui.trim(font, label, w - 24), x + 2, rowY, theme.colors().text());
-        graphics.text(font, "✔", x + w - 20, rowY, 0xFF55FF55);
-        graphics.text(font, "✖", x + w - 8, rowY, 0xFFFF5555);
+        graphics.text(font, "✔", x + w - 20, rowY, Ui.SUCCESS);
+        graphics.text(font, "✖", x + w - 8, rowY, Ui.DANGER);
         left.rows.add(Ui.Row.of(x + w - 22, y, 10, ROW, accept));
         left.rows.add(Ui.Row.of(x + w - 10, y, 10, ROW, deny));
         return y + ROW;
@@ -725,6 +751,12 @@ public class SocialScreen extends Screen {
 
     // ---------- Chat ----------
 
+    /** Emblema del grupo (PLAN 5.2) seguido de un espacio, o vacío. */
+    private static String emblem(SnapshotDto.GroupView group) {
+        String glyph = com.takumistudios.socialmod.common.model.GroupIcon.glyphOf(group.icon);
+        return glyph.isEmpty() ? "" : glyph + " ";
+    }
+
     private SnapshotDto.@Nullable GroupView selectedGroup() {
         if (selected == null || !selected.startsWith("g:")) {
             return null;
@@ -750,6 +782,8 @@ public class SocialScreen extends Screen {
     }
 
     private void drawChat(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        muteX = -1;
+        voiceX = -1;
         Theme theme = Ui.theme();
         ClientState state = ClientState.get();
         int x = chatX + 4;
@@ -767,9 +801,31 @@ public class SocialScreen extends Screen {
         if (group != null) {
             ConversationId id = ConversationId.parse(selected);
             String header = group.party ? Component.translatable("socialmod.panel.party").getString()
-                    : Component.translatable("socialmod.panel.group_header", group.name, id == null ? "" : id.channel()).getString();
-            graphics.text(font, Ui.trim(font, header, w), x, y, (group.color & 0xFFFFFF) | 0xFF000000);
+                    : emblem(group) + Component.translatable("socialmod.panel.group_header", group.name, id == null ? "" : id.channel()).getString();
+            boolean voice = state.snapshot().voice;
+            graphics.text(font, Ui.trim(font, header, w - (voice ? 24 : 12)), x, y, Ui.readable(group.color));
+            // Chat de voz del grupo (Simple Voice Chat en el servidor): ☏ entra/sale
+            voiceX = -1;
+            if (voice) {
+                boolean inVoice = group.id.equals(state.snapshot().voiceGroup);
+                voiceX = x + w - 20;
+                voiceGroupId = group.id;
+                voiceActive = inVoice;
+                graphics.text(font, "☏", voiceX, y, inVoice ? Ui.SUCCESS : theme.colors().muted());
+                if (Ui.inside(mouseX, mouseY, voiceX - 1, y - 1, 10, 10)) {
+                    graphics.setTooltipForNextFrame(font, Component.translatable(inVoice ? "socialmod.voice.leave" : "socialmod.voice.join"), mouseX, mouseY);
+                }
+            }
+            // Silenciar este canal solo en este cliente (PLAN 5.2)
+            boolean muted = ClientState.isMuted(selected);
+            muteX = x + w - 8;
+            muteY = y;
+            graphics.text(font, muted ? "⊘" : "♪", muteX, muteY, muted ? Ui.DANGER : theme.colors().muted());
+            if (Ui.inside(mouseX, mouseY, muteX - 1, muteY - 1, 10, 10)) {
+                graphics.setTooltipForNextFrame(font, Component.translatable(muted ? "socialmod.panel.unmute_channel" : "socialmod.panel.mute_channel"), mouseX, mouseY);
+            }
         } else {
+            muteX = -1;
             ConversationId id = ConversationId.parse(selected);
             UUID self = state.selfId();
             UUID other = id == null || self == null ? null : id.other(self);
@@ -798,8 +854,11 @@ public class SocialScreen extends Screen {
         int actionsHeight = selectedMessage >= 0 ? 20 : 0;
         int listBottom = bottom - INPUT_HEIGHT - 8 - actionsHeight - ROW;
         int listTop = y;
-        rebuildLines(w - 12);
-        int contentHeight = lines.size() * (font.lineHeight + 1);
+        // Escala de texto propia (PLAN 7.3): el texto del chat se ajusta en unidades sin escalar y se dibuja escalado
+        float textScale = ClientConfig.get().panel.textScale / 100.0F;
+        rebuildLines((int) ((w - 12) / textScale));
+        int lineHeight = Math.round((font.lineHeight + 1) * textScale);
+        int contentHeight = lines.size() * lineHeight;
         int viewHeight = listBottom - listTop;
         int maxScroll = Math.max(0, contentHeight - viewHeight);
         chatScroll = Mth.clamp(chatScroll, 0, maxScroll);
@@ -814,7 +873,6 @@ public class SocialScreen extends Screen {
         chatRows.begin(chatX, listTop, chatW, viewHeight);
         chatRows.scroll = 0;
         graphics.enableScissor(chatX + 1, listTop, chatX + chatW - 1, listBottom);
-        int lineHeight = font.lineHeight + 1;
         int lineY = listBottom - contentHeight + chatScroll;
         ItemStack hoverItem = null;
         Payloads.AttachmentView hoverCoords = null;
@@ -823,9 +881,9 @@ public class SocialScreen extends Screen {
                 if (line.messageId() == selectedMessage) {
                     graphics.fill(chatX + 1, lineY - 1, chatX + chatW - 1, lineY + lineHeight - 1, theme.colors().highlight());
                 }
-                int textX = x + 10;
+                int textX = x + Math.round(10 * textScale);
                 if (line.header()) {
-                    Heads.draw(graphics, line.sender(), x, lineY, 8);
+                    Heads.draw(graphics, line.sender(), x, lineY, Math.round(8 * textScale));
                 }
                 if (line.item() != null && line.header() == false && Ui.inside(mouseX, mouseY, chatX, lineY, chatW, lineHeight)) {
                     hoverItem = line.item();
@@ -833,7 +891,15 @@ public class SocialScreen extends Screen {
                 if (line.coords() != null && Ui.inside(mouseX, mouseY, chatX, lineY, chatW, lineHeight)) {
                     hoverCoords = line.coords();
                 }
-                graphics.text(font, line.text(), textX, lineY, theme.colors().text());
+                if (textScale == 1.0F) {
+                    graphics.text(font, line.text(), textX, lineY, theme.colors().text());
+                } else {
+                    graphics.pose().pushMatrix();
+                    graphics.pose().translate(textX, lineY);
+                    graphics.pose().scale(textScale, textScale);
+                    graphics.text(font, line.text(), 0, 0, theme.colors().text());
+                    graphics.pose().popMatrix();
+                }
                 long messageId = line.messageId();
                 chatRows.rows.add(new Ui.Row(chatX, lineY - listTop, chatW, lineHeight, () -> selectMessage(messageId), () -> selectMessage(messageId)));
             }
@@ -879,7 +945,7 @@ public class SocialScreen extends Screen {
         Component notice = hello != null && hello.spyActive()
                 ? Component.translatable("socialmod.panel.notice_spy").withStyle(ChatFormatting.GOLD)
                 : Component.translatable("socialmod.panel.notice");
-        graphics.text(font, Ui.trim(font, notice.getString(), w), x, y, hello != null && hello.spyActive() ? 0xFFFFAA00 : Ui.theme().colors().muted());
+        graphics.text(font, Ui.trim(font, notice.getString(), w), x, y, hello != null && hello.spyActive() ? Ui.WARNING : Ui.theme().colors().muted());
     }
 
     private String typingText(ClientState.ConversationCache cache) {
@@ -906,19 +972,48 @@ public class SocialScreen extends Screen {
             String direction = directions[Math.floorMod((int) Math.round(angle / 45.0), 8)];
             text.append("\n").append(Component.translatable("socialmod.coords.distance", distance, direction));
         }
-        text.append("\n").append(Component.translatable("socialmod.coords.copy_hint").withStyle(ChatFormatting.GRAY));
+        text.append("\n").append(Component.translatable(MapCompat.waypointsAvailable() ? "socialmod.coords.waypoint_hint" : "socialmod.coords.copy_hint")
+                .withStyle(ChatFormatting.GRAY));
         return text;
+    }
+
+    private static Payloads.@Nullable AttachmentView coordsOf(Payloads.MessageView message) {
+        for (Payloads.AttachmentView attachment : message.attachments()) {
+            if (!attachment.isItem()) {
+                return attachment;
+            }
+        }
+        return null;
+    }
+
+    /** Waypoint en Xaero's Minimap (se ve también en el World Map); si no se puede, copia las coordenadas. */
+    private void addWaypoint(Payloads.MessageView message, Payloads.AttachmentView coords) {
+        Minecraft minecraft = Minecraft.getInstance();
+        SnapshotDto.GroupView group = selectedGroup();
+        int color = group != null ? group.color : 0x55FF55;
+        if (MapCompat.addWaypoint(message.senderName(), coords.dimension(), coords.x(), coords.y(), coords.z(), color)) {
+            if (minecraft.player != null) {
+                minecraft.player.sendOverlayMessage(Component.translatable("socialmod.coords.waypoint_added", message.senderName())
+                        .withStyle(ChatFormatting.GREEN));
+            }
+            return;
+        }
+        minecraft.keyboardHandler.setClipboard(coords.x() + " " + coords.y() + " " + coords.z());
+        if (minecraft.player != null) {
+            minecraft.player.sendOverlayMessage(Component.translatable("socialmod.coords.waypoint_failed").withStyle(ChatFormatting.YELLOW));
+        }
     }
 
     private void selectMessage(long id) {
         if (selectedMessage == id) {
-            // Segundo clic sobre unas coordenadas: copiarlas
+            // Segundo clic sobre unas coordenadas: waypoint en el mapa (Xaero) o copiarlas al portapapeles
             Payloads.MessageView message = selectedMessageView();
-            if (message != null) {
-                for (Payloads.AttachmentView attachment : message.attachments()) {
-                    if (!attachment.isItem()) {
-                        Minecraft.getInstance().keyboardHandler.setClipboard(attachment.x() + " " + attachment.y() + " " + attachment.z());
-                    }
+            Payloads.AttachmentView coords = message == null ? null : coordsOf(message);
+            if (coords != null) {
+                if (MapCompat.waypointsAvailable()) {
+                    addWaypoint(message, coords);
+                } else {
+                    Minecraft.getInstance().keyboardHandler.setClipboard(coords.x() + " " + coords.y() + " " + coords.z());
                 }
             }
             return;
@@ -1023,7 +1118,7 @@ public class SocialScreen extends Screen {
                 for (SnapshotDto.EventView event : group.events) {
                     long minutes = Math.max(0, (event.startsAt - System.currentTimeMillis()) / 60_000);
                     graphics.text(font, Ui.trim(font, event.title + " (" + Component.translatable("socialmod.time.in_minutes", minutes).getString() + ")", w),
-                            x, right.screenY(y), 0xFFFF55FF);
+                            x, right.screenY(y), Ui.EVENT);
                     y += ROW;
                 }
             }
@@ -1053,10 +1148,11 @@ public class SocialScreen extends Screen {
             graphics.text(font, Ui.trim(font, label, w - 20), x + 18, rowY, theme.colors().text());
             Payloads.TagEntry tag = state.tagOf(id);
             if (tag != null && playersW > 110) {
-                String tagText = "[" + tag.tag() + "]";
+                String glyph = com.takumistudios.socialmod.common.model.GroupIcon.glyphOf(tag.icon());
+                String tagText = (glyph.isEmpty() ? "" : glyph + " ") + "[" + tag.tag() + "]";
                 int tagW = font.width(tagText);
                 if (font.width(label) + tagW + 22 < w) {
-                    graphics.text(font, tagText, x + w - tagW, rowY, (tag.color() & 0xFFFFFF) | 0xFF000000);
+                    graphics.text(font, tagText, x + w - tagW, rowY, Ui.readable(tag.color()));
                 }
             }
             right.rows.add(Ui.Row.of(playersX, y, playersW, ROW, () -> openChild(new ProfileScreen(this, id, name))));

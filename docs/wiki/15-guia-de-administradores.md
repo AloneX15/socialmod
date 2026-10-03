@@ -29,6 +29,10 @@ Si cliente y servidor tienen **versiones de protocolo distintas**, el cliente qu
 | Formato del chat para jugadores sin el mod | `formats.*` |
 | Dónde reciben avisos los jugadores sin el mod | `formats.vanillaNotifications` (`actionbar` o `chat`) |
 | Mostrar `[TAG]` a jugadores sin el mod | `nametags.scoreboardFallback: true` |
+| Vida de la party en el HUD / ping | `modules.partyHud`, `modules.ping` |
+| Chat de voz por grupo (Simple Voice Chat) | `modules.voice` (y tener Simple Voice Chat en el servidor) |
+| Sincronizar grupos con Open Parties and Claims | `integrations.claimsSync`: `off`, `to_claims` o `both`; cada líder enlaza con `/g claims link` |
+| Guardar en una base de datos | `storage.backend`: `h2`, `mysql` o `mariadb` (ver abajo) |
 
 Recarga sin reiniciar con **`/socialmod reload`**. Referencia completa en [configuración](../configuration.md).
 
@@ -90,7 +94,29 @@ Los nodos enteros se definen según el proveedor de permisos (con LuckPerms, com
 - La escritura es **asíncrona** y **atómica**: el hilo del servidor nunca espera al disco y un corte de luz no deja archivos a medias.
 - Si un archivo se corrompe, se aparta como `.corrupt` y el servidor sigue funcionando.
 - **Copias de seguridad**: incluye la carpeta `socialmod/` en tus backups del mundo.
-- Backends H2 y MySQL (redes con varios servidores) están previstos para la v1.x.
+### Base de datos (H2, MySQL, MariaDB)
+
+1. Descarga el **driver JDBC** y copia el `.jar` en `config/socialmod/drivers/` (H2: `h2-2.x.jar`; MySQL: Connector/J;
+   MariaDB: Connector/J de MariaDB). No va dentro de SocialMod para no engordar el jar.
+2. En `server.json`:
+
+   ```jsonc
+   "storage": {
+     "backend": "mysql",                                   // o "h2" (sin más datos) o "mariadb"
+     "jdbcUrl": "jdbc:mysql://localhost:3306/minecraft",   // vacío con h2: archivo en <mundo>/socialmod/socialmod-h2
+     "user": "minecraft", "password": "...",
+     "tablePrefix": "socialmod_"
+   }
+   ```
+3. Reinicia. La primera vez, si la tabla está vacía, se **importan** los datos de `file` (los archivos se quedan como copia).
+
+`audit.log` y `exports/` siguen en archivos. Si el driver falta o la conexión falla, el log lo explica y se usa `file`:
+el servidor nunca se queda sin guardar. Protege `server.json`: la contraseña va en texto plano.
+
+## Integraciones
+
+Todas son opcionales y se activan solas si el mod está instalado. Detalle, versiones probadas y lo pendiente en
+[Integraciones](18-integraciones.md).
 
 ## Placeholders
 
@@ -112,3 +138,7 @@ se paginan.
 | El filtro no hace nada | Recuerda `filter.enabled: true` (o palabras en un datapack). Las expresiones regulares inválidas se ignoran con un aviso en el log. |
 | Un permiso no se aplica | Los permisos se cachean 5 segundos; reconsulta tras cambiarlos o haz `/socialmod reload`. |
 | Etiquetas de grupo chocan con TAB | Deja `nametags.scoreboardFallback` en `false` (por defecto). |
+| "El backend 'mysql' no está disponible" | Falta el driver en `config/socialmod/drivers/` o la URL/usuario/contraseña son incorrectos; el mensaje dice cuál. |
+| `/g voice` dice que no está disponible | Simple Voice Chat no está en el servidor o `modules.voice` es `false`. |
+| `/g claims link` dice que no está activado | Open Parties and Claims no está instalado o `integrations.claimsSync` es `off`. |
+| Clientes 0.1.0 entran en "solo chat" | La 0.2.0 usa el protocolo 2: actualiza cliente y servidor a la vez. |

@@ -10,6 +10,7 @@ import com.takumistudios.socialmod.server.config.ServerConfig;
 import com.takumistudios.socialmod.server.data.Conversation;
 import com.takumistudios.socialmod.server.data.Group;
 import com.takumistudios.socialmod.server.data.PlayerRecord;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -265,6 +266,16 @@ public final class SocialStorage {
      * {@code editor} devuelve {@code true} si cambió algo.
      */
     public void editAllConversations(Predicate<Conversation> editor) {
+        editAllConversations(editor, null);
+    }
+
+    /**
+     * Igual, y {@code onDone} se ejecuta en el hilo principal cuando se han recorrido también las del disco.
+     * <p>El recorrido del disco va por lotes de {@link #SWEEP_BATCH} archivos, y cada lote se vuelve a encolar en el hilo
+     * de E/S: así las cargas de conversaciones de los jugadores no esperan detrás de miles de archivos (antes un
+     * {@code /socialmod data delete} bloqueaba todos los chats varios segundos en un servidor grande).</p>
+     */
+    public void editAllConversations(Predicate<Conversation> editor, @Nullable Runnable onDone) {
         for (Map.Entry<String, Conversation> entry : conversations.entrySet()) {
             if (editor.test(entry.getValue())) {
                 dirtyConversations.add(entry.getKey());
@@ -274,24 +285,44 @@ public final class SocialStorage {
         conversations.keySet().forEach(k -> skip.add(k.replace(':', '_')));
         loading.keySet().forEach(k -> skip.add(k.replace(':', '_')));
         runIo(() -> {
+            List<String> files;
             try {
-                for (String file : backend.keys(CONVERSATIONS)) {
-                    if (skip.contains(file)) {
-                        continue;
-                    }
-                    JsonElement json = backend.read(CONVERSATIONS, file);
-                    if (json == null) {
-                        continue;
-                    }
-                    Conversation conversation = GSON.fromJson(json, Conversation.class).normalize();
-                    if (editor.test(conversation)) {
-                        backend.write(CONVERSATIONS, file, GSON.toJsonTree(conversation));
-                    }
+                files = backend.keys(CONVERSATIONS);
+            } catch (IOException | RuntimeException e) {
+                SocialMod.LOGGER.warn("[SocialMod] Error listando conversaciones en disco: {}", e.getMessage());
+                files = List.of();
+            }
+            sweep(files, 0, skip, editor, onDone);
+        }, onDone == null ? null : () -> mainThread.execute(onDone));
+    }
+
+    private static final int SWEEP_BATCH = 16;
+
+    private void sweep(List<String> files, int from, Set<String> skip, Predicate<Conversation> editor, @Nullable Runnable onDone) {
+        int to = Math.min(files.size(), from + SWEEP_BATCH);
+        for (int i = from; i < to; i++) {
+            String file = files.get(i);
+            if (skip.contains(file)) {
+                continue;
+            }
+            try {
+                JsonElement json = backend.read(CONVERSATIONS, file);
+                if (json == null) {
+                    continue;
+                }
+                Conversation conversation = GSON.fromJson(json, Conversation.class).normalize();
+                if (editor.test(conversation)) {
+                    backend.write(CONVERSATIONS, file, GSON.toJsonTree(conversation));
                 }
             } catch (IOException | RuntimeException e) {
-                SocialMod.LOGGER.warn("[SocialMod] Error editando conversaciones en disco: {}", e.getMessage());
+                SocialMod.LOGGER.warn("[SocialMod] Error editando la conversación {} en disco: {}", file, e.getMessage());
             }
-        }, null);
+        }
+        if (to < files.size()) {
+            runIo(() -> sweep(files, to, skip, editor, onDone), onDone == null ? null : () -> mainThread.execute(onDone));
+        } else if (onDone != null) {
+            mainThread.execute(onDone);
+        }
     }
 
     // ---------- Otros documentos ----------

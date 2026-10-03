@@ -191,8 +191,21 @@ public final class SocialCommands {
                 .then(groupText("pin", "pinned"))
                 .then(Commands.literal("tag").then(Commands.argument("tag", StringArgumentType.word())
                         .executes(ctx -> withMain(ctx, (social, player, group, c) -> social.groups().setText(player, group.id, "tag", str(c, "tag"))))))
-                .then(Commands.literal("color").then(Commands.argument("color", StringArgumentType.word())
+                .then(Commands.literal("color").then(Commands.argument("color", StringArgumentType.greedyString())
                         .executes(ctx -> withMain(ctx, (social, player, group, c) -> social.groups().setText(player, group.id, "color", str(c, "color"))))))
+                .then(Commands.literal("icon").then(Commands.argument("icon", StringArgumentType.word())
+                        .suggests((c, b) -> SharedSuggestionProvider.suggest(java.util.Arrays.stream(com.takumistudios.socialmod.common.model.GroupIcon.values())
+                                .map(com.takumistudios.socialmod.common.model.GroupIcon::id), b))
+                        .executes(ctx -> withMain(ctx, (social, player, group, c) -> social.groups().setText(player, group.id, "icon", str(c, "icon"))))))
+                .then(Commands.literal("claims")
+                        .then(Commands.literal("link").executes(ctx -> withMain(ctx, (social, player, group, c) -> social.groups().setClaimsLink(player, group.id, true))))
+                        .then(Commands.literal("unlink").executes(ctx -> withMain(ctx, (social, player, group, c) -> social.groups().setClaimsLink(player, group.id, false)))))
+                .then(Commands.literal("voice")
+                        .executes(ctx -> withMain(ctx, (social, player, group, c) -> social.voice().join(player, group.id)))
+                        .then(Commands.literal("leave").executes(ctx -> run(ctx, (social, player, c) -> {
+                            social.voice().leave(player);
+                            return 1;
+                        }))))
                 .then(Commands.literal("channel")
                         .then(Commands.literal("create").then(Commands.argument("name", StringArgumentType.word())
                                 .executes(ctx -> withMain(ctx, (social, player, group, c) -> social.groups().createChannel(player, group.id, str(c, "name"), "")))
@@ -298,6 +311,19 @@ public final class SocialCommands {
                                 party = social.groups().createParty(player);
                             }
                             return party != null && social.groups().invite(player, party.id, str(c, "player")) ? 1 : 0;
+                        }))))
+                .then(Commands.literal("voice")
+                        .executes(ctx -> run(ctx, (social, player, c) -> {
+                            Group party = social.groups().partyOf(player.getUUID());
+                            if (party == null) {
+                                social.notifier().feedback(player, false, "socialmod.party.none");
+                                return 0;
+                            }
+                            return social.voice().join(player, party.id) ? 1 : 0;
+                        }))
+                        .then(Commands.literal("leave").executes(ctx -> run(ctx, (social, player, c) -> {
+                            social.voice().leave(player);
+                            return 1;
                         }))))
                 .then(Commands.literal("accept").executes(ctx -> run(ctx, (social, player, c) -> social.groups().accept(player, "party") ? 1 : 0)))
                 .then(Commands.literal("decline").executes(ctx -> run(ctx, (social, player, c) -> social.groups().decline(player, "party") ? 1 : 0)))
@@ -470,7 +496,16 @@ public final class SocialCommands {
     }
 
     private static void registerAdmin(CommandDispatcher<CommandSourceStack> dispatcher) {
+        // Menú de cofre para clientes sin el mod (Java vanilla y Bedrock)
+        dispatcher.register(Commands.literal("social").executes(ctx -> run(ctx, (social, player, c) -> {
+            com.takumistudios.socialmod.server.menu.SocialMenu.open(social, player);
+            return 1;
+        })));
         dispatcher.register(Commands.literal("socialmod")
+                .then(Commands.literal("menu").executes(ctx -> run(ctx, (social, player, c) -> {
+                    com.takumistudios.socialmod.server.menu.SocialMenu.open(social, player);
+                    return 1;
+                })))
                 .then(Commands.literal("inbox").executes(ctx -> run(ctx, (social, player, c) -> {
                     social.chat().showInbox(player);
                     return 1;

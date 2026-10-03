@@ -4,6 +4,8 @@ import com.takumistudios.socialmod.SocialMod;
 import com.takumistudios.socialmod.api.client.ToastData;
 import com.takumistudios.socialmod.client.compat.ClientCompat;
 import com.takumistudios.socialmod.client.hud.SocialHud;
+import com.takumistudios.socialmod.client.hud.PartyHud;
+import com.takumistudios.socialmod.client.compat.MapCompat;
 import com.takumistudios.socialmod.client.hud.ToastHud;
 import com.takumistudios.socialmod.client.screen.QuickReplyScreen;
 import com.takumistudios.socialmod.client.screen.SocialScreen;
@@ -34,6 +36,9 @@ import org.jspecify.annotations.Nullable;
  * (o con otro protocolo) no se envía nada y el jugador usa el chat normal (modo "solo chat").
  */
 public final class SocialModClient implements ClientModInitializer {
+    /** Ajuste automático de márgenes para Xaero hecho (o no necesario) en esta sesión. */
+    private static boolean mapMarginsDone;
+
     @Override
     public void onInitializeClient() {
         ClientConfig.load();
@@ -46,13 +51,20 @@ public final class SocialModClient implements ClientModInitializer {
             }
         }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.SnapshotS2C.TYPE, (payload, context) ->
-                guarded("snapshot", () -> ClientState.get().onSnapshot(payload.json())));
+                guarded("snapshot", () -> {
+                    ClientState.get().onSnapshot(payload.json());
+                    ClientCache.store(payload.json());
+                }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.PresenceS2C.TYPE, (payload, context) ->
                 guarded("presence", () -> ClientState.get().onPresence(payload.entries())));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.MessagesS2C.TYPE, (payload, context) ->
                 guarded("messages", () -> ClientState.get().onMessages(payload)));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.SignalS2C.TYPE, (payload, context) ->
                 guarded("signal", () -> ClientState.get().onSignal(payload)));
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.PartyS2C.TYPE, (payload, context) ->
+                guarded("party", () -> PartyClient.onParty(payload)));
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.PingS2C.TYPE, (payload, context) ->
+                guarded("ping", () -> PartyClient.onPing(payload)));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.TagsS2C.TYPE, (payload, context) ->
                 guarded("tags", () -> ClientState.get().onTags(payload)));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.NotifyS2C.TYPE, (payload, context) ->
@@ -60,22 +72,28 @@ public final class SocialModClient implements ClientModInitializer {
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             ClientState.get().reset();
+            PartyClient.reset();
             ToastHud.clear();
             SocialKeys.resetConflictCheck();
             // Handshake: solo si el servidor registró nuestro canal (tiene SocialMod)
             if (ClientPlayNetworking.canSend(Payloads.HelloC2S.TYPE)) {
+                // Caché local (PLAN 4.2): datos al instante mientras llega el snapshot del servidor
+                ClientCache.open(client).ifPresent(json -> ClientState.get().onSnapshot(json));
                 ClientPlayNetworking.send(new Payloads.HelloC2S(Payloads.PROTOCOL_VERSION));
             }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             ClientState.get().reset();
+            PartyClient.reset();
             ToastHud.clear();
+            ClientCache.flush();
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> guarded("tick", () -> onTick(client)));
 
         HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(SocialMod.MOD_ID, "toasts"), ToastHud::extractRenderState);
         HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(SocialMod.MOD_ID, "social_hud"), SocialHud::extractRenderState);
+        HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(SocialMod.MOD_ID, "party_hud"), PartyHud::extractRenderState);
 
         LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
             if (renderer instanceof AvatarRenderer<?> avatar) {
@@ -98,11 +116,18 @@ public final class SocialModClient implements ClientModInitializer {
 
     private static void onTick(Minecraft client) {
         ToastHud.tick();
+        PartyClient.tick(client);
         if (client.player == null) {
             return;
         }
         if (ClientState.get().connected()) {
             SocialKeys.checkConflicts();
+            if (!mapMarginsDone && client.player.tickCount % 40 == 0) {
+                mapMarginsDone = MapCompat.applyAutoMargins();
+            }
+        }
+        while (SocialKeys.PING.consumeClick()) {
+            PartyClient.sendPing(client);
         }
         while (SocialKeys.OPEN_PANEL.consumeClick()) {
             openPanel(null);

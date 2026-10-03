@@ -5,6 +5,7 @@ import com.takumistudios.socialmod.client.theme.ThemeManager;
 import com.takumistudios.socialmod.common.model.PresenceStatus;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 
 import java.time.Instant;
@@ -37,13 +38,71 @@ public final class Ui {
 
     public static void panel(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2) {
         Theme theme = theme();
+        if (theme.textures().panel().isPresent()) {
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, theme.textures().panel().get(), x1, y1, x2 - x1, y2 - y1);
+            return;
+        }
         graphics.fill(x1, y1, x2, y2, theme.colors().panel());
         graphics.outline(x1, y1, x2 - x1, y2 - y1, theme.colors().border());
     }
 
+    /** Fondo de pantalla completa del panel: textura del tema o color. */
+    public static void background(GuiGraphicsExtractor graphics, int width, int height) {
+        Theme theme = theme();
+        if (theme.textures().background().isPresent()) {
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, theme.textures().background().get(), 0, 0, width, height);
+        } else {
+            graphics.fill(0, 0, width, height, theme.colors().background());
+        }
+    }
+
+    // ---------- Guía de estilo (SOCIALMOD_ERRORES 2) ----------
+    // Títulos de pantalla: blanco, centrados, en TITLE_Y. Cabeceras de sección: MAYÚSCULAS (las pone el código,
+    // los .json van en minúsculas normales), color muted y línea. Etiquetas y botones: frase normal ("En línea").
+    // Pistas de los campos: gris oscuro. Colores elegidos por los jugadores (grupos): siempre por readable().
+
+    public static final int TITLE_Y = 10;
+    public static final int TITLE = 0xFFFFFFFF;
+    public static final int SUCCESS = 0xFF55FF55;
+    public static final int DANGER = 0xFFFF5555;
+    public static final int WARNING = 0xFFFFAA00;
+    public static final int EVENT = 0xFFFF55FF;
+    public static final int ROW = 12;
+
+    public static void title(GuiGraphicsExtractor graphics, Font font, Component text, int centerX, int y) {
+        graphics.centeredText(font, text, centerX, y, TITLE);
+    }
+
+    public static Component hint(Component text) {
+        return text.copy().withStyle(net.minecraft.ChatFormatting.DARK_GRAY);
+    }
+
+    /** Texto de sección en mayúsculas según el idioma del juego. */
+    public static String upper(Component text) {
+        return text.getString().toUpperCase(java.util.Locale.ROOT);
+    }
+
+    /**
+     * Color de un jugador o grupo legible sobre el fondo oscuro del panel: opaco y, si es muy oscuro
+     * (p. ej. {@code #000080}), aclarado hasta una luminancia mínima.
+     */
+    public static int readable(int rgb) {
+        int r = (rgb >> 16) & 0xFF;
+        int g = (rgb >> 8) & 0xFF;
+        int b = rgb & 0xFF;
+        double luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+        if (luminance < 0.35) {
+            double t = (0.35 - luminance) / 0.35 * 0.6;
+            r = (int) (r + (255 - r) * t);
+            g = (int) (g + (255 - g) * t);
+            b = (int) (b + (255 - b) * t);
+        }
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
     public static void sectionHeader(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int width) {
         Theme theme = theme();
-        String label = text.getString() + " ";
+        String label = upper(text) + " ";
         graphics.text(font, trim(font, label, width), x, y, theme.colors().muted());
         int lineStart = x + font.width(label) + 2;
         if (lineStart < x + width) {

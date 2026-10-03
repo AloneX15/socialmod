@@ -22,7 +22,11 @@ SocialMod avisa de lo importante con **toasts**: pequeños recuadros flotantes c
 | **Mensaje de grupo** | Hay mensajes nuevos en un canal (desactivable) | Gris |
 | **Sistema** | Avisos del servidor u otros mods (reportes para el staff...) | Gris |
 
-Si ya tienes abierta esa conversación en el panel, **no se muestra** el toast (ya lo estás viendo).
+Si ya tienes abierta esa conversación en el panel, **no se muestra** el toast (ya lo estás viendo). Los canales que
+**silenciaste** (♪ → ⊘ en la cabecera del chat) tampoco muestran toasts de grupo ni suman al contador del HUD.
+
+El texto del toast es una vista previa ya resuelta: las coordenadas compartidas se ven como `x: 120, z: -450` y los ítems
+con su nombre (`Espada de diamante x2`), nunca como `[coords]` o `[item]`.
 
 ## Prioridades
 

@@ -4,6 +4,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.minecraft.resources.Identifier;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -12,10 +14,10 @@ import java.util.Optional;
  * para que funcione con cualquier GUI Scale e idioma. Lo aporta un resource pack en
  * {@code assets/socialmod/themes/<id>.json}; si el JSON tiene errores se usa el tema por defecto.
  */
-public record Theme(String layout, List<Column> columns, Colors colors, Toast toast) {
+public record Theme(String layout, List<Column> columns, Colors colors, Toast toast, Textures textures) {
     public static final Theme DEFAULT = new Theme("three_column",
             List.of(new Column("conversations", 1, 110, false), new Column("chat", 2, 160, false), new Column("players", 1, 90, true)),
-            Colors.DEFAULT, new Toast(0xE0101010, 0xFF555555, 160));
+            Colors.DEFAULT, new Toast(0xE0101010, 0xFF555555, 160), Textures.NONE);
 
     public record Column(String id, int weight, int minWidth, boolean collapsible) {
         public static final Codec<Column> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -50,11 +52,26 @@ public record Theme(String layout, List<Column> columns, Colors colors, Toast to
         ).apply(i, Toast::new));
     }
 
+    /**
+     * Texturas opcionales (PLAN 15): sprites del atlas de la GUI que aporta el resource pack en
+     * {@code assets/<ns>/textures/gui/sprites/<ruta>.png}, con su {@code .png.mcmeta} para escalado nine-slice.
+     * Se usan en lugar del color de fondo correspondiente; sin ellas se dibuja el color de siempre.
+     */
+    public record Textures(Optional<Identifier> background, Optional<Identifier> panel, Optional<Identifier> toast) {
+        public static final Textures NONE = new Textures(Optional.empty(), Optional.empty(), Optional.empty());
+        public static final Codec<Textures> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Identifier.CODEC.optionalFieldOf("background").forGetter(Textures::background),
+                Identifier.CODEC.optionalFieldOf("panel").forGetter(Textures::panel),
+                Identifier.CODEC.optionalFieldOf("toast").forGetter(Textures::toast)
+        ).apply(i, Textures::new));
+    }
+
     public static final Codec<Theme> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.optionalFieldOf("layout", "three_column").forGetter(Theme::layout),
             Column.CODEC.listOf().optionalFieldOf("columns", DEFAULT.columns).forGetter(Theme::columns),
             Colors.CODEC.optionalFieldOf("colors", Colors.DEFAULT).forGetter(Theme::colors),
-            Toast.CODEC.optionalFieldOf("toast", DEFAULT.toast).forGetter(Theme::toast)
+            Toast.CODEC.optionalFieldOf("toast", DEFAULT.toast).forGetter(Theme::toast),
+            Textures.CODEC.optionalFieldOf("textures", Textures.NONE).forGetter(Theme::textures)
     ).apply(i, Theme::new));
 
     /** Colores como {@code "#RRGGBB"} o {@code "#AARRGGBB"}. En una clase aparte para evitar ciclos de inicialización. */

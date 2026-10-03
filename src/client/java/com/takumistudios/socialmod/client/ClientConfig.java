@@ -48,6 +48,28 @@ public final class ClientConfig {
     public Nametags nametags = new Nametags();
     public Accessibility accessibility = new Accessibility();
     public Panel panel = new Panel();
+    public Ping ping = new Ping();
+    public Maps maps = new Maps();
+    public Cache cache = new Cache();
+
+    public static final class Ping {
+        public boolean enabled = true;
+        public boolean sound = true;
+    }
+
+    /** Integración con mapas (Xaero's World Map / Minimap, JourneyMap). */
+    public static final class Maps {
+        /** Crea un waypoint al hacer doble clic en unas coordenadas compartidas (si hay un mapa compatible). */
+        public boolean waypoints = true;
+        /** Primera vez con un minimapa instalado: mueve toasts y HUD para no taparlo. */
+        public boolean autoMargins = true;
+        public boolean autoMarginsApplied = false;
+    }
+
+    /** Caché local por servidor para abrir el panel al instante (PLAN 4.2). */
+    public static final class Cache {
+        public boolean enabled = true;
+    }
 
     public static final class Toasts {
         public boolean enabled = true;
@@ -82,10 +104,16 @@ public final class ClientConfig {
         public int offsetY = 4;
         /** Escala en porcentaje (50–200). */
         public int scale = 100;
+        /** Vida de los miembros de la party conectados (PLAN 5.2). */
+        public boolean partyHealth = true;
     }
 
     public static final class Nametags {
         public boolean showGroupTags = true;
+        /** Etiqueta en una línea debajo del nombre (como el marcador "belowName" vanilla); si no, delante. */
+        public boolean belowName = true;
+        public boolean showIcon = true;
+        public boolean showRole = true;
     }
 
     public static final class Accessibility {
@@ -98,6 +126,10 @@ public final class ClientConfig {
         /** Ancho reservado a la derecha (minimapas u otros HUD). */
         public int reservedRight = 0;
         public int reservedTop = 0;
+        /** Escala propia del texto del panel en porcentaje (75–150), aparte de la GUI Scale. */
+        public int textScale = 100;
+        /** Conversaciones de canal silenciadas en este cliente (sin toasts, sonidos ni contador en el HUD). */
+        public java.util.List<String> mutedChannels = new java.util.ArrayList<>();
     }
 
     public static ClientConfig get() {
@@ -174,6 +206,11 @@ public final class ClientConfig {
         if (nametags == null) nametags = new Nametags();
         if (accessibility == null) accessibility = new Accessibility();
         if (panel == null) panel = new Panel();
+        if (ping == null) ping = new Ping();
+        if (maps == null) maps = new Maps();
+        if (cache == null) cache = new Cache();
+        if (panel.mutedChannels == null) panel.mutedChannels = new java.util.ArrayList<>();
+        panel.textScale = clamp(panel.textScale, 75, 150);
         if (toasts.position == null) toasts.position = Corner.TOP_RIGHT;
         if (hud.position == null) hud.position = Corner.BOTTOM_RIGHT;
         toasts.durationSeconds = clamp(toasts.durationSeconds, 3, 15);

@@ -55,7 +55,10 @@ tenga (vanilla o Bedrock con Geyser) puede hacer todo con comandos.
 - **Roles**: Líder, Oficial, Miembro y Recluta, con permisos que el servidor puede ajustar a su gusto.
 - **Canales** (`#general`, `#comercio`, `#oficiales`...) con **rol mínimo**: un canal solo para oficiales es invisible para el resto.
 - **Eventos programados**: "raid a la fortaleza en 30 minutos" avisa a los miembros conectados 5 minutos antes y al empezar.
-- Tu **etiqueta de grupo** aparece junto a tu nombre sobre tu cabeza (respeta la invisibilidad: nunca delata a nadie).
+- Tu **etiqueta de grupo** aparece **debajo de tu nombre**, con su **emblema** (⚔, ♛, ★...) y tu rol, y la eliges con un
+  **selector visual de color** con vista previa (respeta la invisibilidad: nunca delata a nadie).
+- **Chat de voz del grupo** con Simple Voice Chat y **sincronización con Open Parties and Claims** (opcional).
+- **Silencia un canal** solo para ti.
 - **Menciona a todo el grupo** con `@TAG` (con el permiso adecuado).
 
 👉 [Grupos y clanes](docs/wiki/05-grupos.md)
@@ -65,7 +68,8 @@ tenga (vanilla o Bedrock con Geyser) puede hacer todo con comandos.
 ### 🎒 Parties: equipos de una sesión
 
 Invita a tus amigos a una **party** con un clic, hablad en un chat común y, cuando acabéis, desaparece sola. Perfecto para una
-expedición al End, una mazmorra o una raid.
+expedición al End, una mazmorra o una raid. Con el mod ves la **vida de tus compañeros** en el HUD y puedes **marcar un
+punto** del mundo con `J` (ping) para que todos lo vean.
 
 👉 [Parties](docs/wiki/06-parties.md)
 
@@ -98,7 +102,8 @@ Te llega un aviso → pulsas **`Y`** → escribes → **Enter**. **El juego no s
 
 ### 📍 Comparte dónde estás y qué llevas
 
-- Escribe **`[coords]`** y todos ven tu posición; al pasar el ratón, la **distancia y la dirección** desde donde están. Un clic las copia.
+- Escribe **`[coords]`** y todos ven tu posición; al pasar el ratón, la **distancia y la dirección** desde donde están. Con
+  **Xaero's Minimap / World Map** o **JourneyMap**, un doble clic crea un **waypoint**; sin mapa, copia las coordenadas.
 - Escribe **`[item]`** y muestras el ítem de tu mano con su **tooltip completo** (encantamientos incluidos).
 - Lo genera **el servidor**, así que **nadie puede falsificarlo**.
 
@@ -163,7 +168,8 @@ Todo funciona con comandos y los mensajes llegan al chat normal con un formato c
 /g ¿quién tiene hierro?           /party invite Luna             /block Troll
 ```
 
-Pulsa sobre el prefijo de un mensaje recibido y se rellena el comando para responder.
+Pulsa sobre el prefijo de un mensaje recibido y se rellena el comando para responder. Y con **`/social`** se abre un **menú de
+cofre** con tus amigos, tu estado, el buzón y tus grupos (también en Bedrock con Geyser).
 👉 [Jugar sin el mod](docs/wiki/11-sin-el-mod.md)
 
 ---
@@ -188,7 +194,8 @@ Una guía completa, paso a paso, de todo lo anterior:
 | [11. Jugar sin el mod](docs/wiki/11-sin-el-mod.md) | |
 | [12. Privacidad y seguridad](docs/wiki/12-privacidad-y-seguridad.md) | |
 | [13. Accesibilidad y personalización](docs/wiki/13-accesibilidad-y-personalizacion.md) | |
-| [14. Preguntas frecuentes](docs/wiki/14-preguntas-frecuentes.md) | |
+| [14. Preguntas frecuentes](docs/wiki/14-preguntas-frecuentes.md) | [Registro de errores y soluciones](docs/registro-de-errores.md) |
+| [18. Integraciones](docs/wiki/18-integraciones.md) | |
 
 ---
 
@@ -204,16 +211,24 @@ todas las pruebas) o desde las **[Releases](../../releases)** oficiales.
 
 ### Compatibilidad
 
-- **Única dependencia obligatoria: Fabric API.** Todo lo demás es opcional: LuckPerms, Text Placeholder API, ModMenu.
+- **Única dependencia obligatoria: Fabric API.** Todo lo demás es opcional: LuckPerms, Text Placeholder API, ModMenu,
+  Xaero's Minimap / World Map, JourneyMap, Simple Voice Chat, Open Parties and Claims y bases de datos H2/MySQL/MariaDB
+  (ver [Integraciones](docs/wiki/18-integraciones.md)).
 - **Sin mixins**: no toca el chat vanilla ni la firma de mensajes, y no interfiere con Sodium, Iris, Lithium, JEI/REI/EMI, minimapas...
 - Si un handler falla, **nunca tumba** el servidor ni el cliente. Si un cliente tiene otra versión del protocolo, funciona en "solo chat".
 - Cada módulo (privados, grupos, parties, amigos, presencia, buzón, compartir, menciones) se puede **desactivar por separado**.
 
 ### Qué está y qué viene
 
-Están implementadas las fases 0–4 del plan (hasta la **v1.0**). Pendientes para próximas versiones: voz en grupos (Simple Voice Chat /
-Plasmo Voice), integración con claims, waypoints automáticos en Xaero/JourneyMap, backends H2 y MySQL, proxies (Velocity) y
-menús para clientes vanilla con Polymer. Detalle punto por punto en [Estado de la implementación](docs/implementation-status.md).
+La **0.2.0** corrige los errores de `SOCIALMOD_ERRORES.md` y completa las fases del plan en todo lo que depende de mods
+disponibles para 26.1.2–26.3: voz en grupos (Simple Voice Chat), claims (Open Parties and Claims), waypoints (Xaero y
+JourneyMap), backends H2/MySQL/MariaDB, caché local, ping, vida de la party, emblemas, menú `/social` para vanilla y la API
+en Maven. Quedan pendientes, con su motivo, FTB Chunks y Cadmus (no existen para 26.x), Plasmo Voice (solo beta, sin API de
+grupos), Velocity y el addon de Discord (proyectos aparte). Detalle en
+[Estado de la implementación](docs/implementation-status.md) e [Integraciones](docs/wiki/18-integraciones.md).
+
+> La 0.2.0 usa el **protocolo de red 2**: actualiza cliente y servidor a la vez (con versiones distintas el cliente queda en
+> "solo chat", sin errores).
 
 ## Compilar desde el código
 
@@ -231,5 +246,7 @@ capturas y publica la build `dev`; al subir un tag `vX.Y.Z` crea la release. Má
 Issues y propuestas en el [repositorio](../../issues). Las vulnerabilidades se reportan en privado desde la pestaña *Security* del repositorio.
 
 ---
+
+Creado por **TakumiStudios**.
 
 <sub>SocialMod · TakumiStudios · Licencia MIT</sub>

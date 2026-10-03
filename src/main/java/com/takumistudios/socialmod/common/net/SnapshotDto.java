@@ -15,6 +15,10 @@ public final class SnapshotDto {
     public List<NameRef> outgoing = new ArrayList<>();
     public List<NameRef> blocked = new ArrayList<>();
     public List<GroupView> groups = new ArrayList<>();
+    /** Simple Voice Chat disponible en el servidor (botón ☏ del panel). */
+    public boolean voice;
+    /** Grupo de SocialMod cuyo chat de voz ocupa el jugador ("" si ninguno). */
+    public String voiceGroup = "";
     public List<Invite> groupInvites = new ArrayList<>();
     public List<ConversationView> conversations = new ArrayList<>();
 

@@ -4,15 +4,19 @@ import com.takumistudios.socialmod.SocialMod;
 import com.takumistudios.socialmod.common.net.Payloads;
 import com.takumistudios.socialmod.server.config.ServerConfig;
 import com.takumistudios.socialmod.server.data.PlayerRecord;
+import com.takumistudios.socialmod.server.integration.ClaimsSync;
 import com.takumistudios.socialmod.server.security.RateLimiter;
 import com.takumistudios.socialmod.server.service.ChatService;
 import com.takumistudios.socialmod.server.service.FriendService;
 import com.takumistudios.socialmod.server.service.GroupService;
 import com.takumistudios.socialmod.server.service.ModerationService;
 import com.takumistudios.socialmod.server.service.Notifier;
+import com.takumistudios.socialmod.server.service.PartyService;
 import com.takumistudios.socialmod.server.service.PresenceService;
 import com.takumistudios.socialmod.server.service.SnapshotService;
+import com.takumistudios.socialmod.server.service.VoiceService;
 import com.takumistudios.socialmod.server.storage.FileStorageBackend;
+import com.takumistudios.socialmod.server.storage.JdbcStorageBackend;
 import com.takumistudios.socialmod.server.storage.SocialStorage;
 import com.takumistudios.socialmod.server.storage.StorageBackend;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -22,6 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
 import org.jspecify.annotations.Nullable;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,6 +50,9 @@ public final class SocialServer {
     private final ChatService chat;
     private final ModerationService moderation;
     private final SnapshotService snapshots;
+    private final PartyService party;
+    private final VoiceService voice;
+    private final ClaimsSync claims;
 
     /** Cliente con SocialMod y protocolo compatible. */
     public static final class Session {
@@ -69,6 +77,9 @@ public final class SocialServer {
         this.chat = new ChatService(this);
         this.moderation = new ModerationService(this);
         this.snapshots = new SnapshotService(this);
+        this.party = new PartyService(this);
+        this.voice = new VoiceService(this);
+        this.claims = new ClaimsSync(this);
     }
 
     public static @Nullable SocialServer get() {
@@ -77,11 +88,19 @@ public final class SocialServer {
 
     public static SocialServer start(MinecraftServer server) {
         Path root = server.getWorldPath(LevelResource.ROOT).resolve(SocialMod.MOD_ID);
-        String backendId = ServerConfig.get().storage.backend;
-        if (!backendId.equals("file")) {
-            SocialMod.LOGGER.warn("[SocialMod] El backend '{}' aún no está disponible (previsto para la v1.x); se usa 'file'", backendId);
+        ServerConfig.Storage storageConfig = ServerConfig.get().storage;
+        FileStorageBackend files = new FileStorageBackend(root);
+        StorageBackend backend = files;
+        if (!storageConfig.backend.equals("file")) {
+            try {
+                backend = JdbcStorageBackend.open(storageConfig.backend, storageConfig.jdbcUrl, storageConfig.user, storageConfig.password,
+                        storageConfig.tablePrefix, ServerConfig.directory(), files);
+                SocialMod.LOGGER.info("[SocialMod] Almacenamiento: {}", storageConfig.backend);
+            } catch (IOException | RuntimeException e) {
+                SocialMod.LOGGER.warn("[SocialMod] El backend '{}' no está disponible ({}); se usa 'file'", storageConfig.backend, e.getMessage());
+            }
         }
-        SocialServer social = new SocialServer(server, new FileStorageBackend(root));
+        SocialServer social = new SocialServer(server, backend);
         social.storage.loadIndex();
         social.groups.restoreAfterLoad();
         instance = social;
@@ -108,6 +127,8 @@ public final class SocialServer {
         storage.tick();
         presence.tick();
         groups.tick();
+        party.tick();
+        claims.tick();
         snapshots.tick();
     }
 
@@ -131,6 +152,18 @@ public final class SocialServer {
 
     public FriendService friends() {
         return friends;
+    }
+
+    public ClaimsSync claims() {
+        return claims;
+    }
+
+    public VoiceService voice() {
+        return voice;
+    }
+
+    public PartyService party() {
+        return party;
     }
 
     public GroupService groups() {
@@ -212,6 +245,7 @@ public final class SocialServer {
         chat.forget(id);
         presence.onLeave(player);
         groups.onLeave(player);
+        party.forget(id);
         PermissionBridge.invalidate(id);
     }
 

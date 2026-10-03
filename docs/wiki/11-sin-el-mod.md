@@ -3,6 +3,20 @@
 SocialMod está pensado para que **nadie se quede fuera**. Si juegas con un cliente **vanilla**, desde **Bedrock (Geyser)** o con
 cualquier otro cliente sin SocialMod, puedes hacer **todo lo importante con comandos**, y los mensajes llegan al chat normal.
 
+## El menú `/social`
+
+Escribe **`/social`** (o `/socialmod menu`) y se abre un **menú de cofre**, sin instalar nada:
+
+| Dónde | Qué es | Clic |
+|---|---|---|
+| Arriba a la izquierda | Tinte de tu estado (verde, amarillo, rojo, gris claro) | Cambiar de estado |
+| Libro | Buzón con los mensajes sin leer | Ver lo pendiente |
+| Filas 2–4 | Tus amigos: tinte verde = en línea, amarillo = ausente, rojo = no molestar, gris = desconectado | Te deja escrito `/pm <amigo> ` para que solo pongas el mensaje |
+| Fila 5 | Tus grupos (lana del color del grupo) y la party (estandarte azul) | Te deja escrito `/g to <TAG> <canal> ` o `/p ` |
+| Barrera | Cerrar | — |
+
+Los ítems del menú no se pueden coger. Funciona igual en Java vanilla y en Bedrock con Geyser.
+
 ## Cómo llegan los mensajes
 
 Como mensajes de sistema en tu chat, con un formato configurable por el servidor. Por defecto:

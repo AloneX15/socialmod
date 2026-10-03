@@ -43,6 +43,18 @@ public class SocialModGameTests {
         }
     }
 
+    /**
+     * Conversación en memoria o, si la caché la expulsó (otros tests del lote abren muchas), pide cargarla del disco y
+     * devuelve {@code null} hasta el tick siguiente. Así los tests no dependen del tamaño de la caché.
+     */
+    private static Conversation conversation(SocialServer social, String key) {
+        Conversation cached = social.storage().cachedConversation(key);
+        if (cached == null) {
+            social.storage().withConversation(key, loaded -> { });
+        }
+        return cached;
+    }
+
     private static String id(ServerPlayer player) {
         return player.getUUID().toString();
     }
@@ -57,7 +69,7 @@ public class SocialModGameTests {
         check(helper, social.chat().send(alex, "dm:" + luna.getUUID(), "hola **Luna**"), "el privado no se aceptó");
         String key = ConversationId.direct(alex.getUUID(), luna.getUUID()).key();
         helper.succeedWhen(() -> {
-            Conversation conversation = social.storage().cachedConversation(key);
+            Conversation conversation = conversation(social, key);
             check(helper, conversation != null && conversation.messages.size() == 1, "el mensaje no se guardó");
             check(helper, conversation.messages.getFirst().text.equals("hola **Luna**"), "texto alterado");
             check(helper, social.record(luna).unread.getOrDefault(key, 0) == 1, "el destinatario no tiene el mensaje sin leer");
@@ -185,8 +197,19 @@ public class SocialModGameTests {
 
     // ---------- Grupos ----------
 
+    private static final java.util.Set<String> USED_TAGS = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * Etiqueta distinta para cada test (los tests de un lote corren a la vez). Antes salía de los primeros dígitos de
+     * nanoTime, que solo cambian cada ~2 s: dos tests creando grupos a la vez chocaban con "etiqueta en uso".
+     */
     private static String uniqueTag() {
-        return ("T" + Long.toString(System.nanoTime(), 36)).substring(0, 5).toUpperCase(java.util.Locale.ROOT);
+        java.util.concurrent.ThreadLocalRandom random = java.util.concurrent.ThreadLocalRandom.current();
+        String tag;
+        do {
+            tag = "T" + Integer.toString(random.nextInt(36 * 36 * 36 * 36), 36).toUpperCase(java.util.Locale.ROOT);
+        } while (tag.length() < 2 || !USED_TAGS.add(tag));
+        return tag;
     }
 
     @GameTest
@@ -260,7 +283,7 @@ public class SocialModGameTests {
         check(helper, social.chat().send(a, "dm:" + b.getUUID(), "mira [item] en [coords] [item]"), "enviar");
         String key = ConversationId.direct(a.getUUID(), b.getUUID()).key();
         helper.succeedWhen(() -> {
-            Conversation conversation = social.storage().cachedConversation(key);
+            Conversation conversation = conversation(social, key);
             check(helper, conversation != null && !conversation.messages.isEmpty(), "no guardado");
             var message = conversation.messages.getLast();
             check(helper, message.attachments.size() == 2, "se esperaban 2 adjuntos (uno de cada), hay " + message.attachments.size());
@@ -285,6 +308,205 @@ public class SocialModGameTests {
         check(helper, !recordB.friends.contains(a.getUUID()), "la amistad sobrevivió al borrado");
         PlayerRecord recordA = social.record(a);
         check(helper, recordA.friends.isEmpty(), "el perfil no se reinició");
+        helper.succeed();
+    }
+
+    // ---------- SOCIALMOD_ERRORES (v0.2.0) ----------
+
+    /** Error 1: el estado elegido llega al snapshot (antes el botón leía el valor viejo y no rotaba). */
+    @GameTest
+    public void statusChangeIsVisibleInSnapshot(GameTestHelper helper) {
+        SocialServer social = social(helper);
+        ServerPlayer alex = player(helper);
+        for (com.takumistudios.socialmod.common.model.PresenceStatus status : List.of(
+                com.takumistudios.socialmod.common.model.PresenceStatus.AWAY,
+                com.takumistudios.socialmod.common.model.PresenceStatus.DND,
+                com.takumistudios.socialmod.common.model.PresenceStatus.INVISIBLE,
+                com.takumistudios.socialmod.common.model.PresenceStatus.ONLINE)) {
+            social.presence().setStatus(alex, status);
+            check(helper, social.snapshots().build(alex).self.status.equals(status.id()), "el snapshot no refleja " + status.id());
+        }
+        helper.succeed();
+    }
+
+    /** Error 3: icono y color al crear, validación del icono y etiqueta con icono y rol para los nametags. */
+    @GameTest
+    public void groupStyleIconAndNametagEntry(GameTestHelper helper) {
+        SocialServer social = social(helper);
+        ServerPlayer leader = player(helper);
+        Group group = social.groups().create(leader, "Estilo " + System.nanoTime(), uniqueTag(), "swords", "#FF0000");
+        check(helper, group != null, "crear con estilo");
+        check(helper, group.icon.equals("swords") && group.color == 0xFF0000, "estilo no aplicado: " + group.icon + " " + group.color);
+        check(helper, !social.groups().setText(leader, group.id, "icon", "<b>"), "icono fuera de la lista aceptado");
+        check(helper, social.groups().setText(leader, group.id, "icon", "crown"), "cambiar icono");
+        social.record(leader).mainGroup = group.id;
+        var entry = social.groups().nametags().entryFor(leader.getUUID());
+        check(helper, entry.icon().equals("crown") && entry.role().equals("leader") && entry.tag().equals(group.tag),
+                "etiqueta del nametag incompleta: " + entry);
+        social.groups().disbandInternal(group, "test");
+        helper.succeed();
+    }
+
+    /** Error 4: los marcadores se resuelven en la vista previa que usan los toasts, también en mayúsculas. */
+    @GameTest(maxTicks = 60)
+    public void toastPreviewResolvesPlaceholders(GameTestHelper helper) {
+        SocialServer social = social(helper);
+        ServerPlayer a = player(helper);
+        ServerPlayer b = player(helper);
+        check(helper, social.chat().send(a, "dm:" + b.getUUID(), "estoy en [CORDS]"), "envío");
+        String key = ConversationId.direct(a.getUUID(), b.getUUID()).key();
+        helper.succeedWhen(() -> {
+            Conversation conversation = conversation(social, key);
+            check(helper, conversation != null && !conversation.messages.isEmpty(), "no guardado");
+            var message = conversation.messages.getLast();
+            String preview = com.takumistudios.socialmod.common.text.MessageFormatter.preview(message.text,
+                    social.chat().toView(message).attachments(), 80);
+            check(helper, !preview.contains("[") && preview.contains("x: " + a.getBlockX()), "vista previa sin resolver: " + preview);
+        });
+    }
+
+    /**
+     * Carga (PLAN 18): 200 jugadores en un grupo, cada uno con 5 mensajes de grupo y 1 privado (1200 mensajes).
+     * Mide el coste en el hilo del servidor; el presupuesto es generoso para CI pero detecta regresiones graves.
+     */
+    @GameTest(maxTicks = 400)
+    public void loadTwoHundredPlayers(GameTestHelper helper) {
+        SocialServer social = social(helper);
+        ServerConfig original = ServerConfig.get();
+        ServerConfig config = new ServerConfig();
+        config.antiSpam.enabled = false;
+        config.limits.maxMembersPerGroup = 250;
+        ServerConfig.set(config);
+        social.reconfigure();
+        List<ServerPlayer> players = new java.util.ArrayList<>();
+        for (int i = 0; i < 200; i++) {
+            players.add(player(helper));
+        }
+        ServerPlayer leader = players.getFirst();
+        Group group = social.groups().create(leader, "Carga " + System.nanoTime(), uniqueTag());
+        check(helper, group != null, "crear grupo de carga");
+        long start = System.nanoTime();
+        for (ServerPlayer member : players.subList(1, players.size())) {
+            social.groups().invite(leader, group.id, id(member));
+            social.groups().accept(member, group.id);
+        }
+        check(helper, group.members.size() == 200, "miembros: " + group.members.size());
+        String general = ConversationId.group(group.id, "general").key();
+        int sent = 0;
+        for (int round = 0; round < 5; round++) {
+            for (ServerPlayer member : players) {
+                if (social.chat().send(member, general, "mensaje " + round + " de " + member.getUUID())) {
+                    sent++;
+                }
+            }
+        }
+        List<String> direct = new java.util.ArrayList<>();
+        for (int i = 0; i < players.size(); i++) {
+            ServerPlayer from = players.get(i);
+            ServerPlayer to = players.get((i + 1) % players.size());
+            if (social.chat().send(from, "dm:" + to.getUUID(), "hola " + i)) {
+                sent++;
+            }
+            direct.add(ConversationId.direct(from.getUUID(), to.getUUID()).key());
+        }
+        long millis = (System.nanoTime() - start) / 1_000_000;
+        com.takumistudios.socialmod.SocialMod.LOGGER.info("[SocialMod] Carga: 200 jugadores, {} mensajes en {} ms", sent, millis);
+        check(helper, sent == 1200, "mensajes aceptados: " + sent);
+        check(helper, millis < 20_000, "demasiado lento: " + millis + " ms");
+        // La config es global y los tests del lote corren a la vez: se restaura en este mismo tick
+        ServerConfig.set(original);
+        social.reconfigure();
+        helper.succeedWhen(() -> {
+            // Los 200 privados se cargan y guardan en el hilo de E/S: todos deben acabar con su mensaje
+            for (String key : direct) {
+                Conversation conversation = conversation(social, key);
+                check(helper, conversation != null && conversation.messages.size() == 1, "privado sin guardar: " + key);
+            }
+            direct.forEach(social.storage()::deleteConversation);
+            social.groups().disbandInternal(group, "test");
+        });
+    }
+
+    /** Open Parties and Claims (solo con -PcompatPack): el grupo enlazado se refleja en la party del líder y al revés. */
+    @GameTest
+    public void claimsSyncWithOpenPartiesAndClaims(GameTestHelper helper) {
+        if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("openpartiesandclaims")) {
+            helper.succeed();
+            return;
+        }
+        SocialServer social = social(helper);
+        ServerConfig original = ServerConfig.get();
+        try {
+            ServerConfig config = new ServerConfig();
+            config.integrations.claimsSync = "both";
+            ServerConfig.set(config);
+            social.reconfigure();
+            ServerPlayer leader = player(helper);
+            ServerPlayer member = player(helper);
+            Group group = social.groups().create(leader, "Claims " + System.nanoTime(), uniqueTag());
+            check(helper, group != null, "crear");
+            social.groups().invite(leader, group.id, id(member));
+            social.groups().accept(member, group.id);
+            check(helper, social.groups().setClaimsLink(leader, group.id, true), "enlazar");
+            var parties = xaero.pac.common.server.api.OpenPACServerAPI.get(social.server()).getPartyManager();
+            var party = parties.getPartyByOwner(leader.getUUID());
+            check(helper, party != null && party.getMemberInfo(member.getUUID()) != null, "el miembro no entró en la party de OPAC");
+            // OPAC → grupo
+            java.util.UUID outsider = java.util.UUID.randomUUID();
+            party.addMember(outsider, xaero.pac.common.parties.party.member.PartyMemberRank.MEMBER, "Fuera");
+            social.claims().syncAll();
+            check(helper, group.isMember(outsider), "quien entra en la party debe entrar al grupo");
+            // grupo → OPAC
+            social.groups().kick(leader, group.id, id(member));
+            social.claims().syncAll();
+            check(helper, party.getMemberInfo(member.getUUID()) == null, "el expulsado sigue en la party");
+            parties.removePartyByOwner(leader.getUUID());
+            social.groups().disbandInternal(group, "test");
+        } finally {
+            ServerConfig.set(original);
+            social.reconfigure();
+        }
+        helper.succeed();
+    }
+
+    /** Simple Voice Chat (solo con -PcompatPack): el plugin se registra y un jugador sin el mod de voz no rompe nada. */
+    @GameTest(maxTicks = 200)
+    public void voiceChatIntegrationIsSafe(GameTestHelper helper) {
+        if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("voicechat")) {
+            helper.succeed();
+            return;
+        }
+        SocialServer social = social(helper);
+        ServerPlayer leader = player(helper);
+        Group group = social.groups().create(leader, "Voz " + System.nanoTime(), uniqueTag());
+        check(helper, group != null, "crear");
+        helper.succeedWhen(() -> {
+            check(helper, social.voice().available(), "el plugin de Simple Voice Chat no se registró");
+            check(helper, !social.voice().join(leader, group.id), "un jugador sin el mod de voz no debe entrar");
+            check(helper, social.voice().currentGroup(leader.getUUID()) == null, "no debe estar en ningún grupo de voz");
+            social.groups().disbandInternal(group, "test");
+        });
+    }
+
+    /** Menú de cofre para jugadores sin el mod: se abre, no deja coger ítems y el clic en el estado lo rota. */
+    @GameTest
+    public void vanillaChestMenu(GameTestHelper helper) {
+        SocialServer social = social(helper);
+        ServerPlayer alex = player(helper);
+        ServerPlayer luna = player(helper);
+        social.friends().request(alex, id(luna));
+        social.friends().accept(luna, id(alex));
+        social.presence().setStatus(alex, com.takumistudios.socialmod.common.model.PresenceStatus.ONLINE);
+        com.takumistudios.socialmod.server.menu.SocialMenu.open(social, alex);
+        check(helper, alex.containerMenu instanceof com.takumistudios.socialmod.server.menu.SocialMenu, "el menú no se abrió");
+        var menu = alex.containerMenu;
+        check(helper, !menu.getSlot(9).getItem().isEmpty(), "el amigo no aparece en el menú");
+        menu.clicked(0, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, alex);
+        check(helper, social.record(alex).status == com.takumistudios.socialmod.common.model.PresenceStatus.AWAY, "el clic no rotó el estado");
+        check(helper, menu.getCarried().isEmpty(), "se pudo coger un ítem del menú");
+        menu.clicked(9, 0, net.minecraft.world.inventory.ContainerInput.QUICK_MOVE, alex);
+        check(helper, alex.getInventory().isEmpty(), "un ítem del menú acabó en el inventario");
+        alex.closeContainer();
         helper.succeed();
     }
 }

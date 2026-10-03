@@ -56,7 +56,33 @@ client.showToast(ToastData.system("Título", "Texto"));   // respeta la config d
 
 `%socialmod:main_group%`, `%socialmod:tag%`, `%socialmod:unread%`, `%socialmod:status%`, `%socialmod:friends_online%`.
 
+## Artefacto Maven (`socialmod-api`)
+
+Desde la v0.2.0 la API se publica aparte, solo con los paquetes `api.*` (servidor y cliente) y sus fuentes:
+
+```kotlin
+repositories { maven("https://tu-maven.example/releases") }   // o mavenLocal()
+dependencies {
+    compileOnly("com.takumistudios.socialmod:socialmod-api:0.2.0+mc26.3")   // la versión de MC va en el sufijo
+}
+```
+
+En ejecución la API la aporta el mod: declara `socialmod` en `suggests` (o `depends`) de tu `fabric.mod.json`.
+`ToastData` usa el tipo `Payloads.NotifyKind` del mod; si lo necesitas en tu código compila también contra el jar
+completo de SocialMod (`modCompileOnly`).
+
+Publicación (mantenedores):
+
+```bash
+./gradlew :26.3:publishToMavenLocal                                   # ~/.m2
+MAVEN_URL=... MAVEN_USERNAME=... MAVEN_PASSWORD=... ./gradlew :26.3:publish
+```
+
+En CI, la release lo publica si existe la variable `vars.MAVEN_URL` (con los secretos `MAVEN_USERNAME` y
+`MAVEN_PASSWORD`).
+
 ## Versionado
 
-La API sigue versionado semántico junto con el mod. La publicación como artefacto Maven separado (`socialmod-api`)
-está prevista en la fase 5 del plan.
+La API sigue versionado semántico junto con el mod. La 0.2.0 no cambia ninguna firma pública de la 0.1.0.
+El **protocolo de red** sí cambió (versión 2): cliente y servidor deben tener la 0.2.0; con versiones distintas el
+cliente pasa a modo "solo chat" sin errores.

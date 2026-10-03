@@ -3,7 +3,7 @@
 mod.id = "socialmod"
 mod.name = "SocialMod"
 mod.group = "com.takumistudios.socialmod"
-mod.version = "0.1.0"
+mod.version = "0.2.0"
 
 deps.fabric_loader = "0.19.5"
 
@@ -15,6 +15,12 @@ deps.placeholder_api = "3.0.0+26.1"
 deps.modmenu = "18.0.2"
 compat.lithium = "mc26.1.2-0.24.7-fabric"
 compat.ferritecore = "9.0.0-fabric"
+compat.xaero_minimap = "fabric-26.1.2-26.5.0"
+compat.xaero_worldmap = "fabric-26.1.2-1.46.0"
+compat.journeymap = "26.1.2-6.0.9+fabric"
+compat.opac = "fabric-26.1.2-0.31.6"
+compat.voicechat = "fabric-2.6.24+26.1.2"
+compat.forgeconfigapiport = "jUe0ucoE"  # id de la versión Fabric (el número se repite en NeoForge)
 
 ["26.2"]
 mod.mc_compat = "~26.2"
@@ -24,6 +30,12 @@ deps.placeholder_api = "3.1.0-beta.1+26.2"
 deps.modmenu = "20.0.3"
 compat.lithium = "mc26.2-0.25.3-fabric"
 compat.ferritecore = "9.0.0-fabric"
+compat.xaero_minimap = "fabric-26.2-26.5.1"
+compat.xaero_worldmap = "fabric-26.2-1.46.1"
+compat.journeymap = "26.2-6.0.9+fabric"
+compat.opac = "fabric-26.2-0.31.6"
+compat.voicechat = "fabric-2.6.24+26.2"
+compat.forgeconfigapiport = "rSd3GiG8"  # id de la versión Fabric
 
 ["26.3"]
 mod.mc_compat = "~26.3"
@@ -33,3 +45,9 @@ deps.placeholder_api = "3.2.0+26.3"
 deps.modmenu = "21.0.0"
 compat.lithium = "mc26.3-0.26.2-fabric"
 compat.ferritecore = "9.0.0-fabric"
+compat.xaero_minimap = "fabric-26.3-26.5.3"
+compat.xaero_worldmap = "fabric-26.3-1.46.4"
+compat.journeymap = "26.3-6.0.9+fabric"
+compat.opac = "fabric-26.3-0.31.6"
+compat.voicechat = "fabric-2.6.24+26.3"
+compat.forgeconfigapiport = "JpKvrr9J"  # id de la versión Fabric

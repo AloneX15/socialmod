@@ -61,7 +61,7 @@ public abstract class SocialChildScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fill(0, 0, this.width, this.height, Ui.theme().colors().background());
+        Ui.background(graphics, this.width, this.height);
         drawContent(graphics, mouseX, mouseY);
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }

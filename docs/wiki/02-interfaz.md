@@ -33,8 +33,10 @@ Abre el panel con **`K`**. Es una vista de tres columnas con el aspecto de los m
 
 ## Columna central: el chat
 
-- La **cabecera** muestra con quién hablas (y su estado personalizado), o el grupo y el canal. Si el grupo tiene un
-  **mensaje fijado**, aparece justo debajo.
+- La **cabecera** muestra con quién hablas (y su estado personalizado), o el emblema, el grupo y el canal. Si el grupo tiene
+  un **mensaje fijado**, aparece justo debajo. A la derecha, en grupos y parties:
+  - **♪ / ⊘**: silenciar ese canal solo para ti (sin toasts, sonido ni contador; las menciones sí avisan).
+  - **☏**: entrar o salir del chat de voz del grupo (solo si el servidor tiene Simple Voice Chat; verde = dentro).
 - Los mensajes se agrupan por autor con su cabeza y la hora. Las **menciones** a ti salen en dorado, los **enlaces** en azul y
   subrayado, las **coordenadas** en verde y los **ítems** en azul claro (con tooltip al pasar el ratón).
 - **Rueda del ratón** para subir. Al llegar arriba se cargan **mensajes más antiguos** automáticamente (historial paginado).
@@ -64,8 +66,15 @@ Abre el panel con **`K`**. Es una vista de tres columnas con el aspecto de los m
 | **Reportar** | Es de otra persona. Se envía al staff con los mensajes de alrededor como contexto. |
 | **Copiar** | Siempre: copia el texto sin formato. |
 | **Abrir enlace** | El mensaje contiene un enlace (te pide confirmación, igual que en vanilla). |
+| **Waypoint** | El mensaje tiene coordenadas y tienes Xaero's Minimap o JourneyMap. |
 
-Si el mensaje contiene coordenadas, **vuelve a pulsarlo** para copiarlas al portapapeles.
+Si el mensaje contiene coordenadas, **vuelve a pulsarlo** para crear el waypoint (con mapa) o copiarlas al portapapeles.
+
+### Estilo de los textos
+
+Todo el panel sigue la misma guía: títulos en blanco centrados, **CABECERAS DE SECCIÓN** en mayúsculas y gris con una línea,
+botones y etiquetas en frase normal ("En línea", "Conversaciones"), y los colores de los grupos se aclaran solos si son
+demasiado oscuros para leerse sobre el fondo.
 
 ## Columna derecha: jugadores
 

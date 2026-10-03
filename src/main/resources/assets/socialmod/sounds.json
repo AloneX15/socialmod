@@ -19,6 +19,10 @@
     "subtitle": "subtitles.socialmod.notify",
     "sounds": [{ "name": "minecraft:block.amethyst_block.chime", "type": "event" }]
   },
+  "ping": {
+    "subtitle": "subtitles.socialmod.ping",
+    "sounds": [{ "name": "minecraft:block.note_block.bit", "type": "event" }]
+  },
   "notify.system": {
     "subtitle": "subtitles.socialmod.notify",
     "sounds": [{ "name": "minecraft:ui.toast.in", "type": "event" }]

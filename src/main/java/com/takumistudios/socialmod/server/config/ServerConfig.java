@@ -46,6 +46,7 @@ public final class ServerConfig {
     public Map<String, List<String>> roles = defaultRoles();
     public List<String> defaultChannels = new ArrayList<>(List.of("general"));
     public Nametags nametags = new Nametags();
+    public Integrations integrations = new Integrations();
 
     public static final class Modules {
         public boolean privateMessages = true;
@@ -57,11 +58,25 @@ public final class ServerConfig {
         public boolean sharing = true;
         public boolean mentions = true;
         public boolean placeholders = true;
+        /** Vida de los compañeros de party en el HUD de los clientes con el mod. */
+        public boolean partyHud = true;
+        /** Ping en el mundo para la party (tecla G por defecto en el cliente). */
+        public boolean ping = true;
+        /** Grupos de voz por grupo/party con Simple Voice Chat (si está instalado en el servidor). */
+        public boolean voice = true;
     }
 
     public static final class Storage {
-        /** {@code file} (por defecto). {@code h2} y {@code mysql} están previstos para la v1.x (PLAN 17, fase 5). */
+        /**
+         * {@code file} (por defecto), {@code h2}, {@code mysql} o {@code mariadb}. Los de base de datos necesitan el driver
+         * JDBC en {@code config/socialmod/drivers/}; si falta o no conecta, se avisa y se usa {@code file}.
+         */
         public String backend = "file";
+        /** URL JDBC. Vacía con {@code h2}: archivo {@code <mundo>/socialmod/socialmod-h2}. Ej.: {@code jdbc:mysql://localhost:3306/minecraft}. */
+        public String jdbcUrl = "";
+        public String user = "";
+        public String password = "";
+        public String tablePrefix = "socialmod_";
         public int retentionDays = 30;
         public int maxMessagesPerConversation = 500;
         /** Segundos entre escrituras agrupadas a disco. */
@@ -144,6 +159,16 @@ public final class ServerConfig {
         public String vanillaNotifications = "actionbar";
     }
 
+    /** Integraciones con otros mods (solo actúan si el mod está instalado). */
+    public static final class Integrations {
+        /**
+         * Open Parties and Claims: {@code off} (por defecto), {@code to_claims} (el grupo manda: sus miembros entran
+         * en la party del líder) o {@code both} (también quien entra o sale de la party entra o sale del grupo).
+         * Solo afecta a los grupos que el líder enlaza con {@code /g claims link}.
+         */
+        public String claimsSync = "off";
+    }
+
     public static final class Nametags {
         /** Fallback con teams del scoreboard para clientes sin el mod. Desactivado: choca con TAB y similares (PLAN 11). */
         public boolean scoreboardFallback = false;
@@ -212,6 +237,8 @@ public final class ServerConfig {
         if (moderation == null) moderation = new Moderation();
         if (formats == null) formats = new Formats();
         if (nametags == null) nametags = new Nametags();
+        if (integrations == null) integrations = new Integrations();
+        if (integrations.claimsSync == null || !List.of("off", "to_claims", "both").contains(integrations.claimsSync)) integrations.claimsSync = "off";
         if (roles == null) roles = defaultRoles();
         if (defaultChannels == null || defaultChannels.isEmpty()) defaultChannels = new ArrayList<>(List.of("general"));
         if (filter.words == null) filter.words = new ArrayList<>();

@@ -119,6 +119,17 @@ public final class ClientState {
 
     // ---------- Presencia ----------
 
+    /** Cambio optimista del propio estado: la UI responde al instante y el snapshot del servidor lo confirma. */
+    public void setSelfStatus(PresenceStatus status) {
+        updateSelf(self -> self.status = status.id());
+    }
+
+    /** Igual que {@link #setSelfStatus} para el resto de opciones del perfil (privacidad, dimensión...). */
+    public void updateSelf(java.util.function.Consumer<SnapshotDto.Self> change) {
+        change.accept(snapshot.self);
+        changed();
+    }
+
     public void onPresence(List<Payloads.PresenceEntry> entries) {
         for (Payloads.PresenceEntry entry : entries) {
             presence.put(entry.player(), entry);
@@ -224,7 +235,7 @@ public final class ClientState {
 
     private void touchConversation(String id, String title, Payloads.MessageView message) {
         SnapshotDto.ConversationView view = findView(id, title);
-        view.preview = message.senderName() + ": " + com.takumistudios.socialmod.common.text.MessageFormatter.preview(message.text(), 40);
+        view.preview = message.senderName() + ": " + com.takumistudios.socialmod.common.text.MessageFormatter.preview(message.text(), message.attachments(), 40);
         view.lastTime = message.time();
         snapshot.conversations.remove(view);
         snapshot.conversations.addFirst(view);
@@ -283,10 +294,25 @@ public final class ClientState {
         return 0;
     }
 
+    /** Canal silenciado en este cliente (PLAN 5.2): sin toasts, sonidos ni contador en el HUD; las menciones sí avisan. */
+    public static boolean isMuted(String conversation) {
+        return !conversation.isEmpty() && ClientConfig.get().panel.mutedChannels.contains(conversation);
+    }
+
+    public static void toggleMuted(String conversation) {
+        java.util.List<String> muted = ClientConfig.get().panel.mutedChannels;
+        if (!muted.remove(conversation)) {
+            muted.add(conversation);
+        }
+        ClientConfig.save();
+    }
+
     public int totalUnread() {
         int total = 0;
         for (SnapshotDto.ConversationView view : snapshot.conversations) {
-            total += view.unread;
+            if (!isMuted(view.id)) {
+                total += view.unread;
+            }
         }
         return total;
     }
@@ -314,6 +340,15 @@ public final class ClientState {
             }
         }
         return conversation;
+    }
+
+    public boolean inParty() {
+        for (SnapshotDto.GroupView group : snapshot.groups) {
+            if (group.party) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public SnapshotDto.@Nullable GroupView group(String id) {

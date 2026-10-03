@@ -15,13 +15,19 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * Etiqueta del grupo junto al nombre del jugador (PLAN 11), sin mixins: una capa de render de Fabric añade
- * {@code [TAG]} delante del nametag que vanilla ya decidió mostrar. Así se respetan la distancia, el agacharse y la
- * invisibilidad (si vanilla no muestra el nombre, no hay nada que etiquetar y no se revela a nadie).
- * Las capas se procesan antes de que vanilla envíe el nametag, por eso basta con modificar el estado de render.
+ * Etiqueta del grupo en el nametag (PLAN 11), sin mixins: una capa de render de Fabric modifica el estado de render
+ * que vanilla ya preparó, antes de que vanilla envíe el nametag.
+ * <ul>
+ *     <li>Debajo del nombre (por defecto): se usa {@code scoreText}, la línea que vanilla dibuja bajo el nombre
+ *     para el marcador "belowName" del scoreboard, en 26.1.2, 26.2 y 26.3. Si el servidor ya usa ese marcador
+ *     (p. ej. la vida), la etiqueta se pone delante en la misma línea y no se pierde nada.</li>
+ *     <li>Delante del nombre (opción {@code nametags.belowName = false}): {@code ⚔ [TAG] Nombre}.</li>
+ * </ul>
+ * Se respetan la distancia, el agacharse y la invisibilidad: si vanilla no muestra el nombre no se añade nada.
+ * Coste: una búsqueda en un mapa por jugador visible y frame, sin asignaciones si el estado ya está etiquetado.
  */
 public final class GroupTagLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
-    /** Nametag ya etiquetado en este estado (evita duplicar la etiqueta si el estado se reutiliza). */
+    /** Línea ya etiquetada en este estado (evita duplicar la etiqueta si el estado se reutiliza). */
     private static final RenderStateDataKey<Component> TAGGED = RenderStateDataKey.create(() -> "socialmod:tagged_name");
 
     public GroupTagLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
@@ -31,10 +37,12 @@ public final class GroupTagLayer extends RenderLayer<AvatarRenderState, PlayerMo
     @Override
     public void submit(PoseStack poseStack, SubmitNodeCollector collector, int light, AvatarRenderState state, float yRot, float xRot) {
         Component name = state.nameTag;
-        if (name == null || !ClientConfig.get().nametags.showGroupTags || !ClientState.get().connected()) {
+        ClientConfig.Nametags config = ClientConfig.get().nametags;
+        if (name == null || !config.showGroupTags || !ClientState.get().connected()) {
             return;
         }
-        if (state.getData(TAGGED) == name) {
+        Component tagged = state.getData(TAGGED);
+        if (tagged != null && (tagged == state.scoreText || tagged == state.nameTag)) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
@@ -49,8 +57,15 @@ public final class GroupTagLayer extends RenderLayer<AvatarRenderState, PlayerMo
         if (tag == null) {
             return;
         }
-        MutableComponent tagged = Component.literal("[" + tag.tag() + "] ").withColor(tag.color() & 0xFFFFFF).append(name);
-        state.nameTag = tagged;
-        state.setData(TAGGED, tagged);
+        MutableComponent line = TagRenderer.line(tag.tag(), tag.color(), tag.icon(), tag.role());
+        MutableComponent result;
+        if (config.belowName) {
+            result = state.scoreText == null ? line : line.append(Component.literal("  ")).append(state.scoreText);
+            state.scoreText = result;
+        } else {
+            result = line.append(Component.literal(" ")).append(name);
+            state.nameTag = result;
+        }
+        state.setData(TAGGED, result);
     }
 }

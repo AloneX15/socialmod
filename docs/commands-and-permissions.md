@@ -10,6 +10,7 @@ tienen la misma funcionalidad. Los jugadores se buscan por nombre (deben haber e
 | `/pm <jugador> <mensaje>` (alias `/dm`) | Mensaje privado. Si está desconectado queda en su buzón. |
 | `/r <mensaje>` | Responder al último privado. |
 | `/socialmod inbox` | Ver los mensajes sin leer (para jugadores sin el mod). |
+| `/social` (o `/socialmod menu`) | Menú de cofre con amigos, estado, buzón y grupos (para jugadores sin el mod, también Bedrock). |
 
 En el texto: `**negrita**`, `*cursiva*`, `` `código` ``, `@jugador`, `@TAG` (menciona a todo el grupo; requiere el
 permiso de rol `pin`), `[coords]` (tu posición) e `[item]` (el ítem de tu mano).
@@ -30,7 +31,9 @@ Las acciones se aplican a tu **grupo principal** (cámbialo con `/g main <TAG>`)
 | `/g leave [TAG]` · `/g kick <jugador>` | Salir y expulsar. |
 | `/g promote <jugador>` · `/g demote <jugador>` · `/g transfer <jugador>` | Roles (Recluta → Miembro → Oficial; el líder se transfiere). |
 | `/g motd <texto>` · `/g description <texto>` · `/g pin <texto>` | Mensaje del día, descripción y mensaje fijado. |
-| `/g color <#RRGGBB o nombre>` · `/g tag <TAG>` | Identidad del grupo. |
+| `/g color <#RRGGBB o nombre>` · `/g tag <TAG>` · `/g icon <emblema>` | Identidad del grupo. Emblemas: `none`, `shield`, `swords`, `pickaxe`, `crown`, `star`, `heart`, `skull`, `flag`, `lightning`, `sun`, `moon`, `snow`, `flower`, `music`, `diamond`, `anchor`, `peace`, `yin_yang`, `sparkle` (con autocompletado). |
+| `/g voice` · `/g voice leave` | Entrar o salir del chat de voz del grupo principal (Simple Voice Chat). |
+| `/g claims link` · `/g claims unlink` | Enlazar el grupo con tu party de Open Parties and Claims (solo el líder; requiere `integrations.claimsSync`). |
 | `/g channel create <nombre> [rol mínimo]` · `/g channel delete <nombre>` | Canales con permisos por rol. |
 | `/g event <minutos> <título>` | Evento: avisa a los miembros conectados 5 min antes y al empezar. |
 | `/g info [TAG]` · `/g list` · `/g main <TAG>` | Información. |
@@ -43,6 +46,22 @@ Las acciones se aplican a tu **grupo principal** (cámbialo con `/g main <TAG>`)
 | `/party create` · `/party invite <jugador>` | Crear e invitar (invitar crea la party si no existe). |
 | `/party accept` · `/party decline` · `/party leave` · `/party kick <jugador>` · `/party list` | Gestión. |
 | `/p <mensaje>` | Chat de la party. |
+| `/party voice` · `/party voice leave` | Chat de voz de la party (Simple Voice Chat). |
+
+Con el mod, la tecla **J** (ping) marca el bloque al que miras para tu party durante 10 s (como mucho a 256 bloques y
+uno cada 1,5 s). Los compañeros sin el mod reciben las coordenadas en el chat.
+
+## Teclas por defecto (cliente)
+
+| Tecla | Acción |
+|---|---|
+| `Y` | Respuesta rápida (Mayús+Y abre el panel en esa conversación) |
+| `K` | Abrir el panel social |
+| `J` | Ping para la party |
+
+Si otro mod usa la misma tecla y la de SocialMod sigue en su valor por defecto, SocialMod se mueve a una libre
+(`J`, `H`, `N`, `I`, `V`, `Y`, `U`, `B`) y lo avisa en el chat; nunca cambia la tecla del otro mod. Ejemplo: con
+Xaero's Minimap (Y = ajustes del minimapa), Respuesta rápida pasa a `H`. Las combinaciones F3+ no cuentan.
 
 ## Amigos y bloqueos
 

@@ -37,6 +37,8 @@ public final class ServerNet {
                 guarded(context.player(), "signal", 0.5, social -> social.chat().signal(context.player(), payload.signal(), payload.conversation(), payload.value())));
         ServerPlayNetworking.registerGlobalReceiver(Payloads.ActionC2S.TYPE, (payload, context) ->
                 guarded(context.player(), "action", 1, social -> handleAction(social, context.player(), payload)));
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.PingC2S.TYPE, (payload, context) ->
+                guarded(context.player(), "ping", 2, social -> social.party().ping(context.player(), payload.x(), payload.y(), payload.z())));
     }
 
     private interface Handler {
@@ -82,7 +84,11 @@ public final class ServerNet {
             case FRIEND_NOTE -> social.friends().setNote(player, a, b);
             case BLOCK -> social.friends().block(player, a);
             case UNBLOCK -> social.friends().unblock(player, a);
-            case SET_STATUS -> social.presence().setStatus(player, PresenceStatus.byId(a));
+            case SET_STATUS -> {
+                social.presence().setStatus(player, PresenceStatus.byId(a));
+                // Sin esto el botón de estado del cliente leía el snapshot viejo y no rotaba
+                social.snapshots().send(player);
+            }
             case SET_CUSTOM_STATUS -> {
                 record.customStatus = TextSanitizer.clean(a, config.chat.maxStatusLength);
                 social.storage().markPlayersDirty();
@@ -94,7 +100,11 @@ public final class ServerNet {
             case SET_SHOW_DIMENSION -> updateRecord(social, player, r -> r.showDimension = Boolean.parseBoolean(a));
             case SET_READ_RECEIPTS -> updateRecord(social, player, r -> r.readReceipts = Boolean.parseBoolean(a));
             case SET_TYPING_INDICATOR -> updateRecord(social, player, r -> r.typingIndicator = Boolean.parseBoolean(a));
-            case GROUP_CREATE -> social.groups().create(player, a, b);
+            case GROUP_CREATE -> {
+                // b = "TAG" o "TAG;icono;#RRGGBB" (la pantalla de crear grupo manda también el estilo)
+                String[] parts = b.split(";", 3);
+                social.groups().create(player, a, parts[0], parts.length > 1 ? parts[1] : null, parts.length > 2 ? parts[2] : null);
+            }
             case GROUP_INVITE -> social.groups().invite(player, a, b);
             case GROUP_ACCEPT -> social.groups().accept(player, a);
             case GROUP_DECLINE -> social.groups().decline(player, a);
@@ -108,6 +118,9 @@ public final class ServerNet {
             case GROUP_SET_DESCRIPTION -> social.groups().setText(player, a, "description", b);
             case GROUP_SET_COLOR -> social.groups().setText(player, a, "color", b);
             case GROUP_SET_TAG -> social.groups().setText(player, a, "tag", b);
+            case GROUP_SET_ICON -> social.groups().setText(player, a, "icon", b);
+            case VOICE_JOIN -> social.voice().join(player, a);
+            case VOICE_LEAVE -> social.voice().leave(player);
             case GROUP_PIN -> social.groups().setText(player, a, "pinned", b);
             case GROUP_CHANNEL_CREATE -> {
                 String[] parts = b.split(" ", 2);

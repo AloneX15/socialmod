@@ -38,16 +38,30 @@ Hace falta **invitación**. Además puede estar lleno, o puede que ya estés en 
 **Ajustes del grupo → Hacer principal**, o `/g main <TAG>`.
 
 ### Mi etiqueta `[TAG]` no aparece sobre mi cabeza.
-La ven los jugadores que **tienen el mod**, y no se muestra a gran distancia, si te agachas ni si eres invisible. Tampoco la ves
-tú en tu propia pantalla en primera persona. Comprueba que *Ajustes → Etiquetas* esté activado.
+La ven los jugadores que **tienen el mod**, **debajo de tu nombre**, y no se muestra a gran distancia, si te agachas ni si
+eres invisible. Tampoco la ves tú en tu propia pantalla en primera persona. Comprueba *Ajustes → Interfaz → Etiquetas*.
+
+### Pulso el estado en Ajustes y no cambia.
+Era un error de la 0.1.0 (el servidor no devolvía el estado nuevo). Desde la 0.2.0 cambia al instante. Si sigue igual,
+comprueba que el servidor también tenga la 0.2.0: con versiones distintas el cliente entra en modo "solo chat".
+
+### Las notificaciones muestran `[coords]` o `[ITEM]` en lugar de las coordenadas.
+Corregido en la 0.2.0: ahora se ve `x: 120, z: -450` o el nombre del ítem, y `[CORDS]`/`[ITEM]` en mayúsculas también
+funcionan. Hace falta la 0.2.0 en el servidor (la vista previa la prepara él).
+
+### Una tecla de SocialMod choca con otro mod.
+Si la tecla sigue en su valor por defecto, SocialMod la mueve sola a una libre y te avisa. Si la cambiaste tú, cámbiala en
+*Opciones → Controles → SocialMod*.
 
 ### Los toasts no aparecen mientras peleo.
 Es el **No molestar inteligente**: esperan durante el combate y mientras tienes una pantalla abierta, y luego te enseñan un resumen.
 Desactívalo en Ajustes si prefieres verlos al instante.
 
 ### ¿Puedo usarlo con minimapas (Xaero, JourneyMap)?
-Sí, conviven. Si tu minimapa tapa los toasts, cambia su **posición** en Ajustes o sube el **margen para minimapas**. El
-waypoint automático desde `[coords]` llegará en una versión futura; de momento se **copian** las coordenadas.
+Sí. Con **Xaero's Minimap** (y World Map) o **JourneyMap**, un doble clic en unas coordenadas compartidas (o el botón
+**Waypoint**) crea un waypoint. Con Xaero's Minimap, la primera vez SocialMod aparta los toasts y el HUD si comparten
+esquina con el minimapa; puedes ajustarlo en **Ajustes → Mapas**. Más detalles en [Compartir](10-compartir.md) e
+[Integraciones](18-integraciones.md).
 
 ### ¿Es compatible con Sodium, Iris, Lithium, JEI, REI...?
 Sí. SocialMod **no usa mixins** y dibuja con las herramientas normales de la interfaz, así que no interfiere con mods de render.
@@ -58,7 +72,12 @@ SocialMod **no toca el chat vanilla**. Sus mensajes para jugadores sin el mod so
 los trataran como cualquier otro.
 
 ### ¿Hay voz en los grupos?
-Todavía no. La integración con Simple Voice Chat y Plasmo Voice está prevista en la fase 5 del plan.
+Sí, con **Simple Voice Chat** en el servidor y en tu cliente: **☏** en la cabecera del chat del grupo o de la party, o
+`/g voice` y `/party voice`. Plasmo Voice está pendiente (ver [Integraciones](18-integraciones.md)).
+
+### No tengo el mod, ¿hay algo más cómodo que los comandos?
+Sí: `/social` abre un **menú de cofre** con tus amigos (color según su estado), tu estado (clic para cambiarlo), el buzón y
+tus grupos. Funciona en Java vanilla y en Bedrock (Geyser).
 
 ### ¿Cómo reporto a alguien?
 Abre la conversación, **pulsa el mensaje** y elige **Reportar**. El staff lo recibe con los mensajes de alrededor.

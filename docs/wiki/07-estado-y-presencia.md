@@ -19,7 +19,10 @@ de inspección sí puede ver que estás invisible.
 
 ## Cambiar tu estado
 
-- **Panel → Ajustes → Estado**: cada pulsación rota entre *En línea → Ausente → No molestar → Invisible*.
+- **Panel → Ajustes → Estado**: cada pulsación rota entre *En línea → Ausente → No molestar → Invisible*. El botón cambia al
+  instante y el servidor lo confirma (en la 0.1.0 el botón se quedaba igual; corregido en la 0.2.0). Lo mismo con el resto
+  de opciones de esa columna (privacidad, mostrar dimensión, confirmación de lectura, "escribiendo").
+- **Sin el mod**: `/social` → clic en el tinte de estado (arriba a la izquierda).
 - **Comando**: `/status online`, `/status away`, `/status dnd` o `/status invisible`.
 
 Ponerte **Ausente** a mano es útil si te vas un rato aunque no pase el tiempo de inactividad.

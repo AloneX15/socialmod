@@ -174,11 +174,14 @@ public final class SnapshotService {
             Conversation cached = social.storage().cachedConversation(key);
             ChatMessage last = cached == null ? null : cached.last();
             if (last != null && !last.deleted) {
-                view.preview = last.senderName + ": " + MessageFormatter.preview(last.text, 40);
+                view.preview = last.senderName + ": " + MessageFormatter.preview(last.text, social.chat().toView(last).attachments(), 40);
                 view.lastTime = last.time;
             }
             dto.conversations.add(view);
         }
+        dto.voice = social.voice().available();
+        String voiceGroup = dto.voice ? social.voice().currentGroup(player.getUUID()) : null;
+        dto.voiceGroup = voiceGroup == null ? "" : voiceGroup;
         return dto;
     }
 }

@@ -240,7 +240,7 @@ public final class ChatService {
     /** Sustituye {@code [coords]} e {@code [item]} (uno de cada como máximo) por adjuntos del servidor. */
     private String buildAttachments(ServerPlayer sender, String text, List<ChatMessage.Attachment> out) {
         boolean sharing = ServerConfig.get().modules.sharing;
-        String result = text;
+        String result = MessageFormatter.normalizeTokens(text);
         int coords = result.indexOf(MessageFormatter.COORDS_TOKEN);
         if (coords >= 0) {
             if (sharing) {
@@ -313,7 +313,7 @@ public final class ChatService {
         ServerConfig config = ServerConfig.get();
         Payloads.MessageView view = toView(message);
         Set<UUID> mentioned = mentionedPlayers(sender, conversation, message.text);
-        String preview = MessageFormatter.preview(message.text, 80);
+        String preview = MessageFormatter.preview(message.text, view.attachments(), 80);
         Group group = conversation.isDirect() ? null : social.groups().get(conversation.groupId());
 
         for (UUID participant : participants(conversation)) {

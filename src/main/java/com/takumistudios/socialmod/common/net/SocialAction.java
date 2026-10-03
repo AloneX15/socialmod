@@ -23,7 +23,11 @@ public enum SocialAction {
     // Moderación: a = conversación, b = id del mensaje
     REPORT_MESSAGE,
     // Datos: exportar mis datos
-    DATA_EXPORT;
+    DATA_EXPORT,
+    // Añadidas en el protocolo 2 (al final para no mover los ordinales anteriores)
+    GROUP_SET_ICON,
+    // Chat de voz (Simple Voice Chat): a = id del grupo
+    VOICE_JOIN, VOICE_LEAVE;
 
     public static SocialAction byOrdinal(int ordinal) {
         SocialAction[] values = values();

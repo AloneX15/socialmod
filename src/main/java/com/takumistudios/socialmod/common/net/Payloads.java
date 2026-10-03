@@ -21,7 +21,7 @@ import java.util.UUID;
  */
 public final class Payloads {
     /** Se incrementa con cada cambio incompatible de los paquetes. */
-    public static final int PROTOCOL_VERSION = 1;
+    public static final int PROTOCOL_VERSION = 2;
 
     public static final int MAX_TEXT = 1024;
     public static final int MAX_ARG = 256;
@@ -411,8 +411,8 @@ public final class Payloads {
         }
     }
 
-    /** Etiqueta del grupo principal de un jugador conectado (nametags). Etiqueta vacía = sin grupo. */
-    public record TagEntry(UUID player, String tag, int color) {
+    /** Etiqueta del grupo principal de un jugador conectado (nametags). Etiqueta vacía = sin grupo. Icono: id de {@code GroupIcon}; rol: id de {@code Role}. */
+    public record TagEntry(UUID player, String tag, int color, String icon, String role) {
     }
 
     /** Etiquetas de grupo: la lista completa al conectarse y deltas cuando cambian. */
@@ -426,6 +426,8 @@ public final class Payloads {
                         buf.writeUUID(e.player);
                         buf.writeUtf(e.tag, 16);
                         buf.writeInt(e.color);
+                        buf.writeUtf(e.icon, 16);
+                        buf.writeUtf(e.role, 16);
                     }
                 },
                 buf -> {
@@ -436,7 +438,7 @@ public final class Payloads {
                     }
                     List<TagEntry> entries = new ArrayList<>(size);
                     for (int i = 0; i < size; i++) {
-                        entries.add(new TagEntry(buf.readUUID(), buf.readUtf(16), buf.readInt()));
+                        entries.add(new TagEntry(buf.readUUID(), buf.readUtf(16), buf.readInt(), buf.readUtf(16), buf.readUtf(16)));
                     }
                     return new TagsS2C(full, entries);
                 });
@@ -447,7 +449,87 @@ public final class Payloads {
         }
     }
 
+    // =====================================================================
+    // Protocolo 2: party en el HUD y ping en el mundo
+    // =====================================================================
+
+    /** Vida de un miembro de la party (PLAN 5.2). {@code health < 0}: no está en la misma dimensión o está muerto. */
+    public record PartyMember(UUID player, String name, float health, float maxHealth) {
+    }
+
+    /** Estado de la party para el HUD: lista completa, se envía solo cuando cambia (como mucho 2 veces por segundo). */
+    public record PartyS2C(List<PartyMember> members) implements CustomPacketPayload {
+        public static final Type<PartyS2C> TYPE = id("party");
+        public static final StreamCodec<RegistryFriendlyByteBuf, PartyS2C> CODEC = StreamCodec.ofMember(
+                (p, buf) -> {
+                    buf.writeVarInt(p.members.size());
+                    for (PartyMember m : p.members) {
+                        buf.writeUUID(m.player);
+                        buf.writeUtf(m.name, MAX_NAME);
+                        buf.writeFloat(m.health);
+                        buf.writeFloat(m.maxHealth);
+                    }
+                },
+                buf -> {
+                    int size = buf.readVarInt();
+                    if (size < 0 || size > MAX_LIST) {
+                        throw new IllegalArgumentException("Party demasiado grande: " + size);
+                    }
+                    List<PartyMember> members = new ArrayList<>(size);
+                    for (int i = 0; i < size; i++) {
+                        members.add(new PartyMember(buf.readUUID(), buf.readUtf(MAX_NAME), buf.readFloat(), buf.readFloat()));
+                    }
+                    return new PartyS2C(members);
+                });
+
+        @Override
+        public Type<PartyS2C> type() {
+            return TYPE;
+        }
+    }
+
+    /** Marcar un punto del mundo para la party (PLAN 5.5). El servidor comprueba distancia, dimensión y frecuencia. */
+    public record PingC2S(int x, int y, int z) implements CustomPacketPayload {
+        public static final Type<PingC2S> TYPE = id("ping");
+        public static final StreamCodec<RegistryFriendlyByteBuf, PingC2S> CODEC = StreamCodec.ofMember(
+                (p, buf) -> {
+                    buf.writeVarInt(p.x);
+                    buf.writeVarInt(p.y);
+                    buf.writeVarInt(p.z);
+                },
+                buf -> new PingC2S(buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
+
+        @Override
+        public Type<PingC2S> type() {
+            return TYPE;
+        }
+    }
+
+    public record PingS2C(UUID source, String name, String dimension, int x, int y, int z, int color) implements CustomPacketPayload {
+        public static final Type<PingS2C> TYPE = id("ping_show");
+        public static final StreamCodec<RegistryFriendlyByteBuf, PingS2C> CODEC = StreamCodec.ofMember(
+                (p, buf) -> {
+                    buf.writeUUID(p.source);
+                    buf.writeUtf(p.name, MAX_NAME);
+                    buf.writeUtf(p.dimension, MAX_ARG);
+                    buf.writeVarInt(p.x);
+                    buf.writeVarInt(p.y);
+                    buf.writeVarInt(p.z);
+                    buf.writeInt(p.color);
+                },
+                buf -> new PingS2C(buf.readUUID(), buf.readUtf(MAX_NAME), buf.readUtf(MAX_ARG), buf.readVarInt(), buf.readVarInt(),
+                        buf.readVarInt(), buf.readInt()));
+
+        @Override
+        public Type<PingS2C> type() {
+            return TYPE;
+        }
+    }
+
     public static void register() {
+        PayloadTypeRegistry.clientboundPlay().register(PartyS2C.TYPE, PartyS2C.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(PingS2C.TYPE, PingS2C.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(PingC2S.TYPE, PingC2S.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(TagsS2C.TYPE, TagsS2C.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(HelloC2S.TYPE, HelloC2S.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(SendC2S.TYPE, SendC2S.CODEC);

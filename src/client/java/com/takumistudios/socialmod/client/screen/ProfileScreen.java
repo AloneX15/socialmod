@@ -203,15 +203,15 @@ public class ProfileScreen extends SocialChildScreen {
             Heads.draw(graphics, target, left + 9, top + 12, 32);
         }
         int textX = left + 58;
-        graphics.text(font, name, textX, top + 6, 0xFFFFFFFF);
+        graphics.text(font, name, textX, top + 6, Ui.TITLE);
         Payloads.TagEntry tag = state.tagOf(target);
         SnapshotDto.GroupView shared = state.sharedMainGroupOf(target);
         if (shared != null) {
             SnapshotDto.Member member = member(shared, target);
-            String role = member == null ? "" : " - " + Component.translatable("socialmod.role." + member.role).getString();
-            graphics.text(font, Ui.trim(font, shared.name + role, WIDTH - 60), textX, top + 18, (shared.color & 0xFFFFFF) | 0xFF000000);
+            String role = member == null ? "" : " · " + Component.translatable("socialmod.role." + member.role).getString();
+            graphics.text(font, Ui.trim(font, shared.name + role, WIDTH - 60), textX, top + 18, Ui.readable(shared.color));
         } else if (tag != null) {
-            graphics.text(font, "[" + tag.tag() + "]", textX, top + 18, (tag.color() & 0xFFFFFF) | 0xFF000000);
+            graphics.text(font, com.takumistudios.socialmod.client.TagRenderer.panelLine(tag.tag(), tag.color(), tag.icon(), tag.role()), textX, top + 18, Ui.theme().colors().text());
         }
         PresenceStatus status = state.statusOf(target);
         if (target.equals(state.selfId())) {

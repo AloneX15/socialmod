@@ -4,7 +4,8 @@ Un **grupo** es un clan persistente: sigue existiendo aunque nadie esté conecta
 
 ## Crear un grupo
 
-- **Panel**: **+ Nuevo grupo** → nombre y etiqueta → **Crear grupo**.
+- **Panel**: **+ Nuevo grupo** → nombre, etiqueta y, si quieres, **Color y emblema...** → **Crear grupo**. Debajo ves en
+  vivo cómo quedará la etiqueta.
 - **Comando**: `/g create <TAG> <nombre>`, por ejemplo `/g create TF Team Forest`.
 
 Requisitos: nombre de **3 a 24 caracteres**, etiqueta de **2 a 5 letras o números**, y que ni el nombre ni la etiqueta estén
@@ -17,7 +18,8 @@ Quien lo crea es el **Líder**. Se crea con los canales por defecto del servidor
 | Elemento | Cómo se cambia | Quién puede |
 |---|---|---|
 | **Etiqueta** (`[TF]`) | Ajustes del grupo o `/g tag <TAG>` | Roles con "editar información" |
-| **Color** | Ajustes o `/g color <#RRGGBB o nombre>` (ej. `#55FF55`, `gold`) | Idem |
+| **Color** | Ajustes → **Color y emblema...** (selector visual) o `/g color <#RRGGBB o nombre>` (ej. `#55FF55`, `gold`) | Idem |
+| **Emblema** (⚔, ♛, ★...) | Ajustes → **Color y emblema...** o `/g icon <emblema>` | Idem |
 | **Descripción** | Ajustes o `/g description <texto>` | Idem |
 | **Mensaje del día** | Ajustes o `/g motd <texto>` | Idem |
 | **Mensaje fijado** | Ajustes o `/g pin <texto>` | Roles con permiso de fijar |
@@ -25,11 +27,35 @@ Quien lo crea es el **Líder**. Se crea con los canales por defecto del servidor
 - El **mensaje del día** se muestra a cada miembro **cada vez que se conecta**.
 - El **mensaje fijado** aparece siempre arriba del chat del grupo.
 
-### La etiqueta junto a tu nombre
+### Color y emblema (selector visual)
 
-Los jugadores que tienen el mod ven `[TF]` (con el color del grupo) delante de tu nombre sobre tu cabeza. Se muestra la del
-**grupo principal**. Respeta las reglas normales de Minecraft: no se ve a mucha distancia, ni si te agachas, y **nunca revela a
-un jugador invisible**. Cada jugador puede ocultar las etiquetas en sus Ajustes.
+**Ajustes del grupo → Color y emblema...** abre un selector con:
+
+- **Cuadro de color**: horizontal = saturación, vertical = brillo. Pulsa o arrastra.
+- **Barra de tono** a la derecha del cuadro.
+- **Colores rápidos**: los 16 colores de chat de Minecraft.
+- **Campo hexadecimal** (`#3366FF`) para pegar un color exacto.
+- **Emblemas**: escudo ⛨, espadas ⚔, pico ⛏, corona ♛, estrella ★, corazón ❤, calavera ☠, bandera ⚑, rayo ⚡, sol ☀,
+  luna ☾, copo ❄, flor ✿, música ♫, diamante ♦, ancla ⚓, paz ☮, yin-yang ☯, destello ✦, o ninguno (∅).
+- **Vista previa** en vivo: tu nombre y, debajo, la etiqueta tal como se verá en el mundo.
+
+Nada se guarda hasta pulsar **Guardar**. Con comandos: `/g color #3366FF` y `/g icon swords` (con autocompletado).
+
+### La etiqueta debajo de tu nombre
+
+Los jugadores que tienen el mod ven, **debajo de tu nombre** sobre tu cabeza, la etiqueta del **grupo principal** con su
+emblema, su color y tu rol:
+
+> **Alex**
+> ⚔ [TF] · Oficial
+
+Usa la misma línea que Minecraft reserva para el marcador "debajo del nombre" del scoreboard, así que no necesita mixins ni
+choca con otros mods. Si el servidor ya usa esa línea (por ejemplo, para la vida), la etiqueta se pone delante en esa misma
+línea. Respeta las reglas normales: no se ve a mucha distancia, ni si te agachas, y **nunca revela a un jugador invisible**.
+
+En **Ajustes → Interfaz** cada jugador elige: mostrar etiquetas, **Etiqueta debajo** (o delante del nombre), **Emblema** y
+**Rol**. Los jugadores sin el mod solo la ven si el servidor activa el fallback de teams, y entonces va delante del nombre
+(Minecraft vanilla no permite otra posición).
 
 Si estás en varios grupos, elige cuál se muestra con **Hacer principal** (Ajustes del grupo) o `/g main <TAG>`.
 
@@ -70,6 +96,22 @@ Un grupo puede tener varios **canales** (`#general`, `#comercio`, `#eventos`...)
 - **Escribir**: eliges el canal en la columna izquierda. Con comandos: `/g <mensaje>` (primer canal del grupo principal),
   `/g ch <canal> <mensaje>` o `/g to <TAG> <canal> <mensaje>` (cualquier grupo tuyo).
 - Nombres de canal: letras minúsculas, números, `_` y `-`, hasta 16 caracteres. Por defecto, hasta **8 canales** por grupo.
+- **Silenciar un canal solo para ti**: pulsa **♪** a la derecha de la cabecera del chat (pasa a **⊘**). Ese canal deja de
+  mostrar toasts, sonar y contar en el HUD; las **menciones** sí te siguen avisando. Se guarda en tu cliente.
+
+## Chat de voz del grupo
+
+Si el servidor tiene **Simple Voice Chat**, aparece **☏** en la cabecera del chat del grupo: púlsalo para entrar al chat de
+voz del grupo (se pone verde) y otra vez para salir. Con comandos: `/g voice` y `/g voice leave`. El grupo de voz es oculto
+y con contraseña: solo entran los miembros, desde SocialMod. Si sales o te expulsan del grupo, sales también del chat de
+voz. Necesitas Simple Voice Chat en tu cliente.
+
+## Enlazar con Open Parties and Claims
+
+Si el servidor tiene **Open Parties and Claims** y lo permite (`integrations.claimsSync`), el líder puede enlazar el grupo
+con su party de claims: `/g claims link` (y `/g claims unlink`). Los miembros del grupo entran en la party (Oficial =
+moderador, el resto = miembro). En el modo `both`, quien entra o sale de la party desde OPAC también entra o sale del grupo.
+SocialMod nunca saca de la party a nadie que no haya metido él ni toca parties ajenas.
 
 ## Eventos programados
 

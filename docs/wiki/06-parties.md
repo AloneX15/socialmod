@@ -20,6 +20,29 @@ La persona invitada recibe una notificación prioritaria. Para aceptar: ✔ en e
 - En el panel, la party aparece en **GRUPOS** como *Party*.
 - Con comandos: `/p <mensaje>`.
 
+## Vida de los compañeros
+
+Con el mod, mientras estás en una party ves en el **borde izquierdo de la pantalla, a media altura**, el nombre y una barra
+de vida de cada compañero conectado (hasta 8). La barra es gris si está en otra dimensión o muerto. Se actualiza dos veces
+por segundo y solo cuando cambia. Se desactiva en **Ajustes → Interfaz → Vida de la party** (y el servidor puede apagarla con
+el módulo `partyHud`). No tapa los minimapas (van en las esquinas) ni el chat.
+
+## Ping: marcar un punto
+
+Pulsa **J** mirando a un bloque (hasta 256 bloques): tus compañeros de party en la misma dimensión ven durante **10 s**:
+
+- Un **haz de partículas** sobre el bloque marcado.
+- Una línea en el HUD: **◆ Alex ↗ 42 m** (la flecha indica hacia dónde está respecto a donde miras).
+- Un sonido corto (se quita en **Ajustes → Avisos → Sonido de ping**).
+
+Los compañeros **sin el mod** reciben en el chat "Alex ha marcado un punto: [x y z]" (clic para copiar). Hay un ping cada
+1,5 s como mucho. Se desactiva en **Ajustes → Mapas → Ping**; el servidor lo controla con el módulo `ping`.
+
+## Chat de voz de la party
+
+Con **Simple Voice Chat** en el servidor y en tu cliente: **☏** en la cabecera del chat de la party, o `/party voice`
+(`/party voice leave` para salir). Solo pueden entrar los miembros de la party.
+
 ## Gestionar
 
 | Acción | Cómo |

@@ -29,3 +29,10 @@
 | **Solo chat** | Modo de un cliente sin SocialMod compatible: usa el chat normal y comandos. |
 | **Fabric API / LuckPerms / ModMenu** | Dependencia obligatoria / gestor de permisos / pantalla de mods, ver [guía de administradores](15-guia-de-administradores.md). |
 | **GUI Scale** | Escala de la interfaz de Minecraft; el panel se adapta a ella. |
+| **Emblema** | Símbolo del grupo (⚔, ♛, ★...) que acompaña a la etiqueta. |
+| **Ping** | Marca de un punto del mundo para tu party durante 10 s (tecla `J`). |
+| **Waypoint** | Punto guardado en un mapa (Xaero's Minimap, JourneyMap) creado desde unas coordenadas compartidas. |
+| **Canal silenciado** | Canal de grupo que, solo en tu cliente, no avisa ni suma al contador (♪ → ⊘). |
+| **Menú `/social`** | Menú de cofre para jugadores sin el mod (vanilla y Bedrock). |
+| **Backend** | Dónde guarda el servidor los datos: archivos (`file`) o base de datos (`h2`, `mysql`, `mariadb`). |
+| **Caché local** | Copia del último estado social de cada servidor en tu cliente para abrir el panel al instante. |

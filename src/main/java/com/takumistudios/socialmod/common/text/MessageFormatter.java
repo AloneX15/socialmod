@@ -12,6 +12,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Convierte el texto de un mensaje (markdown seguro + adjuntos del servidor) en un {@link Component}.
@@ -131,9 +133,70 @@ public final class MessageFormatter {
                 .withClickEvent(new ClickEvent.CopyToClipboard(attachment.x() + " " + attachment.y() + " " + attachment.z())));
     }
 
-    /** Vista previa en texto plano (toasts, lista de conversaciones, narrador). */
+    private static final Pattern ITEM_ALIAS = Pattern.compile("\\[item\\]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern COORDS_ALIAS = Pattern.compile("\\[(?:coords|cords)\\]", Pattern.CASE_INSENSITIVE);
+
+    /** {@code [CORDS]}, {@code [Coords]}, {@code [ITEM]}... se normalizan a los tokens canónicos en minúsculas. */
+    public static String normalizeTokens(String text) {
+        if (text.indexOf('[') < 0) {
+            return text;
+        }
+        String items = ITEM_ALIAS.matcher(text).replaceAll(Matcher.quoteReplacement(ITEM_TOKEN));
+        return COORDS_ALIAS.matcher(items).replaceAll(Matcher.quoteReplacement(COORDS_TOKEN));
+    }
+
+    /**
+     * Vista previa en texto plano con los marcadores ya resueltos (toasts, lista de conversaciones, narrador):
+     * {@code [coords]} pasa a {@code x: 120, z: -450} y {@code [item]} al nombre del ítem.
+     */
+    public static String preview(String text, List<Payloads.AttachmentView> attachments, int max) {
+        String plain = SafeMarkdown.plain(normalizeTokens(text));
+        StringBuilder out = new StringBuilder();
+        int itemIndex = 0;
+        int coordsIndex = 0;
+        int i = 0;
+        while (i < plain.length()) {
+            int nextItem = plain.indexOf(ITEM_TOKEN, i);
+            int nextCoords = plain.indexOf(COORDS_TOKEN, i);
+            int next = nextItem < 0 ? nextCoords : nextCoords < 0 ? nextItem : Math.min(nextItem, nextCoords);
+            if (next < 0) {
+                out.append(plain, i, plain.length());
+                break;
+            }
+            out.append(plain, i, next);
+            boolean isItem = next == nextItem;
+            Payloads.AttachmentView attachment = isItem ? nth(attachments, true, itemIndex++) : nth(attachments, false, coordsIndex++);
+            if (attachment == null) {
+                out.append(isItem ? "(item)" : "(coords)");
+            } else if (isItem) {
+                out.append(itemName(attachment));
+            } else {
+                out.append(coordsText(attachment));
+            }
+            i = next + (isItem ? ITEM_TOKEN.length() : COORDS_TOKEN.length());
+        }
+        return cut(out.toString(), max);
+    }
+
+    /** Coordenadas en texto: {@code x: 120, z: -450}. */
+    public static String coordsText(Payloads.AttachmentView attachment) {
+        return "x: " + attachment.x() + ", z: " + attachment.z();
+    }
+
+    private static String itemName(Payloads.AttachmentView attachment) {
+        if (attachment.item() == null) {
+            return "(item)";
+        }
+        var stack = attachment.item().create();
+        return stack.getHoverName().getString() + (stack.getCount() > 1 ? " x" + stack.getCount() : "");
+    }
+
+    private static String cut(String text, int max) {
+        return text.length() > max ? text.substring(0, Math.max(0, max - 1)) + "…" : text;
+    }
+
+    /** Vista previa en texto plano sin adjuntos: los marcadores se muestran como {@code (coords)} / {@code (item)}. */
     public static String preview(String text, int max) {
-        String plain = SafeMarkdown.plain(text);
-        return plain.length() > max ? plain.substring(0, Math.max(0, max - 1)) + "…" : plain;
+        return preview(text, List.of(), max);
     }
 }

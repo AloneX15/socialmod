@@ -33,6 +33,10 @@ public final class Group {
     public List<Channel> channels = new ArrayList<>();
     public List<GroupEvent> events = new ArrayList<>();
     public Set<UUID> invited = new LinkedHashSet<>();
+    /** Sincronizar con la party de Open Parties and Claims del líder ({@code /g claims link}). */
+    public boolean claimsLink;
+    /** Miembros que SocialMod añadió a la party de claims (solo esos se quitan al salir del grupo). */
+    public Set<UUID> claimsSynced = new LinkedHashSet<>();
 
     public static final class Channel {
         public String name;
@@ -116,6 +120,7 @@ public final class Group {
         if (events == null) events = new ArrayList<>();
         events.removeIf(e -> e == null || e.id == null);
         if (invited == null) invited = new LinkedHashSet<>();
+        if (claimsSynced == null) claimsSynced = new LinkedHashSet<>();
         return this;
     }
 }

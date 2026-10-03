@@ -82,8 +82,16 @@ public class GroupSettingsScreen extends SocialChildScreen {
         y += 22;
         if (!group.party) {
             int half = (boxW - 4) / 2;
-            field("color", left, y, half - 52, 16, String.format("#%06X", group.color & 0xFFFFFF), edit);
-            addRenderableWidget(saveButton(left + half - 50, y, edit, () -> ClientNet.action(SocialAction.GROUP_SET_COLOR, groupId, value("color"))));
+            // Color e icono con selector visual y vista previa (SOCIALMOD_ERRORES 3)
+            Button style = Button.builder(Component.translatable("socialmod.group_settings.style"), b -> {
+                saveDrafts();
+                com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new TagStyleScreen(this, group.tag, group.color, group.icon, group.myRole, (rgb, icon) -> {
+                    ClientNet.action(SocialAction.GROUP_SET_COLOR, groupId, String.format("#%06X", rgb & 0xFFFFFF));
+                    ClientNet.action(SocialAction.GROUP_SET_ICON, groupId, icon);
+                }));
+            }).bounds(left, y, half - 2, 18).build();
+            style.active = edit;
+            addRenderableWidget(style);
             field("tag", left + half + 4, y, half - 52, 5, group.tag, edit);
             addRenderableWidget(saveButton(left + 2 * half - 46, y, edit, () -> ClientNet.action(SocialAction.GROUP_SET_TAG, groupId, value("tag"))));
             y += 26;
@@ -171,8 +179,10 @@ public class GroupSettingsScreen extends SocialChildScreen {
             return;
         }
         int left = panelLeft(WIDTH);
-        String header = group.party ? Component.translatable("socialmod.panel.party").getString() : "[" + group.tag + "] " + group.name;
-        graphics.centeredText(font, Component.literal(header), this.width / 2, 12, (group.color & 0xFFFFFF) | 0xFF000000);
+        String glyph = com.takumistudios.socialmod.common.model.GroupIcon.glyphOf(group.icon);
+        String header = group.party ? Component.translatable("socialmod.panel.party").getString()
+                : (glyph.isEmpty() ? "" : glyph + " ") + "[" + group.tag + "] " + group.name;
+        graphics.centeredText(font, Component.literal(header), this.width / 2, Ui.TITLE_Y, Ui.readable(group.color));
         if (group.party) {
             return;
         }
@@ -189,7 +199,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
             graphics.text(font, "#" + channel.name + "  (" + Component.translatable("socialmod.role." + channel.minRole).getString() + "+)",
                     left + 4, rowY, Ui.theme().colors().text());
             if (canDelete) {
-                graphics.text(font, "✖", left + WIDTH - 60, rowY, 0xFFFF5555);
+                graphics.text(font, "✖", left + WIDTH - 60, rowY, Ui.DANGER);
                 String name = channel.name;
                 channelRows.rows.add(Ui.Row.of(left + WIDTH - 62, shown * 11, 10, 11,
                         () -> ClientNet.action(SocialAction.GROUP_CHANNEL_DELETE, groupId, name)));

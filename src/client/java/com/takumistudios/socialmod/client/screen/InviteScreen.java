@@ -78,7 +78,7 @@ public class InviteScreen extends SocialChildScreen {
 
     @Override
     protected void drawContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        graphics.centeredText(font, this.title, this.width / 2, 12, 0xFFFFFFFF);
+        Ui.title(graphics, font, this.title, this.width / 2, Ui.TITLE_Y);
         int left = panelLeft(WIDTH);
         int top = 58;
         int bottom = this.height - 36;

@@ -136,7 +136,7 @@ public final class ModerationService {
             for (ServerPlayer player : social.server().getPlayerList().getPlayers()) {
                 if (PermissionBridge.isStaff(player, PermissionBridge.MOD_REPORTS)) {
                     social.notifier().notify(player, Payloads.NotifyKind.SYSTEM, message.sender, "socialmod.notify.report",
-                            new Object[]{reporter.getGameProfile().name(), message.senderName}, MessageFormatter.preview(message.text, 80), "");
+                            new Object[]{reporter.getGameProfile().name(), message.senderName}, MessageFormatter.preview(message.text, social.chat().toView(message).attachments(), 80), "");
                 }
             }
         });
@@ -269,13 +269,14 @@ public final class ModerationService {
                 }
             }
             return false;
+        }, () -> {
+            // Cuando se han recorrido todas las conversaciones (también las del disco, por lotes)
+            social.storage().writeDocument(SocialStorage.EXPORTS, playerId.toString(), root);
+            social.storage().audit("DATA_EXPORT " + record.name);
+            if (requester != null) {
+                social.notifier().feedback(requester, true, "socialmod.data.exported", "socialmod/exports/" + playerId + ".json.gz");
+            }
         });
-        // Se escribe después de recorrer las conversaciones (la cola de E/S es FIFO)
-        social.storage().writeDocument(SocialStorage.EXPORTS, playerId.toString(), root);
-        social.storage().audit("DATA_EXPORT " + record.name);
-        if (requester != null) {
-            social.notifier().feedback(requester, true, "socialmod.data.exported", "socialmod/exports/" + playerId + ".json.gz");
-        }
     }
 
     /** Borra los datos sociales de un jugador: perfil, relaciones, grupos y el texto de sus mensajes. */

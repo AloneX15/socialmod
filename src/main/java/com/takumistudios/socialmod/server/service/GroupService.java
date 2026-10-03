@@ -2,6 +2,7 @@ package com.takumistudios.socialmod.server.service;
 
 import com.takumistudios.socialmod.api.event.GroupEvents;
 import com.takumistudios.socialmod.common.model.ConversationId;
+import com.takumistudios.socialmod.common.model.GroupIcon;
 import com.takumistudios.socialmod.common.model.GroupPermission;
 import com.takumistudios.socialmod.common.model.Role;
 import com.takumistudios.socialmod.common.net.Payloads;
@@ -157,6 +158,11 @@ public final class GroupService {
     // ---------- Crear, invitar, unirse, salir ----------
 
     public @Nullable Group create(ServerPlayer actor, String rawName, String rawTag) {
+        return create(actor, rawName, rawTag, null, null);
+    }
+
+    /** Con icono y color opcionales (pantalla de crear grupo); los valores no válidos se ignoran. */
+    public @Nullable Group create(ServerPlayer actor, String rawName, String rawTag, @Nullable String rawIcon, @Nullable String rawColor) {
         ServerConfig config = ServerConfig.get();
         if (!config.modules.groups) {
             social.notifier().feedback(actor, false, "socialmod.error.module_disabled");
@@ -194,6 +200,14 @@ public final class GroupService {
         group.tag = tag.toUpperCase(Locale.ROOT);
         group.created = System.currentTimeMillis();
         group.color = 0x55FF55;
+        Integer chosenColor = rawColor == null || rawColor.isBlank() ? null : parseColor(rawColor);
+        if (chosenColor != null) {
+            group.color = chosenColor;
+        }
+        GroupIcon chosenIcon = rawIcon == null ? null : GroupIcon.byId(rawIcon);
+        if (chosenIcon != null) {
+            group.icon = chosenIcon.id();
+        }
         group.members.put(actor.getUUID(), Role.LEADER);
         group.memberNames.put(actor.getUUID(), social.record(actor).name);
         for (String channel : config.defaultChannels) {
@@ -235,7 +249,7 @@ public final class GroupService {
         party.name = social.record(actor).name;
         party.tag = "P";
         party.color = 0x5555FF;
-        party.icon = "party";
+        party.icon = "none";
         party.created = System.currentTimeMillis();
         party.members.put(actor.getUUID(), Role.LEADER);
         party.memberNames.put(actor.getUUID(), social.record(actor).name);
@@ -381,6 +395,7 @@ public final class GroupService {
             social.storage().markPlayersDirty();
         }
         GroupEvents.MEMBER_LEFT.invoker().onMemberChanged(ServerApiImpl.info(group), player);
+        social.voice().onLeftGroup(player, group);
         if (group.members.isEmpty()) {
             disbandInternal(group, null);
             return;
@@ -392,6 +407,7 @@ public final class GroupService {
             if (heir != null) {
                 group.members.put(heir, Role.LEADER);
                 announce(group, "socialmod.group.new_leader", group.memberNames.getOrDefault(heir, "?"));
+                nametags.update(heir);
             }
         }
         social.storage().markGroupsDirty();
@@ -399,6 +415,43 @@ public final class GroupService {
         announce(group, announceKey, name == null ? "?" : name);
         refresh(group);
         nametags.update(player);
+    }
+
+    /** Alguien entró al grupo desde fuera de SocialMod (sincronización con claims): mismos avisos que al aceptar. */
+    public void afterExternalJoin(Group group, UUID player, String name) {
+        PlayerRecord record = social.storage().player(player);
+        if (record != null && record.mainGroup.isEmpty()) {
+            record.mainGroup = group.id;
+            social.storage().markPlayersDirty();
+        }
+        social.storage().markGroupsDirty();
+        social.storage().audit("GROUP_JOIN " + name + " " + group.id + " (claims)");
+        GroupEvents.MEMBER_JOINED.invoker().onMemberChanged(ServerApiImpl.info(group), player);
+        announce(group, "socialmod.group.joined", name);
+        refresh(group);
+        nametags.update(player);
+    }
+
+    /** {@code /g claims link|unlink}: solo el líder, y solo si la sincronización está activada en el servidor. */
+    public boolean setClaimsLink(ServerPlayer actor, String groupId, boolean link) {
+        Group group = member(actor, groupId);
+        if (group == null || group.party) return false;
+        if (group.roleOf(actor.getUUID()) != Role.LEADER) {
+            social.notifier().feedback(actor, false, "socialmod.group.no_permission");
+            return false;
+        }
+        if (!social.claims().available() || ServerConfig.get().integrations.claimsSync.equals("off")) {
+            social.notifier().feedback(actor, false, "socialmod.claims.unavailable");
+            return false;
+        }
+        group.claimsLink = link;
+        social.storage().markGroupsDirty();
+        social.storage().audit("CLAIMS_LINK " + social.record(actor).name + " " + group.id + " " + link);
+        social.notifier().feedback(actor, true, link ? "socialmod.claims.linked" : "socialmod.claims.unlinked", group.name);
+        if (link) {
+            social.claims().syncAll();
+        }
+        return true;
     }
 
     public boolean kick(ServerPlayer actor, String groupId, String targetName) {
@@ -442,6 +495,7 @@ public final class GroupService {
         social.storage().markGroupsDirty();
         social.storage().audit("GROUP_ROLE " + social.record(actor).name + " " + target.name + " " + current.id() + "->" + next.id() + " " + group.id);
         announce(group, "socialmod.group.role_changed", target.name, next.id());
+        nametags.update(target.id);
         refresh(group);
         return true;
     }
@@ -463,6 +517,8 @@ public final class GroupService {
         social.storage().markGroupsDirty();
         social.storage().audit("GROUP_TRANSFER " + social.record(actor).name + " -> " + target.name + " " + group.id);
         announce(group, "socialmod.group.new_leader", target.name);
+        nametags.update(actor.getUUID());
+        nametags.update(target.id);
         refresh(group);
         return true;
     }
@@ -511,6 +567,15 @@ public final class GroupService {
                     return false;
                 }
                 group.color = color;
+                group.members.keySet().forEach(nametags::update);
+            }
+            case "icon" -> {
+                GroupIcon icon = GroupIcon.byId(value);
+                if (icon == null) {
+                    social.notifier().feedback(actor, false, "socialmod.group.bad_icon");
+                    return false;
+                }
+                group.icon = icon.id();
                 group.members.keySet().forEach(nametags::update);
             }
             default -> {
@@ -619,6 +684,7 @@ public final class GroupService {
         social.storage().markGroupsDirty();
         social.storage().audit("GROUP_DISBAND " + (actor == null ? "-" : actor) + " " + group.id + " '" + group.name + "'");
         GroupEvents.DISBANDED.invoker().onGroup(ServerApiImpl.info(group));
+        social.voice().onDisband(group);
         for (UUID member : group.members.keySet()) {
             ServerPlayer online = social.online(member);
             if (online != null) {

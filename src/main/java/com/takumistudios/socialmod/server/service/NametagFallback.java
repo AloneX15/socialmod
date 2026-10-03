@@ -1,6 +1,8 @@
 package com.takumistudios.socialmod.server.service;
 
 import com.takumistudios.socialmod.SocialMod;
+import com.takumistudios.socialmod.common.model.GroupIcon;
+import com.takumistudios.socialmod.common.model.Role;
 import com.takumistudios.socialmod.common.net.Payloads;
 import com.takumistudios.socialmod.server.SocialServer;
 import com.takumistudios.socialmod.server.config.ServerConfig;
@@ -34,7 +36,11 @@ public final class NametagFallback {
 
     public Payloads.TagEntry entryFor(UUID playerId) {
         Group group = social.groups().mainGroup(playerId);
-        return group == null ? new Payloads.TagEntry(playerId, "", 0) : new Payloads.TagEntry(playerId, group.tag, group.color);
+        if (group == null) {
+            return new Payloads.TagEntry(playerId, "", 0, "", "");
+        }
+        Role role = group.roleOf(playerId);
+        return new Payloads.TagEntry(playerId, group.tag, group.color, group.icon, role == null ? "" : role.id());
     }
 
     /** Lista completa para un cliente que acaba de hacer el handshake. */
@@ -83,7 +89,9 @@ public final class NametagFallback {
             if (team == null) {
                 team = scoreboard.addPlayerTeam(teamName);
             }
-            team.setPlayerPrefix(Component.literal("[" + group.tag + "] ").withColor(group.color));
+            // Vanilla solo permite prefijo en la misma línea: los clientes con el mod lo ven debajo del nombre
+            String glyph = GroupIcon.glyphOf(group.icon);
+            team.setPlayerPrefix(Component.literal((glyph.isEmpty() ? "" : glyph + " ") + "[" + group.tag + "] ").withColor(group.color));
             if (current != team) {
                 scoreboard.addPlayerToTeam(entry, team);
             }

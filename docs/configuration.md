@@ -16,10 +16,16 @@ Si un archivo tiene errores se registra en el log y se usan los valores por defe
 {
   "modules": {           // cada módulo se puede desactivar por separado
     "privateMessages": true, "groups": true, "parties": true, "friends": true, "presence": true,
-    "mailbox": true, "sharing": true, "mentions": true, "placeholders": true
+    "mailbox": true, "sharing": true, "mentions": true, "placeholders": true,
+    "partyHud": true,    // vida de los compañeros de party en el HUD (v0.2.0)
+    "ping": true,        // ping en el mundo para la party (v0.2.0)
+    "voice": true        // grupos de voz con Simple Voice Chat, si está instalado (v0.2.0)
   },
   "storage": {
-    "backend": "file",          // h2 y mysql: previstos para la v1.x
+    "backend": "file",          // file | h2 | mysql | mariadb (v0.2.0)
+    "jdbcUrl": "",              // vacío con h2 = <mundo>/socialmod/socialmod-h2
+    "user": "", "password": "",
+    "tablePrefix": "socialmod_",
     "retentionDays": 30,        // 0 = sin límite de días
     "maxMessagesPerConversation": 500,
     "flushIntervalSeconds": 5,  // escrituras agrupadas en un hilo propio
@@ -58,7 +64,10 @@ Si un archivo tiene errores se registra en el log y se usan los valores por defe
     "recruit": []
   },
   "defaultChannels": ["general"],
-  "nametags": { "scoreboardFallback": false }   // teams del scoreboard para clientes vanilla
+  "nametags": { "scoreboardFallback": false },  // teams del scoreboard para clientes vanilla
+  "integrations": {
+    "claimsSync": "off"         // Open Parties and Claims: off | to_claims | both (cada líder enlaza con /g claims link)
+  }
 }
 ```
 
@@ -84,10 +93,13 @@ con los mismos campos: se aplica como valores por defecto sin pisar lo que el ju
 |---|---|
 | `toasts` | `enabled`, `position` (`TOP_RIGHT`, `TOP_LEFT`, `BOTTOM_RIGHT`, `BOTTOM_LEFT`), `marginX`, `marginY`, `durationSeconds` (3–15), `animations`, `maxVisible`, `groupBySender`, `showGroupMessages`, `smartDnd` |
 | `sounds` | `enabled`, `volume` (0–100), `privateMessages`, `mentions`, `invites`, `events`, `groupMessages` |
-| `hud` | `enabled`, `position`, `offsetX`, `offsetY`, `scale` (50–200) |
-| `nametags` | `showGroupTags` |
+| `hud` | `enabled`, `position`, `offsetX`, `offsetY`, `scale` (50–200), `partyHealth` |
+| `nametags` | `showGroupTags`, `belowName` (etiqueta debajo del nombre), `showIcon`, `showRole` |
 | `accessibility` | `narrateToasts`, `highContrast` |
-| `panel` | `reservedRight`, `reservedTop` (margen para minimapas) |
+| `panel` | `reservedRight`, `reservedTop` (margen para minimapas), `textScale` (75–150, texto del chat), `mutedChannels` (canales silenciados) |
+| `ping` | `enabled`, `sound` |
+| `maps` | `waypoints` (waypoints en Xaero), `autoMargins`, `autoMarginsApplied` |
+| `cache` | `enabled` (caché local por servidor en `config/socialmod/cache/`) |
 
 ## Tema (resource pack)
 
@@ -103,14 +115,43 @@ con los mismos campos: se aplica como valores por defecto sin pisar lo que el ju
   ],
   "colors": { "text": "#E0E0E0", "muted": "#909090", "accent": "#55FF55", "unread": "#FFAA00",
               "background": "#C0000000", "panel": "#80101010", "border": "#404040", "highlight": "#40FFFFFF" },
-  "toast": { "background": "#E0101010", "border": "#555555", "width": 160 }
+  "toast": { "background": "#E0101010", "border": "#555555", "width": 160 },
+  "textures": {                       // opcional (v0.2.0): sprites de la GUI, admiten nine-slice
+    "background": "mipack:socialmod/fondo",
+    "panel": "mipack:socialmod/panel",
+    "toast": "mipack:socialmod/toast"
+  }
 }
 ```
 
 Los sonidos (`socialmod:notify.private`, `notify.mention`, `notify.invite`, `notify.event`, `notify.group`,
-`notify.system`) se redefinen en `assets/socialmod/sounds.json`.
+`notify.system`, `ping`) se redefinen en `assets/socialmod/sounds.json`.
 
 ## Datos guardados
 
 `<mundo>/socialmod/`: `players/`, `groups/`, `conversations/` (un JSON comprimido por conversación), `reports/`,
 `exports/` y `audit.log`. La escritura es atómica; un archivo corrupto se aparta como `.corrupt` y el servidor sigue.
+
+### Texturas del tema
+
+Los valores de `textures` son sprites del atlas de la GUI: el resource pack los pone en
+`assets/<ns>/textures/gui/sprites/<ruta>.png` y, para que escalen sin deformarse, un `<ruta>.png.mcmeta` con
+`"gui": { "scaling": { "type": "nine_slice", "width": 32, "height": 32, "border": 4 } }`. Cada textura sustituye
+al color correspondiente (`background`, `panel`, `toast.background`). Con **Alto contraste** se ignoran.
+
+## Bases de datos (h2, mysql, mariadb)
+
+1. Copia el `.jar` del driver JDBC en `config/socialmod/drivers/` (no va dentro de SocialMod para no engordar el jar):
+   H2 (`com.h2database:h2`), MySQL Connector/J o MariaDB Connector/J.
+2. En `server.json`: `"backend": "h2"` (sin más) o `"mysql"`/`"mariadb"` con `jdbcUrl`, `user` y `password`.
+3. Al arrancar, si la tabla `<tablePrefix>documents` está vacía, se importan los datos del backend `file`
+   (los archivos se conservan como copia).
+
+`audit.log` y `exports/` siguen siendo archivos. Si el driver falta o no conecta, el log lo explica y se usa `file`.
+La contraseña se guarda en texto plano en `server.json`: protege el archivo.
+
+## Datos del cliente
+
+- `config/socialmod/client.json`: preferencias.
+- `config/socialmod/cache/<hash>/snapshot.json`: último estado social por servidor (amigos, grupos, lista de
+  conversaciones con la vista previa de la última línea). Se borra al desactivar **Caché local**.

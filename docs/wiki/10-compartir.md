@@ -14,11 +14,24 @@ Lo que pueden hacer los demás:
 
 - **Pasar el ratón** por encima: ven la dimensión, y si están en la **misma dimensión**, la **distancia y la dirección** desde
   donde están ("A 312 bloques hacia el NE").
-- **Pulsar el mensaje** (en el panel, dos veces) o hacer clic en el chat normal: **copia** las coordenadas al portapapeles
-  (`120 64 -450`) para pegarlas donde quieras.
+- **Crear un waypoint** (si tienen Xaero's Minimap/World Map o JourneyMap): pulsando el mensaje dos veces, o
+  seleccionándolo y pulsando el botón **Waypoint**. El waypoint lleva el nombre de quien lo compartió y el color del
+  grupo, y aparece en el minimapa y en el mapa completo.
+- **Sin mapa** (o si las coordenadas son de otra dimensión): el doble clic **copia** las coordenadas al portapapeles
+  (`120 64 -450`). En el chat normal, un clic las copia.
 
-> **Waypoints automáticos** (Xaero's Minimap y JourneyMap) están previstos para una versión futura. De momento se copian las
-> coordenadas.
+> En las **notificaciones** (toasts) y en la lista de conversaciones las coordenadas se ven ya resueltas:
+> `Alex: nos vemos en x: 120, z: -450`. Lo mismo con los ítems: `Luna: mirad, Espada de diamante`.
+
+### Mapas compatibles
+
+| Mapa | Qué hace SocialMod | Cómo |
+|---|---|---|
+| Xaero's Minimap (+ World Map) | Waypoint permanente en el conjunto actual; aparece también en el World Map | Automático si está instalado |
+| Xaero's World Map solo | Muestra los waypoints del Minimap, pero sin Minimap no hay waypoints: se copian las coordenadas | — |
+| JourneyMap | Waypoint en el mapa y el minimapa | Automático si está instalado |
+
+Se puede desactivar en **Ajustes → Mapas → Waypoints**.
 
 ## `[item]` — lo que llevas en la mano
 
@@ -31,6 +44,7 @@ inventario. Si compartes un stack, se indica la cantidad (`[Diamante x32]`).
 
 ## Reglas
 
+- Las palabras clave valen en mayúsculas o minúsculas (`[COORDS]`, `[Item]`) e incluso con la errata `[cords]`.
 - Solo se acepta **un `[coords]` y un `[item]` por mensaje**. Si repites la palabra clave, la segunda se muestra como texto
   (`(coords)`, `(item)`).
 - Con la **mano vacía**, `[item]` no añade nada.

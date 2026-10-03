@@ -26,7 +26,8 @@ public final class ThemeManager implements ResourceManagerReloadListener {
     public static Theme get() {
         Theme theme = current;
         if (ClientConfig.get().accessibility.highContrast) {
-            return new Theme(theme.layout(), theme.columns(), Theme.Colors.HIGH_CONTRAST, theme.toast());
+            // Alto contraste: colores sólidos y sin texturas, que pueden restar legibilidad
+            return new Theme(theme.layout(), theme.columns(), Theme.Colors.HIGH_CONTRAST, theme.toast(), Theme.Textures.NONE);
         }
         return theme;
     }

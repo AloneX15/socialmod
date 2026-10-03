@@ -15,6 +15,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -72,7 +73,7 @@ public final class ToastHud {
         if (!config.toasts.enabled) {
             return;
         }
-        if (data.kind() == Payloads.NotifyKind.GROUP && !config.toasts.showGroupMessages) {
+        if (data.kind() == Payloads.NotifyKind.GROUP && (!config.toasts.showGroupMessages || ClientState.isMuted(data.conversation()))) {
             return;
         }
         // Ya está leyendo esa conversación
@@ -241,7 +242,11 @@ public final class ToastHud {
 
     private static void drawToast(GuiGraphicsExtractor graphics, Font font, Theme theme, Active active, int x, int y, int width, float alpha, long now) {
         ToastData data = active.data;
-        graphics.fill(x, y, x + width, y + HEIGHT, fade(theme.toast().background(), alpha));
+        if (theme.textures().toast().isPresent()) {
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, theme.textures().toast().get(), x, y, width, HEIGHT, alpha);
+        } else {
+            graphics.fill(x, y, x + width, y + HEIGHT, fade(theme.toast().background(), alpha));
+        }
         graphics.outline(x, y, width, HEIGHT, fade(kindColor(data.kind(), theme), alpha));
         if (alpha > 0.3F) {
             Heads.draw(graphics, data.source(), x + 5, y + 5, 16);
