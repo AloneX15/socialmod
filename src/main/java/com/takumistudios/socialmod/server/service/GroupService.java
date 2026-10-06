@@ -75,7 +75,7 @@ public final class GroupService {
     public List<Group> groupsOf(UUID player) {
         List<Group> result = new ArrayList<>();
         for (Group group : all().values()) {
-            if (group.isMember(player)) {
+            if (group.isMember(player) || (group.archived && group.archiveReaders.contains(player))) {
                 result.add(group);
             }
         }
@@ -115,6 +115,11 @@ public final class GroupService {
 
     public boolean canAccess(Group group, UUID player, String channelName) {
         Role role = group.roleOf(player);
+        if (group.archived) {
+            Group.Channel archivedChannel = group.channel(channelName);
+            Role archivedRole = group.archiveRoles.get(player);
+            return archivedRole != null && archivedChannel != null && archivedRole.atLeast(archivedChannel.minRole);
+        }
         Group.Channel channel = group.channel(channelName);
         return role != null && channel != null && role.atLeast(channel.minRole);
     }
@@ -127,7 +132,7 @@ public final class GroupService {
 
     private @Nullable Group member(ServerPlayer actor, String groupId) {
         Group group = get(groupId);
-        if (group == null || !group.isMember(actor.getUUID())) {
+        if (group == null || group.archived || !group.isMember(actor.getUUID())) {
             social.notifier().feedback(actor, false, "socialmod.group.not_member");
             return null;
         }
@@ -135,6 +140,8 @@ public final class GroupService {
     }
 
     private @Nullable Group withPermission(ServerPlayer actor, String groupId, GroupPermission permission) {
+        Group managed = get(groupId);
+        if (managed != null && managed.team && !managed.archived && PermissionBridge.isStaff(actor, PermissionBridge.TEAM_ADMIN)) return managed;
         Group group = member(actor, groupId);
         if (group != null && !has(group, actor.getUUID(), permission)) {
             social.notifier().feedback(actor, false, "socialmod.group.no_permission");
@@ -189,7 +196,7 @@ public final class GroupService {
             }
         }
         int max = PermissionBridge.limit(actor, PermissionBridge.LIMIT_GROUPS, config.limits.maxGroupsPerPlayer);
-        long owned = groupsOf(actor.getUUID()).stream().filter(g -> !g.party).count();
+        long owned = groupsOf(actor.getUUID()).stream().filter(g -> !g.party && !g.team).count();
         if (owned >= max) {
             social.notifier().feedback(actor, false, "socialmod.error.limit_groups", max);
             return null;
@@ -263,6 +270,7 @@ public final class GroupService {
 
     public boolean invite(ServerPlayer actor, String groupId, String targetName) {
         Group group = withPermission(actor, groupId, GroupPermission.INVITE);
+        if (group != null && group.team) return false;
         if (group == null) return false;
         PlayerRecord target = social.friends().resolve(targetName);
         if (target == null) {
@@ -308,6 +316,7 @@ public final class GroupService {
     public boolean accept(ServerPlayer actor, String query) {
         PlayerRecord record = social.record(actor);
         Group group = "party".equalsIgnoreCase(query) ? pendingParty(record) : find(query);
+        if (group != null && group.team) return false;
         if (group == null || !group.invited.contains(actor.getUUID())) {
             social.notifier().feedback(actor, false, "socialmod.group.no_invite");
             return false;
@@ -324,7 +333,7 @@ public final class GroupService {
             }
         } else {
             int maxGroups = PermissionBridge.limit(actor, PermissionBridge.LIMIT_GROUPS, ServerConfig.get().limits.maxGroupsPerPlayer);
-            long count = groupsOf(actor.getUUID()).stream().filter(g -> !g.party).count();
+            long count = groupsOf(actor.getUUID()).stream().filter(g -> !g.party && !g.team).count();
             if (count >= maxGroups) {
                 social.notifier().feedback(actor, false, "socialmod.error.limit_groups", maxGroups);
                 return false;
@@ -360,6 +369,7 @@ public final class GroupService {
     public boolean decline(ServerPlayer actor, String query) {
         PlayerRecord record = social.record(actor);
         Group group = "party".equalsIgnoreCase(query) ? pendingParty(record) : find(query);
+        if (group != null && group.team) return false;
         if (group == null || !group.invited.remove(actor.getUUID())) {
             record.groupInvites.remove(query);
             social.notifier().feedback(actor, false, "socialmod.group.no_invite");
@@ -375,6 +385,7 @@ public final class GroupService {
 
     public boolean leave(ServerPlayer actor, String groupId) {
         Group group = member(actor, groupId);
+        if (group != null && group.team) return false;
         if (group == null) return false;
         removeMember(group, actor.getUUID(), "socialmod.group.left");
         social.notifier().feedback(actor, true, "socialmod.group.you_left", group.name);
@@ -435,7 +446,7 @@ public final class GroupService {
     /** {@code /g claims link|unlink}: solo el líder, y solo si la sincronización está activada en el servidor. */
     public boolean setClaimsLink(ServerPlayer actor, String groupId, boolean link) {
         Group group = member(actor, groupId);
-        if (group == null || group.party) return false;
+        if (group == null || group.party || group.team) return false;
         if (group.roleOf(actor.getUUID()) != Role.LEADER) {
             social.notifier().feedback(actor, false, "socialmod.group.no_permission");
             return false;
@@ -456,6 +467,7 @@ public final class GroupService {
 
     public boolean kick(ServerPlayer actor, String groupId, String targetName) {
         Group group = withPermission(actor, groupId, GroupPermission.KICK);
+        if (group != null && group.team) return false;
         if (group == null) return false;
         PlayerRecord target = social.friends().resolve(targetName);
         if (target == null || !group.isMember(target.id)) {
@@ -477,6 +489,7 @@ public final class GroupService {
 
     public boolean changeRole(ServerPlayer actor, String groupId, String targetName, boolean promote) {
         Group group = withPermission(actor, groupId, GroupPermission.MANAGE_ROLES);
+        if (group != null && group.team) return false;
         if (group == null) return false;
         PlayerRecord target = social.friends().resolve(targetName);
         if (target == null || !group.isMember(target.id) || group.party) {
@@ -502,6 +515,7 @@ public final class GroupService {
 
     public boolean transfer(ServerPlayer actor, String groupId, String targetName) {
         Group group = member(actor, groupId);
+        if (group != null && group.team) return false;
         if (group == null) return false;
         if (group.roleOf(actor.getUUID()) != Role.LEADER) {
             social.notifier().feedback(actor, false, "socialmod.group.no_permission");
@@ -525,7 +539,7 @@ public final class GroupService {
 
     public boolean setMain(ServerPlayer actor, String groupId) {
         Group group = member(actor, groupId);
-        if (group == null || group.party) return false;
+        if (group == null || group.party || group.team) return false;
         social.record(actor).mainGroup = group.id;
         social.storage().markPlayersDirty();
         social.notifier().feedback(actor, true, "socialmod.group.main_set", group.name);
@@ -540,6 +554,7 @@ public final class GroupService {
     public boolean setText(ServerPlayer actor, String groupId, String field, String value) {
         GroupPermission permission = field.equals("pinned") ? GroupPermission.PIN : GroupPermission.EDIT_INFO;
         Group group = withPermission(actor, groupId, permission);
+        if (group != null && group.team && (field.equals("color") || field.equals("tag") || field.equals("icon"))) return false;
         if (group == null) return false;
         switch (field) {
             case "motd" -> group.motd = TextSanitizer.clean(value, 128);
@@ -607,7 +622,7 @@ public final class GroupService {
 
     public boolean createChannel(ServerPlayer actor, String groupId, String rawName, String minRole) {
         Group group = withPermission(actor, groupId, GroupPermission.MANAGE_CHANNELS);
-        if (group == null || group.party) return false;
+        if (group == null || group.party || group.team) return false;
         String name = rawName.trim().toLowerCase(Locale.ROOT);
         if (!ConversationId.CHANNEL.matcher(name).matches()) {
             social.notifier().feedback(actor, false, "socialmod.group.bad_channel");
@@ -633,7 +648,7 @@ public final class GroupService {
 
     public boolean deleteChannel(ServerPlayer actor, String groupId, String name) {
         Group group = withPermission(actor, groupId, GroupPermission.MANAGE_CHANNELS);
-        if (group == null || group.party) return false;
+        if (group == null || group.party || group.team) return false;
         Group.Channel channel = group.channel(name);
         if (channel == null || group.channels.size() <= 1) {
             social.notifier().feedback(actor, false, "socialmod.group.channel_cannot_delete");
@@ -650,6 +665,7 @@ public final class GroupService {
 
     public boolean disband(ServerPlayer actor, String groupId) {
         Group group = member(actor, groupId);
+        if (group != null && group.team) return false;
         if (group == null) return false;
         if (group.roleOf(actor.getUUID()) != Role.LEADER) {
             social.notifier().feedback(actor, false, "socialmod.group.no_permission");
@@ -661,6 +677,7 @@ public final class GroupService {
 
     /** Disuelve un grupo (también desde moderación). Borra su historial. */
     public void disbandInternal(Group group, @Nullable String actor) {
+        if (group.team) { social.teams().archive(group.id, actor == null ? "system" : actor); return; }
         all().remove(group.id);
         announce(group, "socialmod.group.disbanded", group.name);
         for (UUID member : group.members.keySet()) {

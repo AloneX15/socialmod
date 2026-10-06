@@ -36,7 +36,7 @@ public final class ServerNet {
         ServerPlayNetworking.registerGlobalReceiver(Payloads.SignalC2S.TYPE, (payload, context) ->
                 guarded(context.player(), "signal", 0.5, social -> social.chat().signal(context.player(), payload.signal(), payload.conversation(), payload.value())));
         ServerPlayNetworking.registerGlobalReceiver(Payloads.ActionC2S.TYPE, (payload, context) ->
-                guarded(context.player(), "action", 1, social -> handleAction(social, context.player(), payload)));
+                guarded(context.player(), "action", payload.action() == SocialAction.VISUAL_PUBLISH ? 0.05 : 1, social -> handleAction(social, context.player(), payload)));
         ServerPlayNetworking.registerGlobalReceiver(Payloads.PingC2S.TYPE, (payload, context) ->
                 guarded(context.player(), "ping", 2, social -> social.party().ping(context.player(), payload.x(), payload.y(), payload.z())));
     }
@@ -76,6 +76,24 @@ public final class ServerNet {
         ServerConfig config = ServerConfig.get();
         PlayerRecord record = social.record(player);
         switch (action) {
+            case VISUAL_ROLLBACK -> {
+                if (PermissionBridge.isStaff(player, "admin.visuals")) social.visuals().rollback(player.getGameProfile().name());
+            }
+            case VISUAL_PUBLISH -> {
+                if (PermissionBridge.isStaff(player, "admin.visuals")) social.visuals().receive(player, a, b);
+            }
+            case TEAM_LIMIT -> {
+                if (PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN)) {
+                    int limit = Integer.parseInt(a);
+                    if (limit >= 1 && limit <= 1000) { config.maxTeams = limit; social.visuals().persistConfig();
+                        social.server().getPlayerList().getPlayers().forEach(social.snapshots()::send); }
+                }
+            }
+            case TEAM_CREATE -> social.teams().create(player, a, b);
+            case TEAM_CHOOSE -> social.teams().choose(player, a);
+            case TEAM_ASSIGN, TEAM_RESET, TEAM_ARCHIVE, TEAM_RESTORE, TEAM_RENAME, TEAM_STYLE -> {
+                if (PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN) && !social.teams().admin(action, a, b, player.getGameProfile().name())) social.notifier().feedback(player, false, "socialmod.team.invalid");
+            }
             case FRIEND_REQUEST -> social.friends().request(player, a);
             case FRIEND_ACCEPT -> social.friends().accept(player, a);
             case FRIEND_DENY -> social.friends().deny(player, a);

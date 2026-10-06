@@ -1,5 +1,9 @@
 package com.takumistudios.socialmod.client.hud;
 
+import com.takumistudios.socialmod.client.theme.VisualManager;
+
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.ClientConfig;
 import com.takumistudios.socialmod.client.ClientState;
 import com.takumistudios.socialmod.client.compat.ClientCompat;
@@ -40,25 +44,26 @@ public final class SocialHud {
             text = unread > 0 ? "✉ " + unread : "";
         }
         Font font = Minecraft.getInstance().font;
-        float scale = config.scale / 100.0F;
+        var visual = VisualManager.get();
+        float scale = visual.hudScale / 100.0F;
         int width = (int) ((font.width(statusSymbol) + (text.isEmpty() ? 0 : 4 + font.width(text)) + (muted ? 10 : 0) + 6) * scale);
         int height = (int) (12 * scale);
-        int x = config.position.right() ? graphics.guiWidth() - width - config.offsetX : config.offsetX;
-        int y = config.position.bottom() ? graphics.guiHeight() - height - config.offsetY : config.offsetY;
+        int x = Math.round((graphics.guiWidth() - width) * visual.hudX);
+        int y = Math.round((graphics.guiHeight() - height) * visual.hudY);
         graphics.pose().pushMatrix();
         graphics.pose().translate(x, y);
         graphics.pose().scale(scale, scale);
         int innerWidth = (int) (width / scale);
         graphics.fill(0, 0, innerWidth, 12, ThemeManager.get().colors().panel());
         int cursor = 3;
-        graphics.text(font, statusSymbol, cursor, 2, statusColor);
+        VisualText.text(graphics, font, statusSymbol, cursor, 2, statusColor);
         cursor += font.width(statusSymbol) + 4;
         if (!text.isEmpty()) {
-            graphics.text(font, text, cursor, 2, ThemeManager.get().colors().unread());
+            VisualText.text(graphics, font, text, cursor, 2, ThemeManager.get().colors().unread());
             cursor += font.width(text) + 4;
         }
         if (muted) {
-            graphics.text(font, "⊘", cursor, 2, 0xFFFF5555);
+            VisualText.text(graphics, font, "⊘", cursor, 2, 0xFFFF5555);
         }
         graphics.pose().popMatrix();
     }

@@ -120,6 +120,7 @@ public final class ClientConfig {
         /** Lee los toasts con el Narrador de Minecraft si está activo. */
         public boolean narrateToasts = true;
         public boolean highContrast = false;
+        public boolean reducedMotion = false;
     }
 
     public static final class Panel {

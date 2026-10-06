@@ -32,6 +32,10 @@ public final class PlaceholderIntegration {
             Group group = social.groups().mainGroup(player.getUUID());
             return group == null ? Component.empty() : Component.literal("[" + group.tag + "]").withColor(group.color);
         });
+        register("team", (social, player) -> {
+            Group team = social.teams().of(player.getUUID());
+            return team == null ? Component.empty() : Component.literal(team.name).withColor(team.color);
+        });
         register("unread", (social, player) -> Component.literal(String.valueOf(social.record(player).totalUnread())));
         register("status", (social, player) -> {
             PresenceStatus status = social.presence().effective(player.getUUID());

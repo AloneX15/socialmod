@@ -55,8 +55,9 @@ tenga (vanilla o Bedrock con Geyser) puede hacer todo con comandos.
 - **Roles**: Líder, Oficial, Miembro y Recluta, con permisos que el servidor puede ajustar a su gusto.
 - **Canales** (`#general`, `#comercio`, `#oficiales`...) con **rol mínimo**: un canal solo para oficiales es invisible para el resto.
 - **Eventos programados**: "raid a la fortaleza en 30 minutos" avisa a los miembros conectados 5 minutos antes y al empezar.
-- Tu **etiqueta de grupo** aparece **debajo de tu nombre**, con su **emblema** (⚔, ♛, ★...) y tu rol, y la eliges con un
-  **selector visual de color** con vista previa (respeta la invisibilidad: nunca delata a nadie).
+- Tu **TEAM** aparece debajo de tu nombre, con su nombre completo, color y emblema. Lo eliges una vez;
+  para cambiarlo debes contactar con un administrador. El TEAM tiene su propio chat y funciona aunque pertenezcas
+  a varios grupos (respeta la invisibilidad).
 - **Chat de voz del grupo** con Simple Voice Chat y **sincronización con Open Parties and Claims** (opcional).
 - **Silencia un canal** solo para ti.
 - **Menciona a todo el grupo** con `@TAG` (con el permiso adecuado).
@@ -143,6 +144,12 @@ extremo). Puedes **exportar o borrar tus datos** cuando quieras, si el servidor 
 👉 [Privacidad y seguridad](docs/wiki/12-privacidad-y-seguridad.md)
 
 ---
+
+## TEAM y aspecto de una serie (0.3.0)
+
+El nametag muestra tu TEAM, que eliges una vez y cuyo chat se crea automaticamente. El staff controla los cambios,
+el maximo de teams y su archivo/restauracion. El editor visual ofrece ventana compacta, panel lateral, pantalla completa
+y presets compartibles con recursos. [Guia de TEAM y editor visual](docs/teams-y-editor-visual.md).
 
 ## Primeros pasos en 1 minuto
 

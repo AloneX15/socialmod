@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.TagRenderer;
 import com.takumistudios.socialmod.common.model.GroupIcon;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -85,11 +87,11 @@ public class TagStyleScreen extends SocialChildScreen {
         });
         addRenderableWidget(hex);
         int buttonsY = iconsY() + 2 * ICON_CELL + 32;
-        addRenderableWidget(Button.builder(Component.translatable("socialmod.group_settings.save"), b -> {
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.save"), b -> {
             result.apply(rgb(), icon);
             onClose();
         }).bounds(left, buttonsY, WIDTH / 2 - 2, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("gui.cancel"), b -> onClose())
+        addRenderableWidget(Ui.button(Component.translatable("gui.cancel"), b -> onClose())
                 .bounds(left + WIDTH / 2 + 2, buttonsY, WIDTH / 2 - 2, 20).build());
     }
 
@@ -275,12 +277,12 @@ public class TagStyleScreen extends SocialChildScreen {
             boolean current = (rgb() & 0xFFFFFF) == PRESETS[i];
             graphics.outline(sx - 1, sy - 1, SWATCH + 2, SWATCH + 2, current ? 0xFFFFFFFF : Ui.theme().colors().border());
         }
-        graphics.text(font, Ui.upper(Component.translatable("socialmod.tag_style.color")), swatchX, top + 4 * SWATCH + 11, Ui.theme().colors().muted());
+        VisualText.text(graphics, font, Ui.upper(Component.translatable("socialmod.tag_style.color")), swatchX, top + 4 * SWATCH + 11, Ui.theme().colors().muted());
         graphics.fill(swatchX + 68, top + 4 * SWATCH + 22, swatchX + 86, top + 4 * SWATCH + 40, 0xFF000000 | rgb());
 
         // Emblemas
         int iconsY = iconsY();
-        graphics.text(font, Ui.upper(Component.translatable("socialmod.tag_style.icon")), left, iconsY - 11, Ui.theme().colors().muted());
+        VisualText.text(graphics, font, Ui.upper(Component.translatable("socialmod.tag_style.icon")), left, iconsY - 11, Ui.theme().colors().muted());
         GroupIcon[] icons = GroupIcon.values();
         for (int i = 0; i < icons.length; i++) {
             int ix = left + (i % ICONS_PER_ROW) * (ICON_CELL + 6);
@@ -293,12 +295,12 @@ public class TagStyleScreen extends SocialChildScreen {
                 graphics.outline(ix, iy, ICON_CELL, ICON_CELL - 2, Ui.theme().colors().border());
             }
             String glyph = icons[i] == GroupIcon.NONE ? "∅" : icons[i].glyph();
-            graphics.centeredText(font, glyph, ix + ICON_CELL / 2, iy + 4, selected ? 0xFF000000 | Ui.readable(rgb()) : Ui.theme().colors().text());
+            VisualText.centeredText(graphics, font, glyph, ix + ICON_CELL / 2, iy + 4, selected ? 0xFF000000 | Ui.readable(rgb()) : Ui.theme().colors().text());
         }
 
         // Vista previa del nametag: nombre arriba y la etiqueta debajo, con el fondo translúcido de vanilla
         int previewY = iconsY + 2 * ICON_CELL + 6;
-        graphics.text(font, Ui.upper(Component.translatable("socialmod.tag_style.preview")), left, previewY, Ui.theme().colors().muted());
+        VisualText.text(graphics, font, Ui.upper(Component.translatable("socialmod.tag_style.preview")), left, previewY, Ui.theme().colors().muted());
         String name = minecraft != null && minecraft.player != null ? minecraft.player.getGameProfile().name() : "Steve";
         MutableComponent tagLine = TagRenderer.line(tag, rgb(), icon, role);
         int centerX = left + WIDTH / 2 + 30;
@@ -309,6 +311,6 @@ public class TagStyleScreen extends SocialChildScreen {
     private void nameplate(GuiGraphicsExtractor graphics, Component text, int centerX, int y) {
         int w = font.width(text);
         graphics.fill(centerX - w / 2 - 1, y - 1, centerX + w / 2 + 1, y + 9, 0x40000000);
-        graphics.centeredText(font, text, centerX, y, 0xFFFFFFFF);
+        VisualText.centeredText(graphics, font, text, centerX, y, 0xFFFFFFFF);
     }
 }

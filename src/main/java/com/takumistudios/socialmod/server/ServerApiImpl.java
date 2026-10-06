@@ -46,6 +46,12 @@ public final class ServerApiImpl implements SocialModServerAPI {
     }
 
     @Override
+    public Optional<GroupInfo> getTeam(UUID player) {
+        SocialServer social = SocialServer.get();
+        return social == null ? Optional.empty() : Optional.ofNullable(social.teams().of(player)).map(ServerApiImpl::info);
+    }
+
+    @Override
     public Collection<GroupInfo> getGroups(UUID player) {
         SocialServer social = SocialServer.get();
         if (social == null) {

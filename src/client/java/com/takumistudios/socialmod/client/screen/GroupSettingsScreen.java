@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.ClientNet;
 import com.takumistudios.socialmod.client.ClientState;
 import com.takumistudios.socialmod.common.model.Role;
@@ -57,7 +59,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
         fields.clear();
         SnapshotDto.GroupView group = ClientState.get().group(groupId);
         if (group == null) {
-            addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> onClose())
+            addRenderableWidget(Ui.button(Component.translatable("gui.back"), b -> onClose())
                     .bounds(this.width / 2 - 50, this.height - 28, 100, 20).build());
             return;
         }
@@ -83,7 +85,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
         if (!group.party) {
             int half = (boxW - 4) / 2;
             // Color e icono con selector visual y vista previa (SOCIALMOD_ERRORES 3)
-            Button style = Button.builder(Component.translatable("socialmod.group_settings.style"), b -> {
+            Button style = Ui.button(Component.translatable("socialmod.group_settings.style"), b -> {
                 saveDrafts();
                 com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new TagStyleScreen(this, group.tag, group.color, group.icon, group.myRole, (rgb, icon) -> {
                     ClientNet.action(SocialAction.GROUP_SET_COLOR, groupId, String.format("#%06X", rgb & 0xFFFFFF));
@@ -98,7 +100,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
 
             // Canales
             field("channel", left, y, boxW - 80, 16, "", channels);
-            Button role = Button.builder(Component.translatable("socialmod.role." + channelRole.id()), b -> {
+            Button role = Ui.button(Component.translatable("socialmod.role." + channelRole.id()), b -> {
                 channelRole = Role.byOrdinal((channelRole.ordinal() + Role.values().length - 1) % Role.values().length);
                 saveDrafts();
                 rebuildWidgets();
@@ -124,14 +126,14 @@ public class GroupSettingsScreen extends SocialChildScreen {
 
         int buttonW = (WIDTH - 8) / 3;
         if (!group.party) {
-            addRenderableWidget(Button.builder(Component.translatable("socialmod.group_settings.set_main"),
+            addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.set_main"),
                     b -> ClientNet.action(SocialAction.GROUP_SET_MAIN, groupId)).bounds(left, y, buttonW, 20).build());
         }
-        addRenderableWidget(Button.builder(Component.translatable("socialmod.group_settings.leave"), b -> {
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.leave"), b -> {
             ClientNet.action(SocialAction.GROUP_LEAVE, groupId);
             onClose();
         }).bounds(left + buttonW + 4, y, buttonW, 20).build());
-        Button disband = Button.builder(Component.translatable(confirmDisband ? "socialmod.group_settings.disband_confirm" : "socialmod.group_settings.disband")
+        Button disband = Ui.button(Component.translatable(confirmDisband ? "socialmod.group_settings.disband_confirm" : "socialmod.group_settings.disband")
                 .withStyle(ChatFormatting.RED), b -> {
             if (confirmDisband) {
                 ClientNet.action(SocialAction.GROUP_DISBAND, groupId);
@@ -144,7 +146,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
         }).bounds(left + 2 * (buttonW + 4), y, buttonW, 20).build();
         disband.active = leader;
         addRenderableWidget(disband);
-        addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> onClose())
+        addRenderableWidget(Ui.button(Component.translatable("gui.back"), b -> onClose())
                 .bounds(this.width / 2 - 50, this.height - 28, 100, 20).build());
     }
 
@@ -158,7 +160,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
     }
 
     private Button saveButton(int x, int y, boolean active, Runnable action, String key) {
-        Button button = Button.builder(Component.translatable(key), b -> {
+        Button button = Ui.button(Component.translatable(key), b -> {
             drafts.clear();
             action.run();
         }).bounds(x, y, 50, 18).build();
@@ -175,14 +177,14 @@ public class GroupSettingsScreen extends SocialChildScreen {
     protected void drawContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         SnapshotDto.GroupView group = ClientState.get().group(groupId);
         if (group == null) {
-            graphics.centeredText(font, Component.translatable("socialmod.group_settings.gone"), this.width / 2, this.height / 2, Ui.theme().colors().muted());
+            VisualText.centeredText(graphics, font, Component.translatable("socialmod.group_settings.gone"), this.width / 2, this.height / 2, Ui.theme().colors().muted());
             return;
         }
         int left = panelLeft(WIDTH);
         String glyph = com.takumistudios.socialmod.common.model.GroupIcon.glyphOf(group.icon);
         String header = group.party ? Component.translatable("socialmod.panel.party").getString()
                 : (glyph.isEmpty() ? "" : glyph + " ") + "[" + group.tag + "] " + group.name;
-        graphics.centeredText(font, Component.literal(header), this.width / 2, Ui.TITLE_Y, Ui.readable(group.color));
+        VisualText.centeredText(graphics, font, Component.literal(header), this.width / 2, Ui.TITLE_Y, Ui.readable(group.color));
         if (group.party) {
             return;
         }
@@ -196,10 +198,10 @@ public class GroupSettingsScreen extends SocialChildScreen {
                 break;
             }
             int rowY = y + shown * 11;
-            graphics.text(font, "#" + channel.name + "  (" + Component.translatable("socialmod.role." + channel.minRole).getString() + "+)",
+            VisualText.text(graphics, font, "#" + channel.name + "  (" + Component.translatable("socialmod.role." + channel.minRole).getString() + "+)",
                     left + 4, rowY, Ui.theme().colors().text());
             if (canDelete) {
-                graphics.text(font, "✖", left + WIDTH - 60, rowY, Ui.DANGER);
+                VisualText.text(graphics, font, "✖", left + WIDTH - 60, rowY, Ui.danger());
                 String name = channel.name;
                 channelRows.rows.add(Ui.Row.of(left + WIDTH - 62, shown * 11, 10, 11,
                         () -> ClientNet.action(SocialAction.GROUP_CHANNEL_DELETE, groupId, name)));

@@ -1,5 +1,9 @@
 package com.takumistudios.socialmod.client.hud;
 
+import com.takumistudios.socialmod.client.theme.VisualManager;
+
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.ClientConfig;
 import com.takumistudios.socialmod.client.ClientState;
 import com.takumistudios.socialmod.client.PartyClient;
@@ -39,17 +43,18 @@ public final class PartyHud {
         Minecraft minecraft = Minecraft.getInstance();
         Font font = minecraft.font;
         int rows = members.size() + pings.size();
-        int x = 4;
-        int y = graphics.guiHeight() / 2 - rows * 6;
+        var visual = VisualManager.get();
         int width = 4 + 70 + BAR;
+        int x = Math.round(Math.max(0, graphics.guiWidth() - width) * visual.partyX);
+        int y = Math.round(Math.max(0, graphics.guiHeight() - rows * 12) * visual.partyY);
         graphics.fill(x - 2, y - 2, x + width, y + rows * 12, ThemeManager.get().colors().panel());
         for (Payloads.PartyMember member : members) {
-            graphics.text(font, Ui.trim(font, member.name(), 66), x, y + 2, ThemeManager.get().colors().text());
+            VisualText.text(graphics, font, Ui.trim(font, member.name(), 66), x, y + 2, ThemeManager.get().colors().text());
             int barX = x + 70;
-            graphics.fill(barX, y + 4, barX + BAR, y + 7, 0xFF3A0000);
+            graphics.fill(barX, y + 4, barX + BAR, y + 7, visual.healthBackground);
             if (member.health() >= 0 && member.maxHealth() > 0) {
                 float ratio = Math.max(0f, Math.min(1f, member.health() / member.maxHealth()));
-                int color = ratio > 0.5f ? 0xFFE03030 : ratio > 0.25f ? Ui.WARNING : 0xFFFF0000;
+                int color = ratio > 0.5f ? visual.healthHigh : ratio > 0.25f ? Ui.warning() : visual.healthLow;
                 graphics.fill(barX, y + 4, barX + Math.round(BAR * ratio), y + 7, color);
             } else {
                 graphics.fill(barX, y + 4, barX + BAR, y + 7, 0xFF404040);
@@ -74,7 +79,7 @@ public final class PartyHud {
             }
             Component line = Component.literal("◆ ").withColor(Ui.readable(ping.color()) & 0xFFFFFF)
                     .append(Component.literal(Ui.trim(font, ping.name(), 50) + "  " + where));
-            graphics.text(font, line, x, y + 2, ThemeManager.get().colors().text());
+            VisualText.text(graphics, font, line, x, y + 2, ThemeManager.get().colors().text());
             y += 12;
         }
     }

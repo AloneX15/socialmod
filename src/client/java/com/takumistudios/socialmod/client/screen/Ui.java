@@ -1,5 +1,9 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualManager;
+
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.theme.Theme;
 import com.takumistudios.socialmod.client.theme.ThemeManager;
 import com.takumistudios.socialmod.common.model.PresenceStatus;
@@ -22,6 +26,8 @@ public final class Ui {
     private Ui() {
     }
 
+    public static StyledButton.Builder button(Component text, net.minecraft.client.gui.components.Button.OnPress press) { return new StyledButton.Builder(text, press); }
+
     public static Theme theme() {
         return ThemeManager.get();
     }
@@ -37,6 +43,13 @@ public final class Ui {
     }
 
     public static void panel(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2) {
+        var drawn = VisualManager.drawn("panel", x1, y1, x2 - x1, y2 - y1, false);
+        var rect = VisualManager.drawnRect(drawn);
+        if (rect != null) {
+            x1 = drawn.x(); y1 = drawn.y(); x2 = x1 + drawn.w(); y2 = y1 + drawn.h();
+            if (!rect.texture.isEmpty()) { graphics.blitSprite(RenderPipelines.GUI_TEXTURED, net.minecraft.resources.Identifier.parse(rect.texture), x1, y1, x2 - x1, y2 - y1); return; }
+            graphics.fill(x1, y1, x2, y2, rect.textColor); return;
+        }
         Theme theme = theme();
         if (theme.textures().panel().isPresent()) {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, theme.textures().panel().get(), x1, y1, x2 - x1, y2 - y1);
@@ -62,15 +75,15 @@ public final class Ui {
     // Pistas de los campos: gris oscuro. Colores elegidos por los jugadores (grupos): siempre por readable().
 
     public static final int TITLE_Y = 10;
-    public static final int TITLE = 0xFFFFFFFF;
-    public static final int SUCCESS = 0xFF55FF55;
-    public static final int DANGER = 0xFFFF5555;
-    public static final int WARNING = 0xFFFFAA00;
-    public static final int EVENT = 0xFFFF55FF;
+    public static int title() { return VisualManager.get().titleColor; }
+    public static int success() { return VisualManager.get().successColor; }
+    public static int danger() { return VisualManager.get().dangerColor; }
+    public static int warning() { return VisualManager.get().warningColor; }
+    public static int event() { return VisualManager.get().eventColor; }
     public static final int ROW = 12;
 
     public static void title(GuiGraphicsExtractor graphics, Font font, Component text, int centerX, int y) {
-        graphics.centeredText(font, text, centerX, y, TITLE);
+        VisualText.centeredText(graphics, font, text.copy().withStyle(style -> style.withFont(new net.minecraft.network.chat.FontDescription.Resource(net.minecraft.resources.Identifier.parse(VisualManager.get().font)))), centerX, y, VisualManager.get().titleColor);
     }
 
     public static Component hint(Component text) {
@@ -103,7 +116,7 @@ public final class Ui {
     public static void sectionHeader(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int width) {
         Theme theme = theme();
         String label = upper(text) + " ";
-        graphics.text(font, trim(font, label, width), x, y, theme.colors().muted());
+        VisualText.text(graphics, font, trim(font, label, width), x, y, theme.colors().muted());
         int lineStart = x + font.width(label) + 2;
         if (lineStart < x + width) {
             graphics.horizontalLine(lineStart, x + width, y + 4, theme.colors().border());
@@ -112,7 +125,7 @@ public final class Ui {
 
     /** Símbolo de estado: además del color tiene forma propia (accesibilidad, PLAN 7.3). */
     public static void status(GuiGraphicsExtractor graphics, Font font, PresenceStatus status, int x, int y) {
-        graphics.text(font, status.symbol(), x, y, status.color());
+        VisualText.text(graphics, font, status.symbol(), x, y, status.color());
     }
 
     public static String time(long epochMillis) {

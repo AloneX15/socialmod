@@ -1,5 +1,9 @@
 package com.takumistudios.socialmod.client.hud;
 
+import com.takumistudios.socialmod.client.theme.VisualManager;
+
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.SocialMod;
 import com.takumistudios.socialmod.api.client.ToastData;
 import com.takumistudios.socialmod.client.ClientConfig;
@@ -222,7 +226,7 @@ public final class ToastHud {
             long age = now - active.receivedAt;
             float alpha = 1.0F;
             float slide = 0.0F;
-            if (config.toasts.animations) {
+            if (config.toasts.animations && !ClientConfig.get().accessibility.reducedMotion) {
                 long sinceShown = now - active.shownAt;
                 slide = sinceShown < SLIDE_MILLIS ? 1.0F - sinceShown / (float) SLIDE_MILLIS : 0.0F;
                 if (age > duration) {
@@ -232,10 +236,9 @@ public final class ToastHud {
                 continue;
             }
             int offsetX = (int) (slide * (width + config.toasts.marginX));
-            int x = corner.right() ? graphics.guiWidth() - width - config.toasts.marginX + offsetX : config.toasts.marginX - offsetX;
-            int y = corner.bottom()
-                    ? graphics.guiHeight() - config.toasts.marginY - (i + 1) * (HEIGHT + SPACING) - 22
-                    : config.toasts.marginY + i * (HEIGHT + SPACING);
+            var visual = VisualManager.get();
+            int x = Math.round(Math.max(0, graphics.guiWidth() - width) * visual.toastX) + offsetX;
+            int y = Math.round(Math.max(0, graphics.guiHeight() - shown * (HEIGHT + SPACING)) * visual.toastY) + i * (HEIGHT + SPACING);
             drawToast(graphics, font, theme, active, x, y, width, alpha, now);
         }
     }
@@ -255,14 +258,14 @@ public final class ToastHud {
         String title = data.title() + (active.count > 1 ? " (" + active.count + ")" : "");
         String ago = agoText(now - active.receivedAt);
         int agoWidth = font.width(ago);
-        graphics.text(font, trim(font, title, width - 34 - agoWidth), textX, y + 5, fade(theme.colors().accent(), alpha));
-        graphics.text(font, ago, x + width - agoWidth - 4, y + 5, fade(theme.colors().muted(), alpha));
+        VisualText.text(graphics, font, trim(font, title, width - 34 - agoWidth), textX, y + 5, fade(theme.colors().accent(), alpha));
+        VisualText.text(graphics, font, ago, x + width - agoWidth - 4, y + 5, fade(theme.colors().muted(), alpha));
         if (!data.body().isEmpty()) {
-            graphics.text(font, trim(font, data.body(), width - 30), textX, y + 15, fade(theme.colors().text(), alpha));
+            VisualText.text(graphics, font, trim(font, data.body(), width - 30), textX, y + 15, fade(theme.colors().text(), alpha));
         }
         if (!data.conversation().isEmpty()) {
             Component hint = Component.translatable("socialmod.toast.hint", SocialKeys.QUICK_REPLY.getTranslatedKeyMessage());
-            graphics.text(font, trim(font, hint.getString(), width - 30), textX, y + 25, fade(theme.colors().muted(), alpha));
+            VisualText.text(graphics, font, trim(font, hint.getString(), width - 30), textX, y + 25, fade(theme.colors().muted(), alpha));
         }
     }
 

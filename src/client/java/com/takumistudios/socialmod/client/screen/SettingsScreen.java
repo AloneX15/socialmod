@@ -70,7 +70,7 @@ public class SettingsScreen extends SocialChildScreen {
             SnapshotDto.Self self = ClientState.get().snapshot().self;
             int y = top;
             PresenceStatus status = PresenceStatus.byId(self.status);
-            addRenderableWidget(Button.builder(label("socialmod.settings.status", Component.literal(status.symbol() + " ")
+            addRenderableWidget(Ui.button(label("socialmod.settings.status", Component.literal(status.symbol() + " ")
                             .append(Component.translatable("socialmod.status." + status.id()))), b -> {
                 // Se lee el valor vivo: el botón se reconstruye cuando llega el snapshot y el lambda capturado
                 // podría ser de la versión anterior si se pulsa dos veces seguidas
@@ -85,20 +85,20 @@ public class SettingsScreen extends SocialChildScreen {
             customStatus.setHint(Component.translatable("socialmod.settings.custom_status").withStyle(ChatFormatting.DARK_GRAY));
             customStatus.setValue(statusDraft != null ? statusDraft : self.customStatus);
             addRenderableWidget(customStatus);
-            addRenderableWidget(Button.builder(Component.translatable("socialmod.group_settings.save"), b -> {
+            addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.save"), b -> {
                 statusDraft = null;
                 ClientNet.action(SocialAction.SET_CUSTOM_STATUS, customStatus.getValue());
             }).bounds(leftX + COLUMN - 50, y, 50, 20).build());
             y += 22;
             Privacy messages = Privacy.byId(self.whoCanMessage);
-            addRenderableWidget(Button.builder(label("socialmod.settings.who_messages", Component.translatable("socialmod.privacy." + messages.id())), b -> {
+            addRenderableWidget(Ui.button(label("socialmod.settings.who_messages", Component.translatable("socialmod.privacy." + messages.id())), b -> {
                 String next = Privacy.byId(ClientState.get().snapshot().self.whoCanMessage).next().id();
                 ClientState.get().updateSelf(s -> s.whoCanMessage = next);
                 ClientNet.action(SocialAction.SET_PRIVACY_MESSAGES, next);
             }).bounds(leftX, y, COLUMN, 20).build());
             y += 22;
             Privacy statusPrivacy = Privacy.byId(self.whoSeesStatus);
-            addRenderableWidget(Button.builder(label("socialmod.settings.who_status", Component.translatable("socialmod.privacy." + statusPrivacy.id())), b -> {
+            addRenderableWidget(Ui.button(label("socialmod.settings.who_status", Component.translatable("socialmod.privacy." + statusPrivacy.id())), b -> {
                 String next = Privacy.byId(ClientState.get().snapshot().self.whoSeesStatus).next().id();
                 ClientState.get().updateSelf(s -> s.whoSeesStatus = next);
                 ClientNet.action(SocialAction.SET_PRIVACY_STATUS, next);
@@ -113,7 +113,7 @@ public class SettingsScreen extends SocialChildScreen {
             addRenderableWidget(serverToggle(leftX, y, "socialmod.settings.typing", self.typingIndicator, SocialAction.SET_TYPING_INDICATOR,
                     (s, v) -> s.typingIndicator = v));
             y += 22;
-            addRenderableWidget(Button.builder(Component.translatable("socialmod.settings.export"),
+            addRenderableWidget(Ui.button(Component.translatable("socialmod.settings.export"),
                     b -> ClientNet.action(SocialAction.DATA_EXPORT, "")).bounds(leftX, y, COLUMN, 20).build());
         } else {
             customStatus = null;
@@ -127,7 +127,7 @@ public class SettingsScreen extends SocialChildScreen {
         String[] tabs = {"socialmod.settings.page.notifications", "socialmod.settings.page.interface", "socialmod.settings.page.maps"};
         for (int i = 0; i < tabs.length; i++) {
             int index = i;
-            Button tab = Button.builder(Component.translatable(tabs[i]), b -> {
+            Button tab = Ui.button(Component.translatable(tabs[i]), b -> {
                 page = index;
                 saveDrafts();
                 rebuildWidgets();
@@ -166,11 +166,7 @@ public class SettingsScreen extends SocialChildScreen {
                         () -> Component.literal(config.hud.scale + "%"), () -> config.hud.scale = next(SCALES, config.hud.scale)));
                 addRenderableWidget(toggle(clientX + half + 4, y, half, "socialmod.settings.party_health", () -> config.hud.partyHealth, v -> config.hud.partyHealth = v));
                 y += 22;
-                addRenderableWidget(toggle(clientX, y, half, "socialmod.settings.nametags", () -> config.nametags.showGroupTags, v -> config.nametags.showGroupTags = v));
-                addRenderableWidget(toggle(clientX + half + 4, y, half, "socialmod.settings.tag_below", () -> config.nametags.belowName, v -> config.nametags.belowName = v));
-                y += 22;
-                addRenderableWidget(toggle(clientX, y, half, "socialmod.settings.tag_icon", () -> config.nametags.showIcon, v -> config.nametags.showIcon = v));
-                addRenderableWidget(toggle(clientX + half + 4, y, half, "socialmod.settings.tag_role", () -> config.nametags.showRole, v -> config.nametags.showRole = v));
+                addRenderableWidget(toggle(clientX, y, half, "socialmod.settings.reduced_motion", () -> config.accessibility.reducedMotion, v -> config.accessibility.reducedMotion = v));
                 y += 22;
                 addRenderableWidget(cycle(clientX, y, half, "socialmod.settings.text_scale",
                         () -> Component.literal(config.panel.textScale + "%"), () -> config.panel.textScale = next(TEXT_SCALES, config.panel.textScale)));
@@ -203,7 +199,7 @@ public class SettingsScreen extends SocialChildScreen {
             }
         }
 
-        addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose())
+        addRenderableWidget(Ui.button(CommonComponents.GUI_DONE, b -> onClose())
                 .bounds(this.width / 2 - 50, this.height - 28, 100, 20).build());
     }
 
@@ -222,14 +218,14 @@ public class SettingsScreen extends SocialChildScreen {
 
     /** Opción guardada en el servidor: se aplica en local al instante y el snapshot posterior la confirma. */
     private Button serverToggle(int x, int y, String key, boolean value, SocialAction action, BiConsumer<SnapshotDto.Self, Boolean> local) {
-        return Button.builder(label(key, value ? CommonComponents.OPTION_ON : CommonComponents.OPTION_OFF), b -> {
+        return Ui.button(label(key, value ? CommonComponents.OPTION_ON : CommonComponents.OPTION_OFF), b -> {
             ClientState.get().updateSelf(s -> local.accept(s, !value));
             ClientNet.action(action, String.valueOf(!value));
         }).bounds(x, y, COLUMN, 20).build();
     }
 
     private Button toggle(int x, int y, int w, String key, BooleanSupplier getter, Consumer<Boolean> setter) {
-        return Button.builder(label(key, getter.getAsBoolean() ? CommonComponents.OPTION_ON : CommonComponents.OPTION_OFF), b -> {
+        return Ui.button(label(key, getter.getAsBoolean() ? CommonComponents.OPTION_ON : CommonComponents.OPTION_OFF), b -> {
             setter.accept(!getter.getAsBoolean());
             ClientConfig.save();
             saveDrafts();
@@ -238,7 +234,7 @@ public class SettingsScreen extends SocialChildScreen {
     }
 
     private Button cycle(int x, int y, int w, String key, Supplier<Component> value, Runnable advance) {
-        return Button.builder(label(key, value.get()), b -> {
+        return Ui.button(label(key, value.get()), b -> {
             advance.run();
             ClientConfig.save();
             saveDrafts();

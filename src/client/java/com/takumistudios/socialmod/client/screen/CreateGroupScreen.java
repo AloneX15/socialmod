@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.ClientNet;
 import com.takumistudios.socialmod.client.TagRenderer;
 import com.takumistudios.socialmod.client.compat.ClientCompat;
@@ -51,7 +53,7 @@ public class CreateGroupScreen extends SocialChildScreen {
         tag.setHint(Ui.hint(Component.translatable("socialmod.create.tag")));
         tag.setValue(tagDraft);
         addRenderableWidget(tag);
-        addRenderableWidget(Button.builder(Component.translatable("socialmod.group_settings.style"), b -> {
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.style"), b -> {
             saveDrafts();
             ClientCompat.setScreen(new TagStyleScreen(this, tag.getValue().trim().toUpperCase(Locale.ROOT), color, icon, "leader",
                     (rgb, chosen) -> {
@@ -59,16 +61,16 @@ public class CreateGroupScreen extends SocialChildScreen {
                         icon = chosen;
                     }));
         }).bounds(left, y + 52, WIDTH, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("socialmod.create.create"), b -> {
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.create.create"), b -> {
             String style = tag.getValue().trim() + ";" + icon + ";" + String.format(Locale.ROOT, "#%06X", color & 0xFFFFFF);
             ClientNet.action(SocialAction.GROUP_CREATE, name.getValue().trim(), style);
             onClose();
         }).bounds(left, y + 90, WIDTH / 2 - 2, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("socialmod.create.party"), b -> {
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.create.party"), b -> {
             ClientNet.action(SocialAction.PARTY_CREATE, "");
             onClose();
         }).bounds(left + WIDTH / 2 + 2, y + 90, WIDTH / 2 - 2, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> onClose())
+        addRenderableWidget(Ui.button(Component.translatable("gui.back"), b -> onClose())
                 .bounds(this.width / 2 - 50, this.height - 28, 100, 20).build());
         setInitialFocus(name);
     }
@@ -83,9 +85,9 @@ public class CreateGroupScreen extends SocialChildScreen {
         int left = panelLeft(WIDTH);
         int y = this.height / 2 - 40;
         Ui.title(graphics, font, this.title, this.width / 2, y - 22);
-        graphics.text(font, Component.translatable("socialmod.create.tag_help"), left + 86, y + 32, Ui.theme().colors().muted());
+        VisualText.text(graphics, font, Component.translatable("socialmod.create.tag_help"), left + 86, y + 32, Ui.theme().colors().muted());
         // Vista previa en vivo de la etiqueta tal como se verá bajo el nombre
         String currentTag = tag == null || tag.getValue().isBlank() ? "TAG" : tag.getValue().trim().toUpperCase(Locale.ROOT);
-        graphics.centeredText(font, TagRenderer.panelLine(currentTag, color, icon, "leader"), this.width / 2, y + 77, 0xFFFFFFFF);
+        VisualText.centeredText(graphics, font, TagRenderer.panelLine(currentTag, color, icon, "leader"), this.width / 2, y + 77, 0xFFFFFFFF);
     }
 }

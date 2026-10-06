@@ -46,6 +46,7 @@ public final class ServerConfig {
     public Map<String, List<String>> roles = defaultRoles();
     public List<String> defaultChannels = new ArrayList<>(List.of("general"));
     public Nametags nametags = new Nametags();
+    public int maxTeams = 8;
     public Integrations integrations = new Integrations();
 
     public static final class Modules {
@@ -215,6 +216,19 @@ public final class ServerConfig {
         instance = config.sanitize();
     }
 
+    public static void persist(java.util.concurrent.Executor executor) {
+        String json = GSON.toJson(instance);
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            Path path = FabricLoader.getInstance().getConfigDir().resolve("socialmod/server.json");
+            try {
+                Files.createDirectories(path.getParent());
+                Path tmp = Files.createTempFile(path.getParent(), "server-", ".tmp");
+                Files.writeString(tmp, json, StandardCharsets.UTF_8);
+                Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException e) { SocialMod.LOGGER.error("No se pudo guardar la configuracion del servidor", e); }
+        }, executor);
+    }
+
     private static void save(ServerConfig config, Path path) {
         try {
             Files.createDirectories(path.getParent());
@@ -236,6 +250,7 @@ public final class ServerConfig {
         if (filter == null) filter = new Filter();
         if (moderation == null) moderation = new Moderation();
         if (formats == null) formats = new Formats();
+        maxTeams = Math.max(1, Math.min(1000, maxTeams));
         if (nametags == null) nametags = new Nametags();
         if (integrations == null) integrations = new Integrations();
         if (integrations.claimsSync == null || !List.of("off", "to_claims", "both").contains(integrations.claimsSync)) integrations.claimsSync = "off";

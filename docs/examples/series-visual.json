@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "mode": "compact",
+  "widthPercent": 78,
+  "heightPercent": 78,
+  "font": "minecraft:default",
+  "buttonColor": -534765536,
+  "buttonHoverColor": -12566464,
+  "tagBelow": true,
+  "tagIcon": true,
+  "tagBrackets": true,
+  "theme": {
+    "colors": {
+      "text": "#FFE0E0E0",
+      "muted": "#FF909090",
+      "accent": "#FF55FF55",
+      "unread": "#FFFFAA00",
+      "background": "#C0000000",
+      "panel": "#80101010",
+      "border": "#FF404040",
+      "highlight": "#40FFFFFF"
+    }
+  },
+  "components": {}
+}

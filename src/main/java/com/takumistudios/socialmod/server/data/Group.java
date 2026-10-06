@@ -27,6 +27,11 @@ public final class Group {
     public String pinned = "";
     public long created;
     public boolean party;
+    /** Managed TEAM identity and its linked chat share a persistent id. */
+    public boolean team;
+    public boolean archived;
+    public Set<UUID> archiveReaders = new LinkedHashSet<>();
+    public Map<UUID, Role> archiveRoles = new LinkedHashMap<>();
     public Map<UUID, Role> members = new LinkedHashMap<>();
     /** Nombres de los miembros (para mostrarlos sin estar conectados). */
     public Map<UUID, String> memberNames = new LinkedHashMap<>();
@@ -102,6 +107,8 @@ public final class Group {
     }
 
     public Group normalize() {
+        if (archiveRoles == null) archiveRoles = new LinkedHashMap<>();
+        if (archiveReaders == null) archiveReaders = new LinkedHashSet<>();
         if (name == null) name = "";
         if (tag == null) tag = "";
         if (icon == null) icon = "shield";

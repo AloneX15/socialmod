@@ -155,3 +155,10 @@ La contraseña se guarda en texto plano en `server.json`: protege el archivo.
 - `config/socialmod/client.json`: preferencias.
 - `config/socialmod/cache/<hash>/snapshot.json`: último estado social por servidor (amigos, grupos, lista de
   conversaciones con la vista previa de la última línea). Se borra al desactivar **Caché local**.
+
+
+## TEAM y preset visual (0.3.0)
+
+`server.json` admite `maxTeams` (8 por defecto, entre 1 y 1000). El aspecto obligatorio se guarda en
+`config/socialmod/visual.json`. Ver [TEAM y editor visual](teams-y-editor-visual.md) para permisos, modos,
+componentes, exportacion/importacion y resource packs obligatorios.

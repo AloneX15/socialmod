@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.1
+
+- Visual inspector categories, texture thumbnails, layout templates and grouped panel movement with grid snapping.
+- Previous preset recovery and bounded server revision backups; missing-texture and clipped-control checks.
+- Dedicated TEAM administration screen, current TEAM in profiles and explicit action confirmations.
+
+## 0.3.0 - TEAM y editor visual
+
+- TEAM independiente de los grupos, primera eleccion bloqueada y chat vinculado automatico.
+- Gestion administrativa, limite de teams activos y archivo/restauracion reversible con historial.
+- Nametags con el nombre completo del TEAM; los grupos existentes no se convierten automaticamente.
+- Ventana compacta, panel lateral y pantalla completa; editor de controles, textos, fondos, colores y recursos.
+- Presets visuales versionados, exportacion/importacion de packs y aspecto obligatorio del servidor.
+- Protocolo 3: actualizar cliente y servidor juntos. Guia en `docs/teams-y-editor-visual.md`.
+
+
 ## 0.2.0 — integraciones y correcciones
 
 Protocolo de red 2: cliente y servidor deben tener la 0.2.0 (con versiones distintas el cliente pasa a "solo chat").

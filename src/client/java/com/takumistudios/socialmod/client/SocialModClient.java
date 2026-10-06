@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client;
 
+import com.takumistudios.socialmod.client.theme.VisualManager;
+
 import com.takumistudios.socialmod.SocialMod;
 import com.takumistudios.socialmod.api.client.ToastData;
 import com.takumistudios.socialmod.client.compat.ClientCompat;
@@ -43,6 +45,7 @@ public final class SocialModClient implements ClientModInitializer {
     public void onInitializeClient() {
         ClientConfig.load();
         SocialKeys.register();
+        VisualManager.register();
 
         ClientPlayNetworking.registerGlobalReceiver(Payloads.HelloS2C.TYPE, (payload, context) -> guarded("hello", () -> {
             ClientState.get().onHello(payload);
@@ -54,6 +57,7 @@ public final class SocialModClient implements ClientModInitializer {
                 guarded("snapshot", () -> {
                     ClientState.get().onSnapshot(payload.json());
                     ClientCache.store(payload.json());
+                    VisualManager.accept(ClientState.get().snapshot().visual);
                 }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.PresenceS2C.TYPE, (payload, context) ->
                 guarded("presence", () -> ClientState.get().onPresence(payload.entries())));
@@ -74,6 +78,7 @@ public final class SocialModClient implements ClientModInitializer {
             ClientState.get().reset();
             PartyClient.reset();
             ToastHud.clear();
+            VisualManager.reset();
             SocialKeys.resetConflictCheck();
             // Handshake: solo si el servidor registró nuestro canal (tiene SocialMod)
             if (ClientPlayNetworking.canSend(Payloads.HelloC2S.TYPE)) {
@@ -86,6 +91,7 @@ public final class SocialModClient implements ClientModInitializer {
             ClientState.get().reset();
             PartyClient.reset();
             ToastHud.clear();
+            VisualManager.reset();
             ClientCache.flush();
         });
 

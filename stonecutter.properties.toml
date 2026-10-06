@@ -3,7 +3,7 @@
 mod.id = "socialmod"
 mod.name = "SocialMod"
 mod.group = "com.takumistudios.socialmod"
-mod.version = "0.2.0"
+mod.version = "0.3.1"
 
 deps.fabric_loader = "0.19.5"
 

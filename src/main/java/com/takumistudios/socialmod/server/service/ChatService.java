@@ -161,7 +161,7 @@ public final class ChatService {
             title = other.name;
         } else {
             Group group = social.groups().get(conversation.groupId());
-            if (group == null || !social.groups().canAccess(group, sender.getUUID(), conversation.channel())) {
+            if (group == null || group.archived || !social.groups().canAccess(group, sender.getUUID(), conversation.channel())) {
                 social.notifier().feedback(sender, false, "socialmod.group.not_member");
                 return false;
             }
@@ -225,7 +225,13 @@ public final class ChatService {
         ChatMessage message = new ChatMessage(0, sender.getUUID(), record.name, text, now);
         message.attachments = attachments;
         String finalTitle = title;
-        social.storage().withConversation(conversation.key(), loaded -> append(sender, conversation, loaded, message, finalTitle));
+        social.storage().withConversation(conversation.key(), loaded -> {
+            if (!conversation.isDirect()) {
+                Group group = social.groups().get(conversation.groupId());
+                if (group == null || group.archived || !social.groups().canAccess(group, sender.getUUID(), conversation.channel())) return;
+            }
+            append(sender, conversation, loaded, message, finalTitle);
+        });
         if (conversation.isDirect()) {
             UUID other = conversation.other(sender.getUUID());
             record.lastDirectPartner = other;
@@ -516,12 +522,19 @@ public final class ChatService {
 
     public void editOrDelete(ServerPlayer player, Payloads.MessageOp op, String target, long messageId, String rawText) {
         ConversationId conversation = resolveTarget(player.getUUID(), target);
+        if (conversation != null && !conversation.isDirect()) {
+            Group group = social.groups().get(conversation.groupId());
+            if (group == null || group.archived) return;
+        }
         if (conversation == null || !canRead(player.getUUID(), conversation)) {
             return;
         }
         boolean staff = PermissionBridge.isStaff(player, PermissionBridge.MOD_HISTORY);
         long window = ServerConfig.get().chat.editWindowSeconds * 1000L;
         social.storage().withConversation(conversation.key(), loaded -> {
+            if (!conversation.isDirect()) {
+                Group group = social.groups().get(conversation.groupId()); if (group == null || group.archived || !canRead(player.getUUID(), conversation)) return;
+            }
             ChatMessage message = loaded.find(messageId);
             if (message == null || message.deleted) {
                 return;

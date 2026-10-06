@@ -27,6 +27,18 @@ public final class ClientNet {
     }
 
     public static void action(SocialAction action, String a, String b) {
+        if (action == SocialAction.VISUAL_PUBLISH) {
+            if (b.length() > 65536) return;
+            java.util.List<String> chunks = new java.util.ArrayList<>();
+            for (int offset = 0; offset < b.length();) {
+                int end = Math.min(b.length(), offset + 4096);
+                if (end < b.length() && Character.isHighSurrogate(b.charAt(end - 1))) end--;
+                chunks.add(b.substring(offset, end)); offset = end;
+            }
+            String upload = java.util.UUID.randomUUID().toString();
+            for (int i = 0; i < chunks.size(); i++) send(new Payloads.ActionC2S(action, upload + "/" + i + "/" + chunks.size(), chunks.get(i)));
+            return;
+        }
         send(new Payloads.ActionC2S(action, a, b));
     }
 

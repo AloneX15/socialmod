@@ -22,6 +22,8 @@ import java.util.function.Predicate;
 public final class PermissionBridge {
     public static final String CHAT_PRIVATE = "chat.private";
     public static final String CHAT_LINKS = "chat.links";
+    public static final String TEAM_ADMIN = "admin.teams";
+    public static final String TEAM_CREATE = "team.create";
     public static final String GROUP_CREATE = "group.create";
     public static final String PARTY_CREATE = "party.create";
     public static final String MOD_MUTE = "mod.mute";

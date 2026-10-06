@@ -43,6 +43,8 @@ public final class PlayerRecord {
 
     // --- Grupos ---
     public String mainGroup = "";
+    public String teamId = "";
+    public boolean teamChosen;
     public Set<String> groupInvites = new LinkedHashSet<>();
 
     // --- Buzón ---
@@ -102,6 +104,7 @@ public final class PlayerRecord {
         if (incomingRequests == null) incomingRequests = new LinkedHashSet<>();
         if (outgoingRequests == null) outgoingRequests = new LinkedHashSet<>();
         if (mainGroup == null) mainGroup = "";
+        if (teamId == null) teamId = "";
         if (groupInvites == null) groupInvites = new LinkedHashSet<>();
         if (unread == null) unread = new HashMap<>();
         unread.values().removeIf(java.util.Objects::isNull);

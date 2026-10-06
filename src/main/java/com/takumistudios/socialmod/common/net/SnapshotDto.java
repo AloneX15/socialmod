@@ -10,6 +10,16 @@ import java.util.List;
  */
 public final class SnapshotDto {
     public Self self = new Self();
+    public List<TeamView> teams = new ArrayList<>();
+    public boolean teamAdmin;
+    public boolean visualAdmin;
+    public int maxTeams;
+    public com.takumistudios.socialmod.common.model.VisualDesign visual = new com.takumistudios.socialmod.common.model.VisualDesign();
+    public static final class TeamView {
+        public String id, name, icon;
+        public int color, members;
+        public boolean archived;
+    }
     public List<Friend> friends = new ArrayList<>();
     public List<NameRef> incoming = new ArrayList<>();
     public List<NameRef> outgoing = new ArrayList<>();
@@ -33,6 +43,8 @@ public final class SnapshotDto {
         public boolean readReceipts = true;
         public boolean typingIndicator = true;
         public String mainGroup = "";
+        public String teamId = "";
+        public boolean teamChosen;
         public long mutedUntil;
     }
 

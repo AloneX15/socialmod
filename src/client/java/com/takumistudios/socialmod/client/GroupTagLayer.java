@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client;
 
+import com.takumistudios.socialmod.client.theme.VisualManager;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.takumistudios.socialmod.common.net.Payloads;
 import net.fabricmc.fabric.api.client.rendering.v1.RenderStateDataKey;
@@ -38,7 +40,8 @@ public final class GroupTagLayer extends RenderLayer<AvatarRenderState, PlayerMo
     public void submit(PoseStack poseStack, SubmitNodeCollector collector, int light, AvatarRenderState state, float yRot, float xRot) {
         Component name = state.nameTag;
         ClientConfig.Nametags config = ClientConfig.get().nametags;
-        if (name == null || !config.showGroupTags || !ClientState.get().connected()) {
+        var visual = VisualManager.get();
+        if (name == null || !ClientState.get().connected()) {
             return;
         }
         Component tagged = state.getData(TAGGED);
@@ -59,7 +62,7 @@ public final class GroupTagLayer extends RenderLayer<AvatarRenderState, PlayerMo
         }
         MutableComponent line = TagRenderer.line(tag.tag(), tag.color(), tag.icon(), tag.role());
         MutableComponent result;
-        if (config.belowName) {
+        if (visual.tagBelow) {
             result = state.scoreText == null ? line : line.append(Component.literal("  ")).append(state.scoreText);
             state.scoreText = result;
         } else {

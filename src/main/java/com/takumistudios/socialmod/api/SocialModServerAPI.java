@@ -20,6 +20,8 @@ public interface SocialModServerAPI {
 
     Optional<GroupInfo> getMainGroup(UUID player);
 
+    default Optional<GroupInfo> getTeam(UUID player) { return Optional.empty(); }
+
     Collection<GroupInfo> getGroups(UUID player);
 
     boolean areFriends(UUID a, UUID b);

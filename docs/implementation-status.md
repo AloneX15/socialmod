@@ -1,5 +1,11 @@
 # Estado de la implementación (versión 0.2.0)
 
+## Actualizacion 0.3.0
+
+TEAM, chat vinculado, eleccion bloqueada, gestion administrativa y archivo/restauracion; interfaz compacta/lateral/completa
+con editor visual y presets obligatorios. Guia: [TEAM y editor](teams-y-editor-visual.md). Protocolo de red 3.
+
+
 Comparación con `SOCIALMOD_PLAN.md`. La 0.2.0 corrige los 4 errores de `SOCIALMOD_ERRORES.md`, completa todos los
 puntos pendientes de las fases 0–4 y las fases 5 y 6 en lo que depende de mods disponibles para 26.1.2, 26.2 y 26.3.
 Lo que no se puede hacer todavía (mod inexistente para 26.x, solo beta sin API, o proyecto aparte) está en la wiki:

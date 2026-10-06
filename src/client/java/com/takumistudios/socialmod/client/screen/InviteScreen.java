@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.ClientNet;
 import com.takumistudios.socialmod.client.ClientState;
 import com.takumistudios.socialmod.client.Heads;
@@ -52,9 +54,9 @@ public class InviteScreen extends SocialChildScreen {
         name.setValue(nameDraft);
         name.setResponder(value -> nameDraft = value);
         addRenderableWidget(name);
-        addRenderableWidget(Button.builder(Component.translatable("socialmod.invite.send"), b -> invite(name.getValue().trim()))
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.invite.send"), b -> invite(name.getValue().trim()))
                 .bounds(left + WIDTH - 60, 30, 60, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> onClose())
+        addRenderableWidget(Ui.button(Component.translatable("gui.back"), b -> onClose())
                 .bounds(this.width / 2 - 50, this.height - 28, 100, 20).build());
         setInitialFocus(name);
     }
@@ -106,18 +108,18 @@ public class InviteScreen extends SocialChildScreen {
                 graphics.fill(left, rowY - 1, left + WIDTH, rowY + 11, Ui.theme().colors().highlight());
             }
             Heads.draw(graphics, id, left + 3, rowY, 8);
-            graphics.text(font, playerName, left + 14, rowY, Ui.theme().colors().text());
-            graphics.text(font, "+", left + WIDTH - 10, rowY, Ui.theme().colors().accent());
+            VisualText.text(graphics, font, playerName, left + 14, rowY, Ui.theme().colors().text());
+            VisualText.text(graphics, font, "+", left + WIDTH - 10, rowY, Ui.theme().colors().accent());
             rows.rows.add(Ui.Row.of(left, y, WIDTH, 12, () -> invite(playerName)));
             y += 12;
         }
         graphics.disableScissor();
         rows.end(y);
         if (y == 0) {
-            graphics.centeredText(font, Component.translatable("socialmod.invite.nobody"), this.width / 2, top + 10, Ui.theme().colors().muted());
+            VisualText.centeredText(graphics, font, Component.translatable("socialmod.invite.nobody"), this.width / 2, top + 10, Ui.theme().colors().muted());
         }
         if (party) {
-            graphics.text(font, Component.translatable("socialmod.invite.party_hint"), left, bottom + 6, Ui.theme().colors().muted());
+            VisualText.text(graphics, font, Component.translatable("socialmod.invite.party_hint"), left, bottom + 6, Ui.theme().colors().muted());
         }
     }
 }

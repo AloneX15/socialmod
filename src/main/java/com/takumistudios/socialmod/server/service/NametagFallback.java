@@ -35,12 +35,11 @@ public final class NametagFallback {
     }
 
     public Payloads.TagEntry entryFor(UUID playerId) {
-        Group group = social.groups().mainGroup(playerId);
+        Group group = social.teams().of(playerId);
         if (group == null) {
             return new Payloads.TagEntry(playerId, "", 0, "", "");
         }
-        Role role = group.roleOf(playerId);
-        return new Payloads.TagEntry(playerId, group.tag, group.color, group.icon, role == null ? "" : role.id());
+        return new Payloads.TagEntry(playerId, group.name, group.color, group.icon, "");
     }
 
     /** Lista completa para un cliente que acaba de hacer el handshake. */
@@ -77,7 +76,7 @@ public final class NametagFallback {
             if (current != null && !current.getName().startsWith(PREFIX)) {
                 return; // el jugador está en un team de otro mod o plugin: no se toca
             }
-            Group group = social.groups().mainGroup(player.getUUID());
+            Group group = social.teams().of(player.getUUID());
             if (group == null) {
                 if (current != null) {
                     scoreboard.removePlayerFromTeam(entry, current);
@@ -91,7 +90,7 @@ public final class NametagFallback {
             }
             // Vanilla solo permite prefijo en la misma línea: los clientes con el mod lo ven debajo del nombre
             String glyph = GroupIcon.glyphOf(group.icon);
-            team.setPlayerPrefix(Component.literal((glyph.isEmpty() ? "" : glyph + " ") + "[" + group.tag + "] ").withColor(group.color));
+            team.setPlayerPrefix(Component.literal((glyph.isEmpty() ? "" : glyph + " ") + "[" + group.name + "] ").withColor(group.color));
             if (current != team) {
                 scoreboard.addPlayerToTeam(entry, team);
             }

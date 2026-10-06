@@ -59,6 +59,94 @@ public class SocialModGameTests {
         return player.getUUID().toString();
     }
 
+    @GameTest
+    public void largeVisualPresetIsAppliedOnlyAfterCompleteUpload(GameTestHelper helper) {
+        SocialServer social = social(helper); ServerPlayer staff = player(helper);
+        var previous = social.visuals().design().copy(); var next = previous.copy(); next.widthPercent = 89;
+        for (int i = 0; i < 140; i++) next.components.put("full/Screen/" + i + "x".repeat(155), new com.takumistudios.socialmod.common.model.VisualDesign.Rect(.1f, .2f, .1f, .1f));
+        String json = com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(next);
+        check(helper, json.length() > 32767, "large preset fixture not large enough");
+        int total = (json.length() + 4095) / 4096; String upload = java.util.UUID.randomUUID().toString();
+        for (int index = 0; index < total; index++) {
+            social.visuals().receive(staff, upload + "/" + index + "/" + total, json.substring(index * 4096, Math.min(json.length(), (index + 1) * 4096)));
+            if (index < total - 1) check(helper, social.visuals().design().widthPercent == previous.widthPercent, "partial preset applied");
+        }
+        check(helper, social.visuals().design().widthPercent == 89 && social.visuals().design().components.size() == 140, "complete large preset not applied");
+        social.visuals().receive(staff, java.util.UUID.randomUUID() + "/1/2", "garbage");
+        check(helper, social.visuals().design().widthPercent == 89, "out-of-order upload changed preset");
+        social.visuals().publish(com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(previous), "test");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void teamLimitAndForgedStaffActionsAreRejected(GameTestHelper helper) {
+        SocialServer social = social(helper); ServerPlayer first = player(helper), second = player(helper);
+        int previous = ServerConfig.get().maxTeams;
+        String previousMode = social.visuals().design().mode;
+        ServerConfig.get().maxTeams = (int) social.teams().all().stream().filter(g -> !g.archived).count() + 1;
+        try {
+            check(helper, social.teams().create(first, "Limit " + System.nanoTime(), "shield;#55FF55"), "first slot failed");
+            Group team = social.teams().of(first.getUUID());
+            check(helper, !social.teams().create(second, "Overflow " + System.nanoTime(), "shield;#55FF55"), "limit overflow");
+            check(helper, !social.record(second).teamChosen, "rejected creation consumed choice");
+            check(helper, social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.TEAM_ASSIGN, id(first), team.id, "test"), "same TEAM assignment failed");
+            check(helper, team.roleOf(first.getUUID()) == Role.LEADER, "same TEAM assignment lost leader role");
+            var action = com.takumistudios.socialmod.common.net.SocialAction.TEAM_ASSIGN;
+            com.takumistudios.socialmod.server.net.ActionTestProbe.dispatch(social, second, new com.takumistudios.socialmod.common.net.Payloads.ActionC2S(action, id(second), team.id));
+            check(helper, social.teams().of(second.getUUID()) == null, "nonstaff assigned TEAM");
+            com.takumistudios.socialmod.server.net.ActionTestProbe.dispatch(social, second, new com.takumistudios.socialmod.common.net.Payloads.ActionC2S(com.takumistudios.socialmod.common.net.SocialAction.VISUAL_PUBLISH, "", "{\"mode\":\"sidebar\"}"));
+            com.takumistudios.socialmod.server.net.ActionTestProbe.dispatch(social, second, new com.takumistudios.socialmod.common.net.Payloads.ActionC2S(com.takumistudios.socialmod.common.net.SocialAction.VISUAL_ROLLBACK, "", ""));
+            check(helper, social.visuals().design().mode.equals(previousMode), "nonstaff published visual design");
+            var previousDesign = social.visuals().design().copy();
+            var published = previousDesign.copy(); published.mode = "sidebar";
+            social.visuals().publish(com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(published), "test");
+            check(helper, social.snapshots().build(first).visual.mode.equals("sidebar") && social.snapshots().build(second).visual.mode.equals("sidebar"), "visual preset not shared between viewers");
+            social.visuals().publish(com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(previousDesign), "test");
+            social.teams().archive(team.id, "test");
+        } finally { ServerConfig.get().maxTeams = previous; }
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 80)
+    public void teamIdentitySurvivesMultipleGroupsAndArchiveRestore(GameTestHelper helper) {
+        SocialServer social = social(helper); ServerPlayer owner = player(helper), other = player(helper);
+        String name = "TEAM " + System.nanoTime();
+        check(helper, social.teams().create(owner, name, "swords;#3366FF"), "create TEAM");
+        Group team = social.teams().of(owner.getUUID());
+        check(helper, team != null && team.isMember(owner.getUUID()) && social.record(owner).teamChosen, "creator assignment");
+        Group first = social.groups().create(owner, "First " + System.nanoTime(), uniqueTag());
+        Group second = social.groups().create(owner, "Second " + System.nanoTime(), uniqueTag());
+        check(helper, first != null && second != null, "two ordinary groups");
+        social.groups().setMain(owner, second.id);
+        check(helper, social.groups().nametags().entryFor(owner.getUUID()).tag().equals(name), "multiple groups changed TEAM nametag");
+        check(helper, !social.teams().choose(owner, team.id), "second choice accepted");
+        check(helper, !social.groups().leave(owner, team.id), "managed group left");
+        check(helper, !social.groups().invite(owner, team.id, id(other)), "managed group invitation");
+        check(helper, !social.groups().disband(owner, team.id), "managed group dissolved");
+        check(helper, social.teams().choose(other, team.id), "first choice rejected");
+        team.channels.add(new Group.Channel("staff", Role.OFFICER));
+        String key = ConversationId.group(team.id, "general").key();
+        check(helper, social.chat().send(owner, key, "persistent TEAM chat"), "TEAM chat failed");
+        helper.succeedWhen(() -> {
+            Conversation saved = conversation(social, key); check(helper, saved != null && !saved.messages.isEmpty(), "chat not stored");
+            check(helper, social.teams().archive(team.id, "test"), "archive failed");
+            check(helper, social.teams().of(owner.getUUID()) == null && !social.record(owner).teamChosen, "archive did not release choice");
+            check(helper, social.groups().nametags().entryFor(owner.getUUID()).tag().isEmpty(), "fallback ordinary group after archive");
+            check(helper, social.chat().canRead(owner.getUUID(), ConversationId.group(team.id, "general")), "archived history inaccessible");
+            check(helper, !social.chat().canRead(other.getUUID(), ConversationId.group(team.id, "staff")), "archive leaked staff channel");
+            check(helper, !social.chat().send(owner, key, "must fail"), "archive writable");
+            check(helper, social.teams().create(owner, "New " + System.nanoTime(), "shield;#55FF55"), "new choice after archive failed");
+            Group replacement = social.teams().of(owner.getUUID());
+            check(helper, social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.TEAM_RESTORE, team.id, "", "test"), "restore failed");
+            check(helper, social.teams().of(owner.getUUID()) == replacement && team.members.isEmpty(), "restore overwrote later choice");
+            check(helper, saved.messages.getFirst().text.equals("persistent TEAM chat"), "restore lost history");
+            check(helper, social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.TEAM_ASSIGN, id(other), replacement.id, "test"), "offline UUID assignment failed");
+            check(helper, social.teams().of(other.getUUID()) == replacement, "assignment mismatch");
+            social.teams().archive(team.id, "test"); social.teams().archive(replacement.id, "test");
+            social.groups().disbandInternal(first, "test"); social.groups().disbandInternal(second, "test");
+        });
+    }
+
     // ---------- Mensajes privados ----------
 
     @GameTest(maxTicks = 60)
@@ -341,8 +429,7 @@ public class SocialModGameTests {
         check(helper, social.groups().setText(leader, group.id, "icon", "crown"), "cambiar icono");
         social.record(leader).mainGroup = group.id;
         var entry = social.groups().nametags().entryFor(leader.getUUID());
-        check(helper, entry.icon().equals("crown") && entry.role().equals("leader") && entry.tag().equals(group.tag),
-                "etiqueta del nametag incompleta: " + entry);
+        check(helper, entry.tag().isEmpty(), "ordinary group must not become TEAM automatically");
         social.groups().disbandInternal(group, "test");
         helper.succeed();
     }

@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.takumistudios.socialmod.client.ClientNet;
 import com.takumistudios.socialmod.client.ClientState;
@@ -137,8 +139,8 @@ public class QuickReplyScreen extends Screen {
         graphics.outline(left, top, width, HEIGHT, Ui.theme().colors().border());
         String title = Component.translatable("socialmod.quick_reply.replying", ClientState.get().titleOf(conversation)).getString();
         String hint = Component.translatable("socialmod.quick_reply.hint").getString();
-        graphics.text(font, Ui.trim(font, title, width - font.width(hint) - 14), left + 4, top + 3, Ui.theme().colors().accent());
-        graphics.text(font, hint, left + width - font.width(hint) - 4, top + 3, Ui.theme().colors().muted());
+        VisualText.text(graphics, font, Ui.trim(font, title, width - font.width(hint) - 14), left + 4, top + 3, Ui.theme().colors().accent());
+        VisualText.text(graphics, font, hint, left + width - font.width(hint) - 4, top + 3, Ui.theme().colors().muted());
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 

@@ -132,3 +132,15 @@ Xaero's World Map / Minimap. Cada entrada indica el síntoma, la causa y cómo s
   guardan y los borra al acabar.
 - Resultado: 3 builds completas seguidas en verde (3 versiones × 22 gametests + 35 unitarias) y el compat pack y el test
   de cliente en verde en las 3 versiones.
+
+
+## Nametag con varios grupos (0.3.0)
+
+- Sintoma: la identidad visible de un jugador perteneciente a varios grupos dependia del grupo principal y su fallback.
+- Solucion: TEAM persistente elegido una vez, independiente de los grupos; sin fallback a grupos sociales.
+- Regresion: `teamIdentitySurvivesMultipleGroupsAndArchiveRestore`, permisos C2S, persistencia file/JDBC y reinicio real del cliente.
+- UI: corregidas las pestanas fuera del marco compacto y la inclusion accidental de campos estaticos en el inspector.
+
+### Controles TEAM superpuestos y estilo expuesto
+
+El selector colocaba Crear, Elegir y Estilo en la misma fila, y mostraba Estilo a jugadores sin permisos. Se eliminaron los controles administrativos del modo jugador y se repartieron Crear/Elegir en dos mitades. La captura del selector y las acciones manipuladas del gametest verifican interfaz y permisos.

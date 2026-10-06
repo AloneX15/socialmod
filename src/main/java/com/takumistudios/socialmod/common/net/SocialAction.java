@@ -27,7 +27,8 @@ public enum SocialAction {
     // Añadidas en el protocolo 2 (al final para no mover los ordinales anteriores)
     GROUP_SET_ICON,
     // Chat de voz (Simple Voice Chat): a = id del grupo
-    VOICE_JOIN, VOICE_LEAVE;
+    VOICE_JOIN, VOICE_LEAVE,
+    TEAM_CREATE, TEAM_CHOOSE, TEAM_ASSIGN, TEAM_RESET, TEAM_ARCHIVE, TEAM_RESTORE, TEAM_RENAME, VISUAL_PUBLISH, TEAM_LIMIT, TEAM_STYLE, VISUAL_ROLLBACK;
 
     public static SocialAction byOrdinal(int ordinal) {
         SocialAction[] values = values();

@@ -81,6 +81,7 @@ public final class SocialCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext context, Commands.CommandSelection selection) {
         registerMessaging(dispatcher);
         registerGroups(dispatcher);
+        registerTeams(dispatcher);
         registerParty(dispatcher);
         registerFriends(dispatcher);
         registerStatus(dispatcher);
@@ -90,6 +91,49 @@ public final class SocialCommands {
     // =====================================================================
     // Mensajes privados
     // =====================================================================
+
+    private static void registerTeams(CommandDispatcher<CommandSourceStack> dispatcher) {
+        var root = Commands.literal("socialteam");
+        root.then(Commands.literal("list").executes(ctx -> {
+            SocialServer social = SocialServer.get(); if (social == null) return 0;
+            for (Group team : social.teams().all()) if (!team.archived)
+                ctx.getSource().sendSuccess(() -> Component.literal(team.id + " : " + team.name), false);
+            return 1;
+        }));
+        root.then(Commands.literal("choose").then(Commands.argument("team", StringArgumentType.word())
+                .then(Commands.literal("confirm").executes(ctx -> run(ctx, (social, player, c) ->
+                        social.teams().choose(player, StringArgumentType.getString(c, "team")) ? 1 : 0)))));
+        root.then(Commands.literal("create").then(Commands.literal("confirm")
+                .then(Commands.argument("name", StringArgumentType.greedyString()).executes(ctx -> run(ctx, (social, player, c) ->
+                        social.teams().create(player, StringArgumentType.getString(c, "name"), "shield;#55FF55") ? 1 : 0)))));
+        for (String op : List.of("assign", "reset", "archive", "restore", "rename", "style")) {
+            var command = Commands.literal(op).requires(PermissionBridge.require(PermissionBridge.TEAM_ADMIN, PermissionLevel.GAMEMASTERS));
+            var target = Commands.argument("target", StringArgumentType.word());
+            if (op.equals("assign") || op.equals("rename") || op.equals("style")) {
+                target.then(Commands.argument("value", StringArgumentType.greedyString()).executes(ctx -> teamAdmin(ctx, op, StringArgumentType.getString(ctx, "value"))));
+            } else target.executes(ctx -> teamAdmin(ctx, op, ""));
+            root.then(command.then(target));
+        }
+        root.then(Commands.literal("limit").requires(PermissionBridge.require(PermissionBridge.TEAM_ADMIN, PermissionLevel.GAMEMASTERS))
+                .then(Commands.argument("maximum", IntegerArgumentType.integer(1, 1000)).executes(ctx -> {
+                    SocialServer social = SocialServer.get(); if (social == null) return 0;
+                    ServerConfig.get().maxTeams = IntegerArgumentType.getInteger(ctx, "maximum"); social.visuals().persistConfig();
+                    social.server().getPlayerList().getPlayers().forEach(social.snapshots()::send); return 1;
+                })));
+        dispatcher.register(root);
+    }
+
+    private static int teamAdmin(CommandContext<CommandSourceStack> ctx, String op, String value) {
+        SocialServer social = SocialServer.get(); if (social == null) return 0;
+        try {
+            boolean ok = social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.valueOf("TEAM_" + op.toUpperCase(java.util.Locale.ROOT)),
+                    StringArgumentType.getString(ctx, "target"), value, ctx.getSource().getTextName());
+            if (!ok) ctx.getSource().sendFailure(Lang.tr("socialmod.team.invalid"));
+            return ok ? 1 : 0;
+        } catch (RuntimeException e) {
+            com.takumistudios.socialmod.SocialMod.warnOnce("team_command", "Error procesando TEAM", e); return 0;
+        }
+    }
 
     private static void registerMessaging(CommandDispatcher<CommandSourceStack> dispatcher) {
         for (String name : new String[]{"pm", "dm"}) {

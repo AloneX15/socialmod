@@ -142,9 +142,10 @@ public class SocialModClientGameTest implements FabricClientGameTest {
             // 3: emblema y color, etiqueta con icono y selector visual
             world.getServer().runCommand("execute as @p run g icon swords");
             world.getServer().runCommand("execute as @p run g color #3366FF");
+            world.getServer().runCommand("execute as @p run socialteam create confirm Forest TEAM");
             context.waitFor(client -> {
                 Payloads.TagEntry tag = ClientState.get().tagOf(client.player.getUUID());
-                return tag != null && tag.icon().equals("swords") && (tag.color() & 0xFFFFFF) == 0x3366FF;
+                return tag != null && tag.tag().equals("Forest TEAM");
             }, 200);
             context.setScreen(() -> new com.takumistudios.socialmod.client.screen.TagStyleScreen(null, "TF", 0x3366FF, "swords", "leader", (rgb, icon) -> { }));
             context.waitTicks(5);
@@ -152,6 +153,58 @@ public class SocialModClientGameTest implements FabricClientGameTest {
             context.setScreen(() -> new com.takumistudios.socialmod.client.screen.CreateGroupScreen(null));
             context.waitTicks(5);
             context.takeScreenshot("socialmod_create_group");
+            context.setScreen(() -> null);
+
+            context.setScreen(() -> new com.takumistudios.socialmod.client.screen.TeamScreen(null));
+            context.waitTicks(5);
+            context.takeScreenshot("socialmod_team");
+            context.runOnClient(client -> ClientState.get().snapshot().teamAdmin = true);
+            context.setScreen(() -> new com.takumistudios.socialmod.client.screen.TeamScreen(null));
+            context.clickScreenButton("socialmod.team.manage");
+            context.waitTicks(3);
+            context.takeScreenshot("socialmod_team_admin");
+            context.runOnClient(client -> ClientState.get().snapshot().teamAdmin = false);
+
+            for (String mode : new String[]{"compact", "sidebar", "full"}) {
+                world.getServer().runOnServer(server -> {
+                    var visual = SocialServer.get().visuals().design().copy(); visual.mode = mode;
+                    SocialServer.get().visuals().publish(com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(visual), "test");
+                });
+                context.waitFor(client -> ClientState.get().snapshot().visual.mode.equals(mode), 100);
+                context.setScreen(() -> new SocialScreen(groupKey[0]));
+                context.waitTicks(5);
+                context.takeScreenshot("socialmod_mode_" + mode);
+            }
+            context.setScreen(() -> new com.takumistudios.socialmod.client.screen.VisualEditorScreen(new SocialScreen(groupKey[0])));
+            context.waitTicks(5);
+            context.takeScreenshot("socialmod_visual_editor");
+            context.runOnClient(client -> {
+                var screen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen();
+                var widgets = net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen);
+                var field = widgets.stream().filter(w -> w instanceof net.minecraft.client.gui.components.EditBox && w.getMessage().getString().equals("widthPercent")).findFirst().orElseThrow();
+                ((net.minecraft.client.gui.components.EditBox) field).setValue("88");
+                var apply = widgets.stream().filter(w -> w instanceof net.minecraft.client.gui.components.Button && w.getY() == field.getY()).findFirst().orElseThrow();
+                ((net.minecraft.client.gui.components.Button) apply).onPress(new net.minecraft.client.input.MouseButtonEvent(0, 0, new net.minecraft.client.input.MouseButtonInfo(0, 0)));
+                if (com.takumistudios.socialmod.client.theme.VisualManager.get().widthPercent != 88) throw new AssertionError("Visual integer property did not apply");
+            });
+            context.clickScreenButton("socialmod.visual.undo");
+            context.runOnClient(client -> { if (com.takumistudios.socialmod.client.theme.VisualManager.get().widthPercent != 78) throw new AssertionError("Visual undo failed"); });
+            context.clickScreenButton("socialmod.visual.redo");
+            context.runOnClient(client -> { if (com.takumistudios.socialmod.client.theme.VisualManager.get().widthPercent != 88) throw new AssertionError("Visual redo failed"); });
+
+            context.runOnClient(client -> {
+                try {
+                    java.nio.file.Path directory = java.nio.file.Files.createTempDirectory("socialmod-preset-test-");
+                    var design = com.takumistudios.socialmod.client.theme.VisualManager.get().copy();
+                    com.takumistudios.socialmod.client.theme.PresetFiles.export(design, directory);
+                    var loaded = com.takumistudios.socialmod.client.theme.PresetFiles.load(directory);
+                    if (loaded.widthPercent != 88) throw new AssertionError("Preset JSON round trip failed");
+                    java.nio.file.Files.copy(directory.resolve("series.zip"), directory.resolve("import.zip"));
+                    var zipped = com.takumistudios.socialmod.client.theme.PresetFiles.load(directory);
+                    if (zipped.widthPercent != 88) throw new AssertionError("Preset ZIP round trip failed");
+                } catch (java.io.IOException e) { throw new AssertionError("Preset files failed", e); }
+            });
+            context.runOnClient(client -> com.takumistudios.socialmod.client.theme.VisualManager.preview(null));
             context.setScreen(() -> null);
 
             // Ping de party (fase 3): el servidor lo valida y el cliente lo muestra
@@ -196,6 +249,12 @@ public class SocialModClientGameTest implements FabricClientGameTest {
             }
             reopened.getServer().runOnServer(server -> SocialServer.get().storage().withConversation(groupKey[0], conversation -> { }));
             context.waitTicks(20);
+            boolean teamPersisted = reopened.getServer().computeOnServer(server -> {
+                var player = server.getPlayerList().getPlayers().getFirst();
+                var team = SocialServer.get().teams().of(player.getUUID());
+                return team != null && team.name.equals("Forest TEAM") && SocialServer.get().record(player).teamChosen;
+            });
+            if (!teamPersisted) throw new AssertionError("TEAM assignment did not survive world restart");
             boolean historyPersisted = reopened.getServer().computeOnServer(server -> {
                 Conversation conversation = SocialServer.get().storage().cachedConversation(groupKey[0]);
                 return conversation != null && conversation.messages.size() >= 2;

@@ -47,6 +47,8 @@ public final class SocialServer {
     private final PresenceService presence;
     private final FriendService friends;
     private final GroupService groups;
+    private final com.takumistudios.socialmod.server.service.VisualService visuals;
+    private final com.takumistudios.socialmod.server.service.TeamService teams;
     private final ChatService chat;
     private final ModerationService moderation;
     private final SnapshotService snapshots;
@@ -74,6 +76,8 @@ public final class SocialServer {
         this.presence = new PresenceService(this);
         this.friends = new FriendService(this);
         this.groups = new GroupService(this);
+        this.visuals = new com.takumistudios.socialmod.server.service.VisualService(this);
+        this.teams = new com.takumistudios.socialmod.server.service.TeamService(this);
         this.chat = new ChatService(this);
         this.moderation = new ModerationService(this);
         this.snapshots = new SnapshotService(this);
@@ -109,6 +113,7 @@ public final class SocialServer {
 
     public void stop() {
         try {
+            visuals.close();
             storage.close();
         } finally {
             if (instance == this) {
@@ -118,6 +123,8 @@ public final class SocialServer {
     }
 
     public void reconfigure() {
+        visuals.reloadAsync();
+        server.getPlayerList().getPlayers().forEach(snapshots::send);
         ServerConfig config = ServerConfig.get();
         packetLimiter.reconfigure(config.limits.packetsPerSecond, config.limits.packetBurst);
         chat.reconfigure();
@@ -165,6 +172,10 @@ public final class SocialServer {
     public PartyService party() {
         return party;
     }
+
+    public com.takumistudios.socialmod.server.service.TeamService teams() { return teams; }
+
+    public com.takumistudios.socialmod.server.service.VisualService visuals() { return visuals; }
 
     public GroupService groups() {
         return groups;
@@ -225,6 +236,7 @@ public final class SocialServer {
     }
 
     public void onJoin(ServerPlayer player) {
+        visuals.sendPack(player);
         PlayerRecord record = record(player);
         record.lastSeen = System.currentTimeMillis();
         storage.markPlayersDirty();
@@ -234,6 +246,7 @@ public final class SocialServer {
     }
 
     public void onLeave(ServerPlayer player) {
+        visuals.forget(player.getUUID());
         UUID id = player.getUUID();
         PlayerRecord record = storage.player(id);
         if (record != null) {

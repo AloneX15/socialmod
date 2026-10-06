@@ -1,0 +1,123 @@
+package com.takumistudios.socialmod.server.service;
+
+import com.takumistudios.socialmod.common.model.GroupIcon;
+import com.takumistudios.socialmod.common.model.Role;
+import com.takumistudios.socialmod.common.net.SocialAction;
+import com.takumistudios.socialmod.common.text.TextSanitizer;
+import com.takumistudios.socialmod.server.PermissionBridge;
+import com.takumistudios.socialmod.server.SocialServer;
+import com.takumistudios.socialmod.server.config.ServerConfig;
+import com.takumistudios.socialmod.server.data.Group;
+import com.takumistudios.socialmod.server.data.PlayerRecord;
+import net.minecraft.server.level.ServerPlayer;
+import java.util.List;
+import java.util.UUID;
+
+/** Server-thread-only TEAM transactions. The managed group is also the durable TEAM identity. */
+public final class TeamService {
+    private final SocialServer social;
+    public TeamService(SocialServer social) { this.social = social; }
+    public List<Group> all() {
+        return social.groups().all().values().stream().filter(g -> g.team)
+                .sorted(java.util.Comparator.comparing(g -> g.name)).toList();
+    }
+    public Group find(String query) {
+        return all().stream().filter(g -> g.id.equals(query) || g.name.equalsIgnoreCase(query)).findFirst().orElse(null);
+    }
+    public Group of(UUID player) {
+        PlayerRecord record = social.storage().player(player);
+        Group team = record == null ? null : social.groups().get(record.teamId);
+        return team != null && team.team && !team.archived && team.isMember(player) ? team : null;
+    }
+    public static boolean mayChoose(PlayerRecord record) { return !record.teamChosen && record.teamId.isEmpty(); }
+    public boolean create(ServerPlayer player, String rawName, String style) {
+        boolean admin = PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN);
+        PlayerRecord record = social.record(player);
+        if ((!admin && !mayChoose(record)) || (!admin && !PermissionBridge.allows(player, PermissionBridge.TEAM_CREATE))) return fail(player, "locked");
+        if (!ServerConfig.get().modules.groups) return fail(player, "disabled");
+        String name = TextSanitizer.cleanName(rawName, 48);
+        if (name.length() < 3 || name.length() > 48 || find(name) != null) return fail(player, "invalid");
+        if (all().stream().filter(g -> !g.archived).count() >= ServerConfig.get().maxTeams) return fail(player, "limit");
+        String[] parts = style.split(";", -1);
+        GroupIcon icon = GroupIcon.byId(parts.length > 0 ? parts[0] : "shield");
+        Integer color = GroupService.parseColor(parts.length > 1 ? parts[1] : "#55FF55");
+        if (icon == null || color == null) return fail(player, "invalid");
+        Group team = new Group();
+        do { team.id = "t" + UUID.randomUUID().toString().replace("-", "").substring(0, 12); team.tag = team.id.substring(0, 5).toUpperCase(java.util.Locale.ROOT); }
+        while (social.groups().all().containsKey(team.id) || social.groups().all().values().stream().anyMatch(g -> g.tag.equalsIgnoreCase(team.tag)));
+        team.team = true; team.name = name; team.tag = team.id.substring(0, 5).toUpperCase(java.util.Locale.ROOT);
+        team.icon = icon.id(); team.color = color; team.created = System.currentTimeMillis(); team.normalize();
+        social.groups().all().put(team.id, team);
+        if (!admin || mayChoose(record)) { assign(record, team); team.members.put(record.id, Role.LEADER); }
+        changed("CREATE " + record.name + " " + team.id);
+        return true;
+    }
+    public boolean choose(ServerPlayer player, String id) {
+        Group team = find(id); PlayerRecord record = social.record(player);
+        if (!mayChoose(record)) return fail(player, "locked");
+        if (team == null || team.archived) return fail(player, "invalid");
+        assign(record, team); changed("CHOOSE " + record.name + " " + team.id); return true;
+    }
+    private void assign(PlayerRecord record, Group team) {
+        Group old = of(record.id);
+        if (old != null && old == team) return;
+        ServerPlayer online = social.online(record.id);
+        if (online != null && old != null && old.id.equals(social.voice().currentGroup(record.id))) social.voice().leave(online);
+        if (old != null) {
+            old.members.remove(record.id); old.memberNames.remove(record.id);
+            if (!old.members.isEmpty() && old.leader() == null) old.members.put(old.members.keySet().iterator().next(), Role.LEADER);
+        }
+        record.teamId = team == null ? "" : team.id; record.teamChosen = team != null;
+        if (team != null) {
+            team.members.put(record.id, team.members.isEmpty() ? Role.LEADER : Role.MEMBER); team.memberNames.put(record.id, record.name);
+            record.touch(com.takumistudios.socialmod.common.model.ConversationId.group(team.id, team.defaultChannel()).key());
+        }
+        social.groups().nametags().update(record.id);
+    }
+    public boolean archive(String id, String actor) {
+        Group team = find(id); if (team == null || team.archived) return false;
+        team.archiveReaders.clear(); team.archiveReaders.addAll(team.members.keySet());
+        team.archiveRoles.clear(); team.archiveRoles.putAll(team.members);
+        for (PlayerRecord record : social.storage().players()) if (record.teamId.equals(team.id)) assign(record, null);
+        team.members.clear(); team.memberNames.clear(); team.archived = true;
+        changed("ARCHIVE " + actor + " " + team.id); return true;
+    }
+    public boolean admin(SocialAction action, String a, String b, String actor) {
+        Group team = find(a);
+        switch (action) {
+            case TEAM_ARCHIVE -> { return archive(a, actor); }
+            case TEAM_RESTORE -> {
+                if (team == null || !team.archived || all().stream().filter(g -> !g.archived).count() >= ServerConfig.get().maxTeams) return false;
+                team.archived = false;
+            }
+            case TEAM_STYLE -> {
+                String[] style = b.split(";", -1);
+                GroupIcon icon = GroupIcon.byId(style[0]); Integer color = style.length == 2 ? GroupService.parseColor(style[1]) : null;
+                if (team == null || icon == null || color == null) return false;
+                team.icon = icon.id(); team.color = color; team.members.keySet().forEach(social.groups().nametags()::update);
+            }
+            case TEAM_RENAME -> {
+                String name = TextSanitizer.cleanName(b, 48);
+                Group other = find(name);
+                if (team == null || name.length() < 3 || (other != null && other != team)) return false;
+                team.name = name; team.members.keySet().forEach(social.groups().nametags()::update);
+            }
+            case TEAM_ASSIGN, TEAM_RESET -> {
+                PlayerRecord record = social.storage().findByName(a);
+                if (record == null) { try { record = social.storage().player(UUID.fromString(a)); } catch (IllegalArgumentException e) { return false; } }
+                Group target = action == SocialAction.TEAM_RESET ? null : find(b);
+                if (record == null || (action == SocialAction.TEAM_ASSIGN && (target == null || target.archived))) return false;
+                assign(record, target);
+            }
+            default -> { return false; }
+        }
+        changed(action + " " + actor + " " + a); return true;
+    }
+    private boolean fail(ServerPlayer player, String reason) {
+        social.notifier().feedback(player, false, "socialmod.team." + reason); return false;
+    }
+    private void changed(String event) {
+        social.storage().markPlayersDirty(); social.storage().markGroupsDirty(); social.storage().audit("TEAM_" + event);
+        for (ServerPlayer player : social.server().getPlayerList().getPlayers()) social.snapshots().send(player);
+    }
+}

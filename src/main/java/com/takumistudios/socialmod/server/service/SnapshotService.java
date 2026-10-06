@@ -69,6 +69,17 @@ public final class SnapshotService {
         PlayerRecord record = social.record(player);
         SnapshotDto dto = new SnapshotDto();
 
+        dto.teamAdmin = com.takumistudios.socialmod.server.PermissionBridge.isStaff(player, com.takumistudios.socialmod.server.PermissionBridge.TEAM_ADMIN);
+        dto.visualAdmin = com.takumistudios.socialmod.server.PermissionBridge.isStaff(player, "admin.visuals");
+        dto.maxTeams = ServerConfig.get().maxTeams;
+        dto.visual = social.visuals().design();
+        dto.self.teamId = record.teamId; dto.self.teamChosen = record.teamChosen;
+        for (Group team : social.teams().all()) {
+            if (team.archived && !dto.teamAdmin) continue;
+            SnapshotDto.TeamView view = new SnapshotDto.TeamView();
+            view.id = team.id; view.name = team.name; view.color = team.color; view.icon = team.icon;
+            view.archived = team.archived; view.members = team.members.size(); dto.teams.add(view);
+        }
         dto.self.uuid = self.toString();
         dto.self.name = record.name;
         dto.self.status = record.status.id();
@@ -115,9 +126,9 @@ public final class SnapshotService {
             view.motd = group.motd;
             view.pinned = group.pinned;
             view.party = group.party;
-            view.myRole = group.roleOf(self).id();
-            for (GroupPermission permission : permissions.get(group.roleOf(self))) {
-                view.myPermissions.add(permission.id());
+            view.myRole = group.archived ? "member" : group.roleOf(self).id();
+            for (GroupPermission permission : permissions.get(group.archived ? com.takumistudios.socialmod.common.model.Role.MEMBER : group.roleOf(self))) {
+                if (!group.archived && (!group.team || !java.util.Set.of("invite", "kick", "manage_roles", "edit_info").contains(permission.id()))) view.myPermissions.add(permission.id());
             }
             group.members.forEach((id, role) -> {
                 SnapshotDto.Member member = new SnapshotDto.Member();
@@ -136,7 +147,7 @@ public final class SnapshotService {
                 SnapshotDto.ChannelView channelView = new SnapshotDto.ChannelView();
                 channelView.name = channel.name;
                 channelView.minRole = channel.minRole.id();
-                channelView.canWrite = true;
+                channelView.canWrite = !group.archived;
                 view.channels.add(channelView);
             }
             for (Group.GroupEvent event : group.events) {

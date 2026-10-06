@@ -1,5 +1,7 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.takumistudios.socialmod.client.ClientNet;
 import com.takumistudios.socialmod.client.ClientState;
 import com.takumistudios.socialmod.client.Heads;
@@ -95,7 +97,7 @@ public class ProfileScreen extends SocialChildScreen {
             UUID me = state.selfId();
             if (me != null) {
                 String key = ConversationId.direct(me, target).key();
-                row1.add(Button.builder(Component.translatable("socialmod.profile.message"), b -> {
+                row1.add(Ui.button(Component.translatable("socialmod.profile.message"), b -> {
                     if (parent instanceof SocialScreen panel) {
                         com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(panel);
                         panel.select(key);
@@ -106,50 +108,50 @@ public class ProfileScreen extends SocialChildScreen {
             }
             SnapshotDto.Friend friend = friend();
             if (friend != null) {
-                row1.add(Button.builder(Component.translatable(friend.favorite ? "socialmod.profile.unfavorite" : "socialmod.profile.favorite"),
+                row1.add(Ui.button(Component.translatable(friend.favorite ? "socialmod.profile.unfavorite" : "socialmod.profile.favorite"),
                         b -> ClientNet.action(SocialAction.FRIEND_FAVORITE, target.toString())).build());
-                row1.add(Button.builder(Component.translatable("socialmod.profile.remove_friend"),
+                row1.add(Ui.button(Component.translatable("socialmod.profile.remove_friend"),
                         b -> ClientNet.action(SocialAction.FRIEND_REMOVE, target.toString())).build());
             } else if (incomingRequest()) {
-                row1.add(Button.builder(Component.translatable("socialmod.profile.accept_friend"),
+                row1.add(Ui.button(Component.translatable("socialmod.profile.accept_friend"),
                         b -> ClientNet.action(SocialAction.FRIEND_ACCEPT, target.toString())).build());
             } else if (state.hasOutgoingRequest(target)) {
-                row1.add(Button.builder(Component.translatable("socialmod.profile.cancel_request"),
+                row1.add(Ui.button(Component.translatable("socialmod.profile.cancel_request"),
                         b -> ClientNet.action(SocialAction.FRIEND_DENY, target.toString())).build());
             } else if (!state.isBlocked(target)) {
-                row1.add(Button.builder(Component.translatable("socialmod.profile.add_friend"),
+                row1.add(Ui.button(Component.translatable("socialmod.profile.add_friend"),
                         b -> ClientNet.action(SocialAction.FRIEND_REQUEST, target.toString())).build());
             }
-            row1.add(Button.builder(Component.translatable(state.isBlocked(target) ? "socialmod.profile.unblock" : "socialmod.profile.block"),
+            row1.add(Ui.button(Component.translatable(state.isBlocked(target) ? "socialmod.profile.unblock" : "socialmod.profile.block"),
                     b -> ClientNet.action(state.isBlocked(target) ? SocialAction.UNBLOCK : SocialAction.BLOCK, target.toString())).build());
 
             Payloads.HelloS2C hello = state.hello();
             if (hello == null || hello.partiesEnabled()) {
-                row2.add(Button.builder(Component.translatable("socialmod.profile.invite_party"),
+                row2.add(Ui.button(Component.translatable("socialmod.profile.invite_party"),
                         b -> ClientNet.action(SocialAction.PARTY_INVITE, target.toString())).build());
             }
             SnapshotDto.GroupView group = contextGroup();
             if (group != null) {
                 SnapshotDto.Member member = member(group, target);
                 if (member == null && group.myPermissions.contains("invite")) {
-                    row2.add(Button.builder(Component.translatable("socialmod.profile.invite_group", group.party ? "Party" : group.tag),
+                    row2.add(Ui.button(Component.translatable("socialmod.profile.invite_group", group.party ? "Party" : group.tag),
                             b -> ClientNet.action(SocialAction.GROUP_INVITE, group.id, target.toString())).build());
                 } else if (member != null && !group.party) {
                     Role mine = Role.byId(group.myRole);
                     Role theirs = Role.byId(member.role);
                     boolean outranks = mine != null && theirs != null && mine.outranks(theirs);
                     if (outranks && group.myPermissions.contains("manage_roles")) {
-                        row2.add(Button.builder(Component.translatable("socialmod.profile.promote"),
+                        row2.add(Ui.button(Component.translatable("socialmod.profile.promote"),
                                 b -> ClientNet.action(SocialAction.GROUP_PROMOTE, group.id, target.toString())).build());
-                        row2.add(Button.builder(Component.translatable("socialmod.profile.demote"),
+                        row2.add(Ui.button(Component.translatable("socialmod.profile.demote"),
                                 b -> ClientNet.action(SocialAction.GROUP_DEMOTE, group.id, target.toString())).build());
                     }
                     if (outranks && group.myPermissions.contains("kick")) {
-                        row2.add(Button.builder(Component.translatable("socialmod.profile.kick"),
+                        row2.add(Ui.button(Component.translatable("socialmod.profile.kick"),
                                 b -> ClientNet.action(SocialAction.GROUP_KICK, group.id, target.toString())).build());
                     }
                     if (mine == Role.LEADER) {
-                        row2.add(Button.builder(Component.translatable("socialmod.profile.transfer"),
+                        row2.add(Ui.button(Component.translatable("socialmod.profile.transfer"),
                                 b -> ClientNet.action(SocialAction.GROUP_TRANSFER, group.id, target.toString())).build());
                     }
                 }
@@ -160,7 +162,7 @@ public class ProfileScreen extends SocialChildScreen {
                 note.setHint(Component.translatable("socialmod.profile.note").withStyle(ChatFormatting.DARK_GRAY));
                 note.setValue(noteDraft != null ? noteDraft : friend.note);
                 addRenderableWidget(note);
-                addRenderableWidget(Button.builder(Component.translatable("socialmod.profile.save_note"), b -> {
+                addRenderableWidget(Ui.button(Component.translatable("socialmod.profile.save_note"), b -> {
                     noteDraft = null;
                     ClientNet.action(SocialAction.FRIEND_NOTE, target.toString(), note.getValue());
                 }).bounds(left + WIDTH - 60, y + 51, 60, 20).build());
@@ -170,7 +172,7 @@ public class ProfileScreen extends SocialChildScreen {
         }
         layoutRow(row1, left, y);
         layoutRow(row2, left, y + 24);
-        addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> onClose())
+        addRenderableWidget(Ui.button(Component.translatable("gui.back"), b -> onClose())
                 .bounds(this.width / 2 - 50, this.height - 28, 100, 20).build());
     }
 
@@ -203,31 +205,33 @@ public class ProfileScreen extends SocialChildScreen {
             Heads.draw(graphics, target, left + 9, top + 12, 32);
         }
         int textX = left + 58;
-        graphics.text(font, name, textX, top + 6, Ui.TITLE);
+        VisualText.text(graphics, font, name, textX, top + 6, Ui.title());
         Payloads.TagEntry tag = state.tagOf(target);
         SnapshotDto.GroupView shared = state.sharedMainGroupOf(target);
-        if (shared != null) {
+        if (tag != null && !tag.tag().isEmpty()) {
+            VisualText.text(graphics, font, com.takumistudios.socialmod.client.TagRenderer.panelLine(tag.tag(), tag.color(), tag.icon(), ""), textX, top + 18, Ui.theme().colors().text());
+        } else if (shared != null) {
             SnapshotDto.Member member = member(shared, target);
             String role = member == null ? "" : " · " + Component.translatable("socialmod.role." + member.role).getString();
-            graphics.text(font, Ui.trim(font, shared.name + role, WIDTH - 60), textX, top + 18, Ui.readable(shared.color));
+            VisualText.text(graphics, font, Ui.trim(font, shared.name + role, WIDTH - 60), textX, top + 18, Ui.readable(shared.color));
         } else if (tag != null) {
-            graphics.text(font, com.takumistudios.socialmod.client.TagRenderer.panelLine(tag.tag(), tag.color(), tag.icon(), tag.role()), textX, top + 18, Ui.theme().colors().text());
+            VisualText.text(graphics, font, com.takumistudios.socialmod.client.TagRenderer.panelLine(tag.tag(), tag.color(), tag.icon(), tag.role()), textX, top + 18, Ui.theme().colors().text());
         }
         PresenceStatus status = state.statusOf(target);
         if (target.equals(state.selfId())) {
             status = PresenceStatus.byId(state.snapshot().self.status);
         }
         Ui.status(graphics, font, status, textX, top + 30);
-        graphics.text(font, Component.translatable("socialmod.status." + status.id()), textX + 10, top + 30, Ui.theme().colors().text());
+        VisualText.text(graphics, font, Component.translatable("socialmod.status." + status.id()), textX + 10, top + 30, Ui.theme().colors().text());
         Payloads.PresenceEntry presence = state.presenceOf(target);
         if (presence != null && !presence.customStatus().isEmpty()) {
-            graphics.text(font, Ui.trim(font, "\"" + presence.customStatus() + "\"", WIDTH - 60), textX, top + 42, Ui.theme().colors().muted());
+            VisualText.text(graphics, font, Ui.trim(font, "\"" + presence.customStatus() + "\"", WIDTH - 60), textX, top + 42, Ui.theme().colors().muted());
         }
         if (presence != null && !presence.dimension().isEmpty()) {
-            graphics.text(font, Ui.trim(font, presence.dimension(), WIDTH - 60), textX, top + 54, Ui.theme().colors().muted());
+            VisualText.text(graphics, font, Ui.trim(font, presence.dimension(), WIDTH - 60), textX, top + 54, Ui.theme().colors().muted());
         }
         if (target.equals(state.selfId())) {
-            graphics.text(font, Component.translatable("socialmod.profile.self"), left, this.height / 2 - 10, Ui.theme().colors().muted());
+            VisualText.text(graphics, font, Component.translatable("socialmod.profile.self"), left, this.height / 2 - 10, Ui.theme().colors().muted());
         }
     }
 }

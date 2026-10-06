@@ -1,5 +1,9 @@
 package com.takumistudios.socialmod.client.screen;
 
+import com.takumistudios.socialmod.client.theme.VisualManager;
+
+import com.takumistudios.socialmod.client.theme.VisualText;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.takumistudios.socialmod.client.ClientConfig;
 import com.takumistudios.socialmod.client.ClientNet;
@@ -48,7 +52,7 @@ import java.util.UUID;
  * Respeta un margen reservado para minimapas (config del cliente).
  */
 public class SocialScreen extends Screen {
-    private static final int GAP = 4;
+    private static int gap() { return Math.max(2, VisualManager.get().padding); }
     private static final int ROW = 11;
     private static final int INPUT_HEIGHT = 18;
     /** Mensajes enviados (para recorrerlos con las flechas). Compartido con Quick-Reply. */
@@ -87,6 +91,7 @@ public class SocialScreen extends Screen {
 
     // Rectángulos de las columnas (ancho 0 = oculta)
     private int convX, convW, chatX, chatW, playersX, playersW, top, bottom;
+    private int frameLeft, frameTop, frameRight, frameBottom;
 
     private List<Line> lines = List.of();
     private int linesVersion = -1;
@@ -126,16 +131,32 @@ public class SocialScreen extends Screen {
             }
         }
         ClientConfig.Panel panelConfig = ClientConfig.get().panel;
-        int leftEdge = GAP;
-        int rightEdge = this.width - GAP - panelConfig.reservedRight;
-        top = GAP + panelConfig.reservedTop;
-        bottom = this.height - GAP;
+        int leftEdge = gap();
+        int rightEdge = this.width - gap() - panelConfig.reservedRight;
+        top = gap() + panelConfig.reservedTop;
+        bottom = this.height - gap();
+        var visual = VisualManager.get();
+        if (!visual.mode.equals("full")) {
+            int areaW = Math.max(160, rightEdge - leftEdge), areaH = Math.max(120, bottom - top);
+            int panelW = Math.min(areaW, Math.max(220, areaW * visual.widthPercent / 100));
+            int panelH = Math.min(areaH, Math.max(180, areaH * visual.heightPercent / 100));
+            if (visual.mode.equals("sidebar")) { panelW = Math.min(areaW, Math.max(220, areaW * visual.sidebarWidthPercent / 100)); leftEdge = rightEdge - panelW; }
+            else { leftEdge += (areaW - panelW) / 2; rightEdge = leftEdge + panelW; }
+            top += (areaH - panelH) / 2; bottom = top + panelH;
+        }
+        frameLeft = leftEdge; frameTop = top; frameRight = rightEdge; frameBottom = bottom;
         int available = rightEdge - leftEdge;
-        layout = available >= 480 ? Layout.THREE : available >= 320 ? Layout.TWO : Layout.TABS;
+
         Theme theme = Ui.theme();
         Theme.Column convCol = theme.column("conversations").orElse(Theme.DEFAULT.columns().get(0));
         Theme.Column chatCol = theme.column("chat").orElse(Theme.DEFAULT.columns().get(1));
         Theme.Column playersCol = theme.column("players").orElse(Theme.DEFAULT.columns().get(2));
+        int minThree = convCol.minWidth() + chatCol.minWidth() + playersCol.minWidth() + 2 * gap();
+        int minTwo = convCol.minWidth() + chatCol.minWidth() + gap();
+        layout = available >= Math.max(480, minThree) ? Layout.THREE : available >= Math.max(320, minTwo) ? Layout.TWO : Layout.TABS;
+        if (theme.layout().equals("tabs")) layout = Layout.TABS;
+        else if (theme.layout().equals("two_column") && layout == Layout.THREE) layout = Layout.TWO;
+
 
         if (layout == Layout.TABS) {
             top += 22;
@@ -143,15 +164,15 @@ public class SocialScreen extends Screen {
             convW = tab == Tab.CONVERSATIONS ? available : 0;
             chatW = tab == Tab.CHAT ? available : 0;
             playersW = tab == Tab.PLAYERS ? available : 0;
-            int tabWidth = (available - 2 * GAP) / 3;
+            int tabWidth = (available - 2 * gap()) / 3;
             addTab(Tab.CONVERSATIONS, "socialmod.panel.tab.conversations", leftEdge, tabWidth);
-            addTab(Tab.CHAT, "socialmod.panel.tab.chat", leftEdge + tabWidth + GAP, tabWidth);
-            addTab(Tab.PLAYERS, "socialmod.panel.tab.players", leftEdge + 2 * (tabWidth + GAP), tabWidth);
+            addTab(Tab.CHAT, "socialmod.panel.tab.chat", leftEdge + tabWidth + gap(), tabWidth);
+            addTab(Tab.PLAYERS, "socialmod.panel.tab.players", leftEdge + 2 * (tabWidth + gap()), tabWidth);
         } else if (layout == Layout.TWO) {
             int total = convCol.weight() + chatCol.weight();
-            convW = Math.max(convCol.minWidth(), (available - GAP) * convCol.weight() / total);
+            convW = convCol.minWidth() + Math.max(0, available - gap() - convCol.minWidth() - chatCol.minWidth()) * convCol.weight() / total;
             convX = leftEdge;
-            int mainX = convX + convW + GAP;
+            int mainX = convX + convW + gap();
             int mainW = rightEdge - mainX;
             if (tab == Tab.CONVERSATIONS) {
                 tab = Tab.CHAT;
@@ -160,20 +181,27 @@ public class SocialScreen extends Screen {
             chatW = tab == Tab.CHAT ? mainW : 0;
             playersW = tab == Tab.PLAYERS ? mainW : 0;
             top += 22;
-            int tabWidth = (mainW - GAP) / 2;
+            int tabWidth = (mainW - gap()) / 2;
             addTab(Tab.CHAT, "socialmod.panel.tab.chat", mainX, tabWidth);
-            addTab(Tab.PLAYERS, "socialmod.panel.tab.players", mainX + tabWidth + GAP, tabWidth);
+            addTab(Tab.PLAYERS, "socialmod.panel.tab.players", mainX + tabWidth + gap(), tabWidth);
         } else {
             int total = convCol.weight() + chatCol.weight() + playersCol.weight();
-            int usable = available - 2 * GAP;
-            convW = Math.max(convCol.minWidth(), usable * convCol.weight() / total);
-            playersW = Math.max(playersCol.minWidth(), usable * playersCol.weight() / total);
-            chatW = Math.max(chatCol.minWidth(), usable - convW - playersW);
+            int usable = available - 2 * gap();
+            int extra = Math.max(0, usable - convCol.minWidth() - chatCol.minWidth() - playersCol.minWidth());
+            convW = convCol.minWidth() + extra * convCol.weight() / total;
+            playersW = playersCol.minWidth() + extra * playersCol.weight() / total;
+            chatW = usable - convW - playersW;
             convX = leftEdge;
-            chatX = convX + convW + GAP;
-            playersX = chatX + chatW + GAP;
+            chatX = convX + convW + gap();
+            playersX = chatX + chatW + gap();
             playersW = rightEdge - playersX;
         }
+
+        top += 24;
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.team.title"), b -> openChild(new TeamScreen(this)))
+                .bounds(leftEdge, top - 24, Math.min(100, available / 3), 20).build());
+        if (ClientState.get().snapshot().visualAdmin) addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.title"), b -> openChild(new VisualEditorScreen(this)))
+                .bounds(leftEdge + Math.min(100, available / 3) + 4, top - 24, Math.min(100, available / 3), 20).build());
 
         // Columna de conversaciones: búsqueda arriba, botones abajo
         if (convW > 0) {
@@ -183,11 +211,11 @@ public class SocialScreen extends Screen {
             search.setValue(searchText);
             search.setResponder(value -> searchText = value);
             addRenderableWidget(search);
-            int buttonW = (convW - 6 - GAP) / 2;
-            addRenderableWidget(Button.builder(Component.translatable("socialmod.panel.new_group"),
+            int buttonW = (convW - 6 - gap()) / 2;
+            addRenderableWidget(Ui.button(Component.translatable("socialmod.panel.new_group"),
                     b -> openChild(new CreateGroupScreen(this))).bounds(convX + 3, bottom - 22, buttonW, 20).build());
-            addRenderableWidget(Button.builder(Component.translatable("socialmod.panel.settings"),
-                    b -> openChild(new SettingsScreen(this))).bounds(convX + 3 + buttonW + GAP, bottom - 22, buttonW, 20).build());
+            addRenderableWidget(Ui.button(Component.translatable("socialmod.panel.settings"),
+                    b -> openChild(new SettingsScreen(this))).bounds(convX + 3 + buttonW + gap(), bottom - 22, buttonW, 20).build());
         } else {
             search = null;
         }
@@ -197,7 +225,7 @@ public class SocialScreen extends Screen {
             Payloads.HelloS2C hello = ClientState.get().hello();
             int maxLength = hello == null ? 256 : hello.maxMessageLength();
             boolean sharing = hello == null || hello.sharingEnabled();
-            int buttonsW = sharing ? 2 * 22 + GAP : 0;
+            int buttonsW = sharing ? 2 * 22 + gap() : 0;
             input = new EditBox(this.font, chatX + 3, bottom - INPUT_HEIGHT - 3, chatW - 6 - buttonsW - 24, INPUT_HEIGHT,
                     Component.translatable("socialmod.panel.input"));
             input.setMaxLength(maxLength);
@@ -209,15 +237,15 @@ public class SocialScreen extends Screen {
             addRenderableWidget(input);
             int bx = chatX + 3 + input.getWidth() + 2;
             if (sharing) {
-                addRenderableWidget(Button.builder(Component.literal("⌖"), b -> insertToken(MessageFormatter.COORDS_TOKEN))
+                addRenderableWidget(Ui.button(Component.literal("⌖"), b -> insertToken(MessageFormatter.COORDS_TOKEN))
                         .tooltip(Tooltip.create(Component.translatable("socialmod.panel.share_coords")))
                         .bounds(bx, bottom - INPUT_HEIGHT - 4, 22, 20).build());
-                addRenderableWidget(Button.builder(Component.literal("✦"), b -> insertToken(MessageFormatter.ITEM_TOKEN))
+                addRenderableWidget(Ui.button(Component.literal("✦"), b -> insertToken(MessageFormatter.ITEM_TOKEN))
                         .tooltip(Tooltip.create(Component.translatable("socialmod.panel.share_item")))
-                        .bounds(bx + 22 + GAP, bottom - INPUT_HEIGHT - 4, 22, 20).build());
+                        .bounds(bx + 22 + gap(), bottom - INPUT_HEIGHT - 4, 22, 20).build());
                 bx += buttonsW;
             }
-            addRenderableWidget(Button.builder(Component.literal("➤"), b -> submit())
+            addRenderableWidget(Ui.button(Component.literal("➤"), b -> submit())
                     .tooltip(Tooltip.create(Component.translatable("socialmod.panel.send")))
                     .bounds(bx + 2, bottom - INPUT_HEIGHT - 4, 20, 20).build());
             if (selected != null) {
@@ -232,15 +260,15 @@ public class SocialScreen extends Screen {
         if (playersW > 0) {
             SnapshotDto.GroupView group = selectedGroup();
             if (group != null) {
-                int buttonW = (playersW - 6 - GAP) / 2;
-                Button invite = Button.builder(Component.translatable("socialmod.panel.invite"),
+                int buttonW = (playersW - 6 - gap()) / 2;
+                Button invite = Ui.button(Component.translatable("socialmod.panel.invite"),
                         b -> openChild(new InviteScreen(this, group.id, group.party))).bounds(playersX + 3, bottom - 22, buttonW, 20).build();
                 invite.active = group.myPermissions.contains("invite");
                 addRenderableWidget(invite);
-                addRenderableWidget(Button.builder(Component.translatable(group.party ? "socialmod.panel.party_settings" : "socialmod.panel.group_settings"),
-                        b -> openChild(new GroupSettingsScreen(this, group.id))).bounds(playersX + 3 + buttonW + GAP, bottom - 22, buttonW, 20).build());
+                addRenderableWidget(Ui.button(Component.translatable(group.party ? "socialmod.panel.party_settings" : "socialmod.panel.group_settings"),
+                        b -> openChild(new GroupSettingsScreen(this, group.id))).bounds(playersX + 3 + buttonW + gap(), bottom - 22, buttonW, 20).build());
             } else {
-                addRenderableWidget(Button.builder(Component.translatable("socialmod.panel.new_party"),
+                addRenderableWidget(Ui.button(Component.translatable("socialmod.panel.new_party"),
                         b -> ClientNet.action(SocialAction.PARTY_CREATE, "")).bounds(playersX + 3, bottom - 22, playersW - 6, 20).build());
             }
         }
@@ -248,10 +276,10 @@ public class SocialScreen extends Screen {
     }
 
     private void addTab(Tab target, String key, int x, int w) {
-        Button button = Button.builder(Component.translatable(key), b -> {
+        Button button = Ui.button(Component.translatable(key), b -> {
             tab = target;
             rebuildWidgets();
-        }).bounds(x, GAP + ClientConfig.get().panel.reservedTop, w, 20).build();
+        }).bounds(x, top - 22, w, 20).build();
         button.active = tab != target;
         addRenderableWidget(button);
     }
@@ -269,34 +297,34 @@ public class SocialScreen extends Screen {
         boolean inWindow = System.currentTimeMillis() - message.time() <= window;
         List<Button> buttons = new ArrayList<>();
         if (own && inWindow && !message.deleted()) {
-            buttons.add(Button.builder(Component.translatable("socialmod.message.edit"), b -> {
+            buttons.add(Ui.button(Component.translatable("socialmod.message.edit"), b -> {
                 editing = message.id();
                 draft = message.text();
                 selectedMessage = -1;
                 rebuildWidgets();
             }).build());
-            buttons.add(Button.builder(Component.translatable("socialmod.message.delete"), b -> {
+            buttons.add(Ui.button(Component.translatable("socialmod.message.delete"), b -> {
                 ClientNet.send(new Payloads.MessageOpC2S(Payloads.MessageOp.DELETE, selected, message.id(), ""));
                 selectedMessage = -1;
                 rebuildWidgets();
             }).build());
         }
         if (!own && !message.deleted()) {
-            buttons.add(Button.builder(Component.translatable("socialmod.message.report"), b -> {
+            buttons.add(Ui.button(Component.translatable("socialmod.message.report"), b -> {
                 ClientNet.action(SocialAction.REPORT_MESSAGE, selected, String.valueOf(message.id()));
                 selectedMessage = -1;
                 rebuildWidgets();
             }).build());
         }
         if (!message.deleted()) {
-            buttons.add(Button.builder(Component.translatable("socialmod.message.copy"), b -> {
+            buttons.add(Ui.button(Component.translatable("socialmod.message.copy"), b -> {
                 Minecraft.getInstance().keyboardHandler.setClipboard(SafeMarkdown.plain(message.text()));
                 selectedMessage = -1;
                 rebuildWidgets();
             }).build());
             Payloads.AttachmentView coords = coordsOf(message);
             if (coords != null && MapCompat.waypointsAvailable()) {
-                buttons.add(Button.builder(Component.translatable("socialmod.message.waypoint"), b -> {
+                buttons.add(Ui.button(Component.translatable("socialmod.message.waypoint"), b -> {
                     addWaypoint(message, coords);
                     selectedMessage = -1;
                     rebuildWidgets();
@@ -305,11 +333,11 @@ public class SocialScreen extends Screen {
             URI link = firstLink(message.text());
             Payloads.HelloS2C info = ClientState.get().hello();
             if (link != null && (info == null || info.linksAllowed())) {
-                buttons.add(Button.builder(Component.translatable("socialmod.message.open_link"),
+                buttons.add(Ui.button(Component.translatable("socialmod.message.open_link"),
                         b -> ConfirmLinkScreen.confirmLinkNow(this, link)).build());
             }
         }
-        buttons.add(Button.builder(Component.literal("✕"), b -> {
+        buttons.add(Ui.button(Component.literal("✕"), b -> {
             selectedMessage = -1;
             rebuildWidgets();
         }).build());
@@ -377,6 +405,11 @@ public class SocialScreen extends Screen {
     }
 
     private boolean canWrite() {
+        ConversationId conversation = selected == null ? null : ConversationId.parse(selected);
+        if (conversation != null && !conversation.isDirect()) {
+            var group = selectedGroup();
+            if (group == null || group.channels.stream().noneMatch(c -> c.name.equals(conversation.channel()) && c.canWrite)) return false;
+        }
         Payloads.HelloS2C hello = ClientState.get().hello();
         if (hello == null || ClientState.get().snapshot().self.mutedUntil > System.currentTimeMillis()) {
             return false;
@@ -574,9 +607,15 @@ public class SocialScreen extends Screen {
     // =====================================================================
 
     @Override
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        if (VisualManager.get().mode.equals("full")) super.extractBackground(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Theme theme = Ui.theme();
-        Ui.background(graphics, this.width, this.height);
+        if (VisualManager.get().mode.equals("full")) Ui.background(graphics, this.width, this.height);
+        else Ui.panel(graphics, frameLeft - 3, frameTop - 3, frameRight + 3, frameBottom + 3);
         if (convW > 0) {
             Ui.panel(graphics, convX, top, convX + convW, bottom);
             drawConversations(graphics, mouseX, mouseY);
@@ -654,7 +693,7 @@ public class SocialScreen extends Screen {
             }
         }
         if (shownDirect.isEmpty() && snapshot.friends.isEmpty()) {
-            graphics.text(font, Ui.trim(font, Component.translatable("socialmod.panel.no_direct").getString(), w), x + 2, left.screenY(y), theme.colors().muted());
+            VisualText.text(graphics, font, Ui.trim(font, Component.translatable("socialmod.panel.no_direct").getString(), w), x + 2, left.screenY(y), theme.colors().muted());
             y += ROW;
         }
         y += 3;
@@ -679,10 +718,10 @@ public class SocialScreen extends Screen {
             if (groupSelected && group.channels.size() <= 1) {
                 graphics.fill(convX + 1, rowY - 1, convX + convW - 1, rowY + ROW - 1, theme.colors().highlight());
             }
-            graphics.text(font, Ui.trim(font, label, w - 24), x + 2, rowY, Ui.readable(group.color));
+            VisualText.text(graphics, font, Ui.trim(font, label, w - 24), x + 2, rowY, Ui.readable(group.color));
             if (unread > 0) {
                 String count = "(" + unread + ")";
-                graphics.text(font, count, x + w - font.width(count), rowY, theme.colors().unread());
+                VisualText.text(graphics, font, count, x + w - font.width(count), rowY, theme.colors().unread());
             }
             left.rows.add(Ui.Row.of(convX, y, convW, ROW, () -> select(firstKey)));
             y += ROW;
@@ -694,12 +733,12 @@ public class SocialScreen extends Screen {
                         graphics.fill(convX + 1, cy - 1, convX + convW - 1, cy + ROW - 1, theme.colors().highlight());
                     }
                     boolean channelMuted = ClientState.isMuted(key);
-                    graphics.text(font, Ui.trim(font, (channelMuted ? "⊘ #" : "#") + channel.name, w - 30), x + 12, cy,
+                    VisualText.text(graphics, font, Ui.trim(font, (channelMuted ? "⊘ #" : "#") + channel.name, w - 30), x + 12, cy,
                             channelMuted ? theme.colors().muted() : theme.colors().text());
                     int channelUnread = state.unreadOf(key);
                     if (channelUnread > 0) {
                         String count = "(" + channelUnread + ")";
-                        graphics.text(font, count, x + w - font.width(count), cy, channelMuted ? theme.colors().muted() : theme.colors().unread());
+                        VisualText.text(graphics, font, count, x + w - font.width(count), cy, channelMuted ? theme.colors().muted() : theme.colors().unread());
                     }
                     left.rows.add(Ui.Row.of(convX, y, convW, ROW, () -> select(key)));
                     y += ROW;
@@ -707,7 +746,7 @@ public class SocialScreen extends Screen {
             }
         }
         if (snapshot.groups.isEmpty()) {
-            graphics.text(font, Ui.trim(font, Component.translatable("socialmod.panel.no_groups").getString(), w), x + 2, left.screenY(y), theme.colors().muted());
+            VisualText.text(graphics, font, Ui.trim(font, Component.translatable("socialmod.panel.no_groups").getString(), w), x + 2, left.screenY(y), theme.colors().muted());
             y += ROW;
         }
         graphics.disableScissor();
@@ -717,9 +756,9 @@ public class SocialScreen extends Screen {
     private int requestRow(GuiGraphicsExtractor graphics, int x, int w, int y, String label, Runnable accept, Runnable deny) {
         Theme theme = Ui.theme();
         int rowY = left.screenY(y);
-        graphics.text(font, Ui.trim(font, label, w - 24), x + 2, rowY, theme.colors().text());
-        graphics.text(font, "✔", x + w - 20, rowY, Ui.SUCCESS);
-        graphics.text(font, "✖", x + w - 8, rowY, Ui.DANGER);
+        VisualText.text(graphics, font, Ui.trim(font, label, w - 24), x + 2, rowY, theme.colors().text());
+        VisualText.text(graphics, font, "✔", x + w - 20, rowY, Ui.success());
+        VisualText.text(graphics, font, "✖", x + w - 8, rowY, Ui.danger());
         left.rows.add(Ui.Row.of(x + w - 22, y, 10, ROW, accept));
         left.rows.add(Ui.Row.of(x + w - 10, y, 10, ROW, deny));
         return y + ROW;
@@ -737,12 +776,12 @@ public class SocialScreen extends Screen {
         Ui.status(graphics, font, status, x + 20, rowY);
         int textX = x + 28;
         int countWidth = unread > 0 ? font.width("(" + unread + ")") + 2 : 0;
-        graphics.text(font, Ui.trim(font, title, w - 28 - countWidth), textX, rowY, unread > 0 ? theme.colors().unread() : theme.colors().text());
+        VisualText.text(graphics, font, Ui.trim(font, title, w - 28 - countWidth), textX, rowY, unread > 0 ? theme.colors().unread() : theme.colors().text());
         if (unread > 0) {
-            graphics.text(font, "(" + unread + ")", x + w - countWidth + 2, rowY, theme.colors().unread());
+            VisualText.text(graphics, font, "(" + unread + ")", x + w - countWidth + 2, rowY, theme.colors().unread());
         }
         if (!preview.isEmpty()) {
-            graphics.text(font, Ui.trim(font, preview, w - 28), textX, rowY + ROW - 1, theme.colors().muted());
+            VisualText.text(graphics, font, Ui.trim(font, preview, w - 28), textX, rowY + ROW - 1, theme.colors().muted());
         }
         Runnable openProfile = other == null ? null : () -> openChild(new ProfileScreen(this, other, title));
         left.rows.add(new Ui.Row(convX, y, convW, height, () -> select(key), openProfile));
@@ -790,7 +829,7 @@ public class SocialScreen extends Screen {
         int w = chatW - 8;
         int y = top + 4;
         if (selected == null) {
-            graphics.centeredText(font, Component.translatable("socialmod.panel.select_conversation"), chatX + chatW / 2, (top + bottom) / 2, theme.colors().muted());
+            VisualText.centeredText(graphics, font, Component.translatable("socialmod.panel.select_conversation"), chatX + chatW / 2, (top + bottom) / 2, theme.colors().muted());
             drawNotice(graphics, x, bottom - INPUT_HEIGHT - 18, w);
             chatRows.begin(chatX, top, 0, 0);
             return;
@@ -803,7 +842,7 @@ public class SocialScreen extends Screen {
             String header = group.party ? Component.translatable("socialmod.panel.party").getString()
                     : emblem(group) + Component.translatable("socialmod.panel.group_header", group.name, id == null ? "" : id.channel()).getString();
             boolean voice = state.snapshot().voice;
-            graphics.text(font, Ui.trim(font, header, w - (voice ? 24 : 12)), x, y, Ui.readable(group.color));
+            VisualText.text(graphics, font, Ui.trim(font, header, w - (voice ? 24 : 12)), x, y, Ui.readable(group.color));
             // Chat de voz del grupo (Simple Voice Chat en el servidor): ☏ entra/sale
             voiceX = -1;
             if (voice) {
@@ -811,7 +850,7 @@ public class SocialScreen extends Screen {
                 voiceX = x + w - 20;
                 voiceGroupId = group.id;
                 voiceActive = inVoice;
-                graphics.text(font, "☏", voiceX, y, inVoice ? Ui.SUCCESS : theme.colors().muted());
+                VisualText.text(graphics, font, "☏", voiceX, y, inVoice ? Ui.success() : theme.colors().muted());
                 if (Ui.inside(mouseX, mouseY, voiceX - 1, y - 1, 10, 10)) {
                     graphics.setTooltipForNextFrame(font, Component.translatable(inVoice ? "socialmod.voice.leave" : "socialmod.voice.join"), mouseX, mouseY);
                 }
@@ -820,7 +859,7 @@ public class SocialScreen extends Screen {
             boolean muted = ClientState.isMuted(selected);
             muteX = x + w - 8;
             muteY = y;
-            graphics.text(font, muted ? "⊘" : "♪", muteX, muteY, muted ? Ui.DANGER : theme.colors().muted());
+            VisualText.text(graphics, font, muted ? "⊘" : "♪", muteX, muteY, muted ? Ui.danger() : theme.colors().muted());
             if (Ui.inside(mouseX, mouseY, muteX - 1, muteY - 1, 10, 10)) {
                 graphics.setTooltipForNextFrame(font, Component.translatable(muted ? "socialmod.panel.unmute_channel" : "socialmod.panel.mute_channel"), mouseX, mouseY);
             }
@@ -833,18 +872,18 @@ public class SocialScreen extends Screen {
                 Ui.status(graphics, font, state.statusOf(other), x, y);
                 Payloads.PresenceEntry presence = state.presenceOf(other);
                 String extra = presence == null || presence.customStatus().isEmpty() ? "" : "  \"" + presence.customStatus() + "\"";
-                graphics.text(font, Ui.trim(font, title + extra, w - 10), x + 8, y, theme.colors().text());
+                VisualText.text(graphics, font, Ui.trim(font, title + extra, w - 10), x + 8, y, theme.colors().text());
             } else {
-                graphics.text(font, Ui.trim(font, title, w), x, y, theme.colors().text());
+                VisualText.text(graphics, font, Ui.trim(font, title, w), x, y, theme.colors().text());
             }
         }
         y += ROW;
         if (group != null && !group.pinned.isEmpty()) {
-            graphics.text(font, Ui.trim(font, Component.translatable("socialmod.panel.pinned", group.pinned).getString(), w), x, y, theme.colors().unread());
+            VisualText.text(graphics, font, Ui.trim(font, Component.translatable("socialmod.panel.pinned", group.pinned).getString(), w), x, y, theme.colors().unread());
             y += ROW;
         }
         if (editing >= 0) {
-            graphics.text(font, Ui.trim(font, Component.translatable("socialmod.panel.editing").getString(), w), x, y, theme.colors().accent());
+            VisualText.text(graphics, font, Ui.trim(font, Component.translatable("socialmod.panel.editing").getString(), w), x, y, theme.colors().accent());
             y += ROW;
         }
         graphics.horizontalLine(chatX + 1, chatX + chatW - 2, y, theme.colors().border());
@@ -892,12 +931,12 @@ public class SocialScreen extends Screen {
                     hoverCoords = line.coords();
                 }
                 if (textScale == 1.0F) {
-                    graphics.text(font, line.text(), textX, lineY, theme.colors().text());
+                    VisualText.text(graphics, font, line.text(), textX, lineY, theme.colors().text());
                 } else {
                     graphics.pose().pushMatrix();
                     graphics.pose().translate(textX, lineY);
                     graphics.pose().scale(textScale, textScale);
-                    graphics.text(font, line.text(), 0, 0, theme.colors().text());
+                    VisualText.text(graphics, font, line.text(), 0, 0, theme.colors().text());
                     graphics.pose().popMatrix();
                 }
                 long messageId = line.messageId();
@@ -906,7 +945,7 @@ public class SocialScreen extends Screen {
             lineY += lineHeight;
         }
         if (cache.messages.isEmpty()) {
-            graphics.centeredText(font, Component.translatable(cache.requested ? "socialmod.panel.empty" : "socialmod.panel.loading"),
+            VisualText.centeredText(graphics, font, Component.translatable(cache.requested ? "socialmod.panel.empty" : "socialmod.panel.loading"),
                     chatX + chatW / 2, (listTop + listBottom) / 2, theme.colors().muted());
         }
         graphics.disableScissor();
@@ -923,7 +962,7 @@ public class SocialScreen extends Screen {
             }
         }
         if (!footer.isEmpty()) {
-            graphics.text(font, Ui.trim(font, footer, w), x, footerY, theme.colors().muted());
+            VisualText.text(graphics, font, Ui.trim(font, footer, w), x, footerY, theme.colors().muted());
         } else {
             drawNotice(graphics, x, footerY, w);
         }
@@ -945,7 +984,7 @@ public class SocialScreen extends Screen {
         Component notice = hello != null && hello.spyActive()
                 ? Component.translatable("socialmod.panel.notice_spy").withStyle(ChatFormatting.GOLD)
                 : Component.translatable("socialmod.panel.notice");
-        graphics.text(font, Ui.trim(font, notice.getString(), w), x, y, hello != null && hello.spyActive() ? Ui.WARNING : Ui.theme().colors().muted());
+        VisualText.text(graphics, font, Ui.trim(font, notice.getString(), w), x, y, hello != null && hello.spyActive() ? Ui.warning() : Ui.theme().colors().muted());
     }
 
     private String typingText(ClientState.ConversationCache cache) {
@@ -1104,9 +1143,9 @@ public class SocialScreen extends Screen {
                 int rowY = right.screenY(y);
                 Role role = Role.byId(member.role);
                 PresenceStatus status = PresenceStatus.byId(member.status);
-                graphics.text(font, "[" + (role == null ? "?" : role.letter()) + "]", x, rowY, theme.colors().muted());
+                VisualText.text(graphics, font, "[" + (role == null ? "?" : role.letter()) + "]", x, rowY, theme.colors().muted());
                 Ui.status(graphics, font, status, x + 16, rowY);
-                graphics.text(font, Ui.trim(font, member.name, w - 26), x + 24, rowY, member.online ? theme.colors().text() : theme.colors().muted());
+                VisualText.text(graphics, font, Ui.trim(font, member.name, w - 26), x + 24, rowY, member.online ? theme.colors().text() : theme.colors().muted());
                 UUID id = UUID.fromString(member.uuid);
                 right.rows.add(Ui.Row.of(playersX, y, playersW, ROW, () -> openChild(new ProfileScreen(this, id, member.name))));
                 y += ROW;
@@ -1117,8 +1156,8 @@ public class SocialScreen extends Screen {
                 y += ROW;
                 for (SnapshotDto.EventView event : group.events) {
                     long minutes = Math.max(0, (event.startsAt - System.currentTimeMillis()) / 60_000);
-                    graphics.text(font, Ui.trim(font, event.title + " (" + Component.translatable("socialmod.time.in_minutes", minutes).getString() + ")", w),
-                            x, right.screenY(y), Ui.EVENT);
+                    VisualText.text(graphics, font, Ui.trim(font, event.title + " (" + Component.translatable("socialmod.time.in_minutes", minutes).getString() + ")", w),
+                            x, right.screenY(y), Ui.event());
                     y += ROW;
                 }
             }
@@ -1142,17 +1181,17 @@ public class SocialScreen extends Screen {
             if (status != PresenceStatus.OFFLINE) {
                 Ui.status(graphics, font, status, x + 10, rowY);
             } else {
-                graphics.text(font, "·", x + 11, rowY, theme.colors().muted());
+                VisualText.text(graphics, font, "·", x + 11, rowY, theme.colors().muted());
             }
             String label = (state.isFriend(id) ? "★ " : "") + name;
-            graphics.text(font, Ui.trim(font, label, w - 20), x + 18, rowY, theme.colors().text());
+            VisualText.text(graphics, font, Ui.trim(font, label, w - 20), x + 18, rowY, theme.colors().text());
             Payloads.TagEntry tag = state.tagOf(id);
             if (tag != null && playersW > 110) {
                 String glyph = com.takumistudios.socialmod.common.model.GroupIcon.glyphOf(tag.icon());
                 String tagText = (glyph.isEmpty() ? "" : glyph + " ") + "[" + tag.tag() + "]";
                 int tagW = font.width(tagText);
                 if (font.width(label) + tagW + 22 < w) {
-                    graphics.text(font, tagText, x + w - tagW, rowY, Ui.readable(tag.color()));
+                    VisualText.text(graphics, font, tagText, x + w - tagW, rowY, Ui.readable(tag.color()));
                 }
             }
             right.rows.add(Ui.Row.of(playersX, y, playersW, ROW, () -> openChild(new ProfileScreen(this, id, name))));

@@ -21,7 +21,7 @@ import java.util.UUID;
  */
 public final class Payloads {
     /** Se incrementa con cada cambio incompatible de los paquetes. */
-    public static final int PROTOCOL_VERSION = 2;
+    public static final int PROTOCOL_VERSION = 3;
 
     public static final int MAX_TEXT = 1024;
     public static final int MAX_ARG = 256;
@@ -154,9 +154,10 @@ public final class Payloads {
                 (p, buf) -> {
                     buf.writeVarInt(p.action == null ? -1 : p.action.ordinal());
                     buf.writeUtf(p.a, MAX_ARG);
-                    buf.writeUtf(p.b, MAX_ARG);
+                    buf.writeUtf(p.b, p.action == SocialAction.VISUAL_PUBLISH ? 4096 : MAX_ARG);
                 },
-                buf -> new ActionC2S(SocialAction.byOrdinal(buf.readVarInt()), buf.readUtf(MAX_ARG), buf.readUtf(MAX_ARG)));
+                buf -> { SocialAction action = SocialAction.byOrdinal(buf.readVarInt());
+                    return new ActionC2S(action, buf.readUtf(MAX_ARG), buf.readUtf(action == SocialAction.VISUAL_PUBLISH ? 4096 : MAX_ARG)); });
 
         @Override
         public Type<ActionC2S> type() {
@@ -424,7 +425,7 @@ public final class Payloads {
                     buf.writeVarInt(p.entries.size());
                     for (TagEntry e : p.entries) {
                         buf.writeUUID(e.player);
-                        buf.writeUtf(e.tag, 16);
+                        buf.writeUtf(e.tag, 64);
                         buf.writeInt(e.color);
                         buf.writeUtf(e.icon, 16);
                         buf.writeUtf(e.role, 16);
@@ -438,7 +439,7 @@ public final class Payloads {
                     }
                     List<TagEntry> entries = new ArrayList<>(size);
                     for (int i = 0; i < size; i++) {
-                        entries.add(new TagEntry(buf.readUUID(), buf.readUtf(16), buf.readInt(), buf.readUtf(16), buf.readUtf(16)));
+                        entries.add(new TagEntry(buf.readUUID(), buf.readUtf(64), buf.readInt(), buf.readUtf(16), buf.readUtf(16)));
                     }
                     return new TagsS2C(full, entries);
                 });

@@ -24,7 +24,7 @@ public final class ThemeManager implements ResourceManagerReloadListener {
 
     /** Tema activo (con el modo de alto contraste aplicado si está activado). */
     public static Theme get() {
-        Theme theme = current;
+        Theme theme = VisualManager.theme(current);
         if (ClientConfig.get().accessibility.highContrast) {
             // Alto contraste: colores sólidos y sin texturas, que pueden restar legibilidad
             return new Theme(theme.layout(), theme.columns(), Theme.Colors.HIGH_CONTRAST, theme.toast(), Theme.Textures.NONE);
@@ -44,10 +44,10 @@ public final class ThemeManager implements ResourceManagerReloadListener {
             current = Theme.CODEC.parse(JsonOps.INSTANCE, json)
                     .resultOrPartial(error -> SocialMod.LOGGER.warn("[SocialMod] Tema {} ({}) inválido: {}", FILE,
                             resource.get().sourcePackId(), error))
-                    .orElse(Theme.DEFAULT);
+                    .orElse(current);
         } catch (Exception e) {
             SocialMod.LOGGER.warn("[SocialMod] No se pudo leer el tema {}: {}", FILE, e.getMessage());
-            current = Theme.DEFAULT;
+            // Keep the last valid theme.
         }
     }
 }
