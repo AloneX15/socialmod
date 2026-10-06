@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Named local series profiles: save, duplicate and activate complete panel, row and HUD designs.
+- Selective ZIP export with author, version, Minecraft and dependency metadata; unrelated FancyMenu settings stay out.
+- Guided ZIP review and installation, with persistent backup, automatic rollback on file-write errors and restoration of the previous design.
+- Profile switching restores pre-existing assets, disables retired pre-existing layouts and removes files created exclusively by the retired profile.
+- Spanish and English instructions and real screenshots for profiles, selective export and import review.
+
 ## 0.4.0
 
 - Optional FancyMenu and SpiffyHUD client integrations using registered elements, editor wrappers and live placeholders.

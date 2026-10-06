@@ -127,10 +127,7 @@ jobs:
       fail-fast: false
       matrix:
         minecraft: ["26.1.2", "26.2", "26.3"]
-        profile: [native, fancy, both]
-        include:
-          - minecraft: "26.3"
-            profile: christmas
+        profile: [native, fancy, both, christmas]
     steps:
       - uses: actions/checkout@v7
 

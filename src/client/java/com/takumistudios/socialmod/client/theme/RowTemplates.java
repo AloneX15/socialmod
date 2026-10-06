@@ -53,6 +53,7 @@ public final class RowTemplates {
     }
     public static RowDesign.Template template(String kind) { return active.templates.get(kind); }
     public static RowDesign design() { return active.copy(); }
+    public static void activate(RowDesign design) { design.validate(); validateResources(design); active=design.copy(); revision++; TEXT.clear(); }
     public static void validateResources(RowDesign design) {
         var resources = Minecraft.getInstance().getResourceManager();
         for(var row : design.templates.values()) for(var part : row.parts) {

@@ -98,6 +98,7 @@ final class FancyIntegrationTests {
             testExportResources();
         }));
         await(context,exported);
+        SeriesProfilesTests.run(context);
         await(context,context.computeOnClient(client -> FancyBridge.reset()));
         context.runOnClient(client -> {
             if (LocalSeriesDesign.get()!=null || RowTemplates.enabled("message")) throw new AssertionError("Local template reset failed");
@@ -133,7 +134,7 @@ final class FancyIntegrationTests {
             var root=java.nio.file.Files.createTempDirectory("socialmod-pack-");
             var dir=root.resolve("config/fancymenu/customization"); java.nio.file.Files.createDirectories(dir);
             var asset=root.resolve("config/fancymenu/assets/snow.png"); java.nio.file.Files.createDirectories(asset.getParent()); java.nio.file.Files.write(asset,new byte[]{1,2,3});
-            var layout=dir.resolve("test.txt"); java.nio.file.Files.writeString(layout,"source = [source:local]config/fancymenu/assets/snow.png\n");
+            var layout=dir.resolve("socialmod_test.txt"); java.nio.file.Files.writeString(layout,"source = [source:local]config/fancymenu/assets/snow.png\n");
             try(var zip=new java.util.zip.ZipFile(SeriesPackFiles.export(root).toFile())) { if(zip.getEntry("config/fancymenu/assets/snow.png")==null) throw new AssertionError("Referenced pack asset omitted"); }
             java.nio.file.Files.writeString(layout,"source = [source:local]../secret.png\n");
             boolean rejected=false; try { SeriesPackFiles.export(root); } catch(java.io.IOException expected) { rejected=true; }

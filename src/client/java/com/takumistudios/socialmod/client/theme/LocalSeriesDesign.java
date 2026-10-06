@@ -22,6 +22,7 @@ public final class LocalSeriesDesign {
         return CompletableFuture.runAsync(() -> { try { Files.createDirectories(FILE.getParent()); var tmp=FILE.resolveSibling("visual.json.tmp"); Files.writeString(tmp,VisualDesign.GSON.toJson(snapshot)); Files.move(tmp,FILE,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE); active=snapshot; } catch(Exception e) { SocialMod.LOGGER.warn("Could not save local appearance",e); throw new CompletionException(e); } },IO);
     }
     public static void clear() { active = null; }
+    public static void activate(VisualDesign design) { if(design!=null) design.validate(); active=design==null?null:design.copy(); }
     public static CompletableFuture<Void> reset() {
         return CompletableFuture.runAsync(() -> {
             try {

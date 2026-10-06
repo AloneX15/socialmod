@@ -64,6 +64,9 @@ public final class FancyBridge {
     public static void editHud() {
         if (spiffy()) try { FancyBackend.editHud(); } catch (RuntimeException | LinkageError e) { disable(e); }
     }
+    public static void reload() {
+        if(available()) try { FancyBackend.reload(); } catch(RuntimeException|LinkageError e) { disable(e); }
+    }
     private static void disable(Throwable e) { failed = true; SocialMod.LOGGER.warn("Advanced customization unavailable; using the basic interface", e); }
     private FancyBridge() { }
 }

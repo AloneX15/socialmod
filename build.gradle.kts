@@ -196,7 +196,8 @@ if (project.hasProperty("christmasPack")) {
         systemProperty("socialmod.test.christmasPack", "true")
         doFirst {
             project.copy {
-                from(zipTree(rootProject.file("docs/examples/christmas/christmas-modpack.zip")))
+                val packName = if (mcVersion == "26.3") "christmas-modpack.zip" else "christmas-modpack-$mcVersion.zip"
+                from(zipTree(rootProject.file("docs/examples/christmas/$packName")))
                 into(project.layout.buildDirectory.dir("run/clientGameTest"))
             }
         }

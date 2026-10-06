@@ -1,6 +1,6 @@
 # Navidad: Refugio de invierno
 
-Template editable para **SocialMod 0.4.0**, FancyMenu y SpiffyHUD. Incluye fondo invernal, marcos de madera y nieve, botones con estados y una fuente bitmap con tildes, ñ, ¡ y ¿. Los recursos navideños vienen en el JAR de SocialMod.
+Template editable para **SocialMod 0.5.0**, FancyMenu y SpiffyHUD. Incluye fondo invernal, marcos de madera y nieve, botones con estados y una fuente bitmap con tildes, ñ, ¡ y ¿. Los recursos navideños vienen en el JAR de SocialMod.
 
 La personalización avanzada se distribuye con el **modpack del cliente**. Los mensajes, TEAM y permisos siguen gestionados por el servidor.
 
@@ -74,19 +74,37 @@ Cada componente visible sustituye su HUD nativo de SocialMod. Ocultarlo o quitar
 
 ![HUD en el juego](images/christmas/es/advanced_06_hud.png)
 
-## 6. Exportar e instalar en el modpack
+## 6. Guardar perfiles y exportar la serie
 
-Pulsa **Exportar modpack de la serie**. El resultado queda en `config/socialmod/presets/socialmod-series.zip`. Incluye las configuraciones de FancyMenu y SpiffyHUD, las filas y la apariencia local, y los recursos locales referenciados que estén dentro de la instancia. También exporta otras personalizaciones de FancyMenu presentes en esa instancia: prepara una instancia dedicada a la serie.
+Pulsa **Perfiles de serie**. El botón **Página** alterna entre Perfiles, Archivos y exportación, e Importar y restaurar.
 
-Para instalar el [template navideño](examples/christmas/christmas-modpack.zip):
+En **Perfiles**, selecciona **Nuevo perfil**, escribe nombre, autor y versión del diseño. En **Archivos y exportación**, recorre los layouts con el primer botón y decide **Incluir layout: Sí/No**. Por defecto se seleccionan los archivos cuyo nombre empieza por `socialmod_`. Puedes añadir layouts propios con otros nombres. Las filas y la apariencia local se incluyen si existen.
 
-1. Cierra Minecraft y guarda una copia de la configuración existente.
-2. Extrae el ZIP en la raíz de la instancia: sus carpetas `config/` deben combinarse con las del modpack.
-3. Incluye SocialMod, FancyMenu, Konkrete, Melody y SpiffyHUD compatibles con la versión elegida.
-4. Incluye por separado los resource packs personalizados que utilices y actívalos. El ejemplo incluido usa recursos del propio SocialMod.
-5. Arranca el juego, entra al servidor y comprueba el panel y el HUD.
+![Perfiles de serie](images/christmas/es/series_01_profiles.png)
 
-No se usa el botón **Importar** del editor básico para este ZIP. No contiene mods ni envía layouts desde el servidor. El exportador rechaza recursos externos, rutas dinámicas y packs que excedan sus límites. Guarda las imágenes locales con rutas relativas dentro de la instancia.
+Vuelve a **Perfiles** y pulsa **Guardar diseño actual**. Se guarda una instantánea del diseño del cliente en `config/socialmod/series/profiles/`, sin activarla. Para actualizarla, selecciona el perfil y vuelve a guardar. **Duplicar perfil** crea una copia independiente de la instantánea guardada; **Activar perfil guardado** instala esa instantánea con respaldo del diseño anterior. Los cambios posteriores en los editores solo se incorporan al perfil cuando vuelves a guardarlo.
+
+![Selección de archivos](images/christmas/es/series_02_page.png)
+
+En **Archivos y exportación**, pulsa **Exportar seleccionados**. El ZIP queda en `config/socialmod/presets/socialmod-series.zip`. Contiene únicamente los layouts seleccionados, sus recursos locales referenciados, las filas, la apariencia y un manifiesto `socialmod-series.json` con nombre, autor, versión, Minecraft y mods necesarios. No incluye preferencias de FancyMenu ni otros layouts. Las imágenes propias deben estar dentro de `config/fancymenu/assets/`, `config/spiffyhud/assets/` o `config/socialmod/assets/`. Los resource packs personalizados se distribuyen y activan por separado.
+
+## 7. Importar con revisión y respaldo
+
+Descarga el template de tu versión: [26.1.2](examples/christmas/christmas-modpack-26.1.2.zip), [26.2](examples/christmas/christmas-modpack-26.2.zip) o [26.3](examples/christmas/christmas-modpack.zip).
+
+1. Pulsa **Abrir carpeta de ZIP** y coloca el archivo en `config/socialmod/presets/`.
+2. En **Importar y restaurar**, pulsa **Actualizar lista de ZIP**, selecciona el archivo y pulsa **Revisar ZIP**.
+3. Revisa nombre, autor, versión, dependencias y archivos. Instala los mods compatibles y activa los resource packs necesarios antes de importar. Si falta un mod, una fuente o textura de las filas, o no coincide Minecraft, la instalación queda bloqueada.
+4. Pulsa **Instalar con respaldo**. Se guarda como nuevo perfil y se activa; los editores se recargan sin reiniciar Minecraft.
+5. Comprueba el panel y el HUD. **Restaurar diseño anterior** recupera los archivos afectados antes de la última activación y elimina los que esa activación creó. El respaldo persiste al reiniciar; una nueva activación sustituye el respaldo anterior.
+
+![Importación](images/christmas/es/series_03_page.png)
+
+![Revisión del ZIP](images/christmas/es/series_04_review.png)
+
+Cambiar de perfil retira los layouts creados por el perfil anterior y desactiva los que ya existían; los recursos previos se recuperan. Si el nuevo perfil no incluye filas o apariencia local, se vuelve a la presentación básica. Conserva los layouts ajenos que no se hayan seleccionado. La revisión muestra los archivos que serán sustituidos; evita seleccionar un layout compartido con otras personalizaciones si no quieres modificarlo.
+
+No se usa el botón **Importar** del editor básico para este ZIP. Los ZIP avanzados anteriores a 0.5.0 carecen de manifiesto: vuelve a exportarlos con la versión actual, o instálalos manualmente con Minecraft cerrado. El ZIP no contiene mods ni envía layouts desde el servidor. El importador rechaza rutas externas, archivos ajenos al diseño, enlaces simbólicos, modelos inválidos y paquetes demasiado grandes.
 
 **Restablecer template local** desactiva los dos layouts navideños, desactiva las filas personalizadas y vuelve a la apariencia básica del servidor. Conserva los layouts para poder editarlos más adelante; la apariencia local se guarda como `visual.json.disabled`.
 

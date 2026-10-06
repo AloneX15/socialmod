@@ -23,7 +23,7 @@ public abstract class SocialChildScreen extends Screen {
 
     @Override protected void init() {
         content = null;
-        if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() || getClass().getSimpleName().startsWith("Visual") || this instanceof AdvancedCustomizationScreen || this instanceof RowTemplateScreen) return;
+        if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() || getClass().getSimpleName().startsWith("Visual") || this instanceof AdvancedCustomizationScreen || this instanceof RowTemplateScreen || this instanceof SeriesManagerScreen || this instanceof SeriesImportScreen) return;
         content = new net.minecraft.client.gui.components.AbstractWidget(0,0,width,height,title) {
             @Override public boolean isMouseOver(double x,double y) { return false; }
             @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,boolean doubleClick) { return false; }

@@ -1,6 +1,6 @@
 # Christmas: Winter Lodge
 
-Editable template for **SocialMod 0.4.0**, FancyMenu and SpiffyHUD. It includes a winter landscape, carved wood and snow frames, button states and a bitmap font supporting Spanish characters. Christmas resources are bundled in the SocialMod JAR.
+Editable template for **SocialMod 0.5.0**, FancyMenu and SpiffyHUD. It includes a winter landscape, carved wood and snow frames, button states and a bitmap font supporting Spanish characters. Christmas resources are bundled in the SocialMod JAR.
 
 Advanced customization is distributed through the **client modpack**. Messages, TEAM membership and permissions remain managed by the server.
 
@@ -74,19 +74,37 @@ Each visible component replaces its native SocialMod HUD counterpart. Hiding or 
 
 ![HUD in game](images/christmas/en/advanced_06_hud.png)
 
-## 6. Export and install the modpack
+## 6. Save profiles and export your series
 
-Click **Export series modpack**. The result is `config/socialmod/presets/socialmod-series.zip`. It includes FancyMenu and SpiffyHUD configuration, local rows and appearance, and referenced local resources inside the instance. Other FancyMenu customizations in that instance are exported too: prepare a dedicated series instance.
+Click **Series profiles**. The **Page** button switches between Profiles, Files and export, and Import and restore.
 
-To install the [Christmas template](examples/christmas/christmas-modpack.zip):
+On **Profiles**, choose **New profile** and enter the series name, author and design version. On **Files and export**, cycle through layouts using the first button and set **Include layout: Yes/No**. Files whose names start with `socialmod_` are selected by default. You can select your own layouts with other names. Local rows and appearance are included when present.
 
-1. Close Minecraft and back up existing configuration.
-2. Extract the ZIP into the instance root, merging its `config/` directories with the modpack.
-3. Include compatible SocialMod, FancyMenu, Konkrete, Melody and SpiffyHUD releases.
-4. Distribute and activate any custom resource packs separately. The bundled example uses SocialMod's own resources.
-5. Start the game, join the server and check the panel and HUD.
+![Series profiles](images/christmas/en/series_01_profiles.png)
 
-This ZIP is installed through the instance folders, not the basic editor's **Import** button. It contains no mods and does not send layouts from the server. Export rejects external resources, dynamic paths and oversized packs. Keep local images inside the instance using relative paths.
+Return to **Profiles** and click **Save current design**. This saves a snapshot under `config/socialmod/series/profiles/` without activating it. Select a saved profile and save again to update it. **Duplicate profile** copies the saved snapshot independently. **Activate saved profile** installs that snapshot and backs up the previous design. Later changes in the editors are included only when you save the profile again.
+
+![File selection](images/christmas/en/series_02_page.png)
+
+On **Files and export**, click **Export selected files**. The ZIP is written to `config/socialmod/presets/socialmod-series.zip`. It includes only selected layouts, their referenced local assets, rows, appearance, and `socialmod-series.json` containing the name, author, version, Minecraft version and required mods. Other layouts and FancyMenu preferences stay out. Store custom images under `config/fancymenu/assets/`, `config/spiffyhud/assets/` or `config/socialmod/assets/`. Distribute and enable custom resource packs separately.
+
+## 7. Review, import and restore
+
+Download the template matching your Minecraft version: [26.1.2](examples/christmas/christmas-modpack-26.1.2.zip), [26.2](examples/christmas/christmas-modpack-26.2.zip) or [26.3](examples/christmas/christmas-modpack.zip).
+
+1. Click **Open ZIP folder** and place the file in `config/socialmod/presets/`.
+2. On **Import and restore**, click **Refresh ZIP list**, select the archive and click **Review ZIP**.
+3. Review metadata, dependencies and files. Install compatible mods and enable required resource packs first. Missing mods, missing row fonts/textures or a different Minecraft version block installation.
+4. Click **Install with backup**. The design is stored as a new profile and activated; the editors reload without restarting Minecraft.
+5. Check the panel and HUD. **Restore previous design** restores affected files and removes files created by the last activation. The backup survives a restart; each activation replaces the previous backup.
+
+![Import page](images/christmas/en/series_03_page.png)
+
+![ZIP review](images/christmas/en/series_04_review.png)
+
+Switching profiles removes layouts created by the previous profile and disables layouts that already existed; pre-existing assets are restored. Missing local rows or appearance return to the basic presentation. Unselected layouts are preserved. Review lists the files that will be replaced; avoid selecting layouts shared with other customizations if you do not want to change them.
+
+The basic editor's **Import** button does not handle these ZIPs. Advanced ZIPs exported before 0.5.0 have no manifest: export them again with the current version, or install manually with Minecraft closed. Archives contain no mods and do not send layouts from the server. Import rejects external paths, unrelated configuration files, symbolic links, invalid models and oversized packages.
 
 **Reset local template** disables the two Christmas layouts, disables custom rows and returns to the server's basic appearance. Layouts are kept for later editing; the local appearance is saved as `visual.json.disabled`.
 

@@ -260,6 +260,8 @@ Desde la versión 0.4.0, **FancyMenu** y **SpiffyHUD** son integraciones opciona
 
 El botón **Editor visual** abre las herramientas avanzadas cuando FancyMenu está instalado. El diseño se distribuye mediante el modpack, con exportación a `config/socialmod/presets/socialmod-series.zip`. FancyMenu requiere Konkrete y Melody; SpiffyHUD añade la edición del HUD.
 
+Desde 0.5.0, **Perfiles de serie** permite guardar, duplicar y activar diseños locales. La exportación incluye solo los layouts seleccionados y sus recursos, con un manifiesto de autoría y dependencias. La importación revisa el ZIP y conserva un respaldo restaurable antes de activar el perfil.
+
 - [Guía navideña en español](docs/christmas-es.md).
 - [Christmas guide in English](docs/christmas-en.md).
 - [Template avanzado para el modpack](docs/examples/christmas/christmas-modpack.zip).

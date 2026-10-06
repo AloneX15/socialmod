@@ -21,7 +21,7 @@ final class FancyBackend {
         de.keksuccino.fancymenu.customization.overlay.CustomizationOverlay.registerOverlayVisibilityController(screen ->
             !(screen instanceof com.takumistudios.socialmod.client.screen.SocialScreen)
                 && !(screen instanceof com.takumistudios.socialmod.client.screen.SocialChildScreen));
-        for (String name : List.of("SocialScreen", "TeamScreen", "TeamManagementScreen", "SettingsScreen", "ProfileScreen", "CreateGroupScreen", "GroupSettingsScreen", "InviteScreen", "QuickReplyScreen", "TagStyleScreen", "AdvancedCustomizationScreen", "RowTemplateScreen"))
+        for (String name : List.of("SocialScreen", "TeamScreen", "TeamManagementScreen", "SettingsScreen", "ProfileScreen", "CreateGroupScreen", "GroupSettingsScreen", "InviteScreen", "QuickReplyScreen", "TagStyleScreen", "AdvancedCustomizationScreen", "RowTemplateScreen", "SeriesManagerScreen", "SeriesImportScreen"))
             UniversalScreenIdentifierRegistry.register("socialmod_" + name.replace("Screen", "").toLowerCase(java.util.Locale.ROOT), "com.takumistudios.socialmod.client.screen." + name);
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("spiffyhud")) SpiffyBackend.register();
         for (String key : List.of("team", "conversation", "unread", "status")) PlaceholderRegistry.register(new SocialPlaceholder(key));
@@ -52,6 +52,7 @@ final class FancyBackend {
         LayoutHandler.openLayoutEditor(layout, target);
     }
     static void editHud() { SpiffyBackend.edit(); }
+    static void reload() { ScreenCustomization.reloadFancyMenu(); }
     private static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { var thread = new Thread(r,"SocialMod-Fancy-IO"); thread.setDaemon(true); return thread; });
     static java.util.concurrent.CompletableFuture<Void> christmas(Screen target) {
         var layout = Layout.buildForScreen(target);

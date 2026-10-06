@@ -184,3 +184,11 @@ Minecraft 26.3 utiliza valores SDL para el ratón: izquierda es 1 y derecha es 3
 ### Recursos de filas durante el arranque de un modpack
 
 Las filas importadas pueden cargarse antes de terminar la primera recarga de recursos de Minecraft. Validarlas en ese momento podría descartar fuentes que todavía no estaban disponibles. La validación de recursos espera a la primera recarga; posteriores cargas se validan inmediatamente. El perfil `-PfancyMenu -PchristmasPack` arranca con el ZIP documentado instalado y exige que sus filas y apariencia se carguen.
+
+### Exportación de configuraciones ajenas a la serie (0.5.0)
+
+El exportador anterior copiaba toda la configuración de FancyMenu, incluidas preferencias y layouts de otras pantallas. Ahora usa selección explícita de layouts, incorpora únicamente sus recursos locales referenciados y las filas/apariencia, y añade un manifiesto validado. Los tests comprueban que no salgan preferencias ni layouts no seleccionados, y que se rechacen rutas externas y dependencias omitidas.
+
+### Cambio de perfil y recuperación del diseño previo (0.5.0)
+
+Sobrescribir archivos sin conservar su origen puede perder el diseño anterior; restaurar un layout retirado como activo puede además superponerlo al nuevo. Cada activación respalda los archivos afectados y el estado del perfil, conserva el contenido original de archivos existentes y retira o desactiva los layouts que dejan de usarse. La restauración recupera los bytes anteriores y elimina archivos nuevos. Los tests cubren colisiones, perfiles sin filas locales, layouts retirados y restauración tras reiniciar el servicio; el gametest recarga los editores reales, activa/importa y restaura perfiles.
