@@ -3,6 +3,8 @@ package com.takumistudios.socialmod.client.screen;
 import com.takumistudios.socialmod.client.theme.VisualManager;
 
 import com.takumistudios.socialmod.client.theme.VisualText;
+import com.takumistudios.socialmod.client.theme.RowTemplates;
+import java.util.Map;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.takumistudios.socialmod.client.ClientConfig;
@@ -52,6 +54,7 @@ import java.util.UUID;
  * Respeta un margen reservado para minimapas (config del cliente).
  */
 public class SocialScreen extends Screen {
+    private int visualInset() { return Math.min(VisualManager.get().panelInset, height < 220 ? 12 : 24); }
     private static int gap() { return Math.max(2, VisualManager.get().padding); }
     private static final int ROW = 11;
     private static final int INPUT_HEIGHT = 18;
@@ -97,6 +100,12 @@ public class SocialScreen extends Screen {
     private int linesVersion = -1;
     private int linesWidth = -1;
     private @Nullable String linesConversation;
+    private record TemplateMessage(Payloads.MessageView message, RowTemplates.Data data, int height) { }
+    private List<TemplateMessage> templateMessages = List.of();
+    private int templateVersion = -1, templateWidth = -1, templateHeight;
+    private long templateRevision = -1;
+    private String templateLanguage = "";
+    private @Nullable String templateConversation;
 
     /** Una línea ya partida del chat. */
     private record Line(FormattedCharSequence text, long messageId, boolean header, @Nullable UUID sender,
@@ -131,10 +140,12 @@ public class SocialScreen extends Screen {
             }
         }
         ClientConfig.Panel panelConfig = ClientConfig.get().panel;
-        int leftEdge = gap();
-        int rightEdge = this.width - gap() - panelConfig.reservedRight;
-        top = gap() + panelConfig.reservedTop;
-        bottom = this.height - gap();
+        int inset = visualInset();
+        int columnGap = gap() + 2 * inset;
+        int leftEdge = gap() + inset;
+        int rightEdge = this.width - gap() - inset - panelConfig.reservedRight;
+        top = gap() + inset + panelConfig.reservedTop;
+        bottom = this.height - gap() - inset;
         var visual = VisualManager.get();
         if (!visual.mode.equals("full")) {
             int areaW = Math.max(160, rightEdge - leftEdge), areaH = Math.max(120, bottom - top);
@@ -151,8 +162,8 @@ public class SocialScreen extends Screen {
         Theme.Column convCol = theme.column("conversations").orElse(Theme.DEFAULT.columns().get(0));
         Theme.Column chatCol = theme.column("chat").orElse(Theme.DEFAULT.columns().get(1));
         Theme.Column playersCol = theme.column("players").orElse(Theme.DEFAULT.columns().get(2));
-        int minThree = convCol.minWidth() + chatCol.minWidth() + playersCol.minWidth() + 2 * gap();
-        int minTwo = convCol.minWidth() + chatCol.minWidth() + gap();
+        int minThree = convCol.minWidth() + chatCol.minWidth() + playersCol.minWidth() + 2 * columnGap;
+        int minTwo = convCol.minWidth() + chatCol.minWidth() + columnGap;
         layout = available >= Math.max(480, minThree) ? Layout.THREE : available >= Math.max(320, minTwo) ? Layout.TWO : Layout.TABS;
         if (theme.layout().equals("tabs")) layout = Layout.TABS;
         else if (theme.layout().equals("two_column") && layout == Layout.THREE) layout = Layout.TWO;
@@ -170,9 +181,9 @@ public class SocialScreen extends Screen {
             addTab(Tab.PLAYERS, "socialmod.panel.tab.players", leftEdge + 2 * (tabWidth + gap()), tabWidth);
         } else if (layout == Layout.TWO) {
             int total = convCol.weight() + chatCol.weight();
-            convW = convCol.minWidth() + Math.max(0, available - gap() - convCol.minWidth() - chatCol.minWidth()) * convCol.weight() / total;
+            convW = convCol.minWidth() + Math.max(0, available - columnGap - convCol.minWidth() - chatCol.minWidth()) * convCol.weight() / total;
             convX = leftEdge;
-            int mainX = convX + convW + gap();
+            int mainX = convX + convW + columnGap;
             int mainW = rightEdge - mainX;
             if (tab == Tab.CONVERSATIONS) {
                 tab = Tab.CHAT;
@@ -186,26 +197,31 @@ public class SocialScreen extends Screen {
             addTab(Tab.PLAYERS, "socialmod.panel.tab.players", mainX + tabWidth + gap(), tabWidth);
         } else {
             int total = convCol.weight() + chatCol.weight() + playersCol.weight();
-            int usable = available - 2 * gap();
+            int usable = available - 2 * columnGap;
             int extra = Math.max(0, usable - convCol.minWidth() - chatCol.minWidth() - playersCol.minWidth());
             convW = convCol.minWidth() + extra * convCol.weight() / total;
             playersW = playersCol.minWidth() + extra * playersCol.weight() / total;
             chatW = usable - convW - playersW;
             convX = leftEdge;
-            chatX = convX + convW + gap();
-            playersX = chatX + chatW + gap();
+            chatX = convX + convW + columnGap;
+            playersX = chatX + chatW + columnGap;
             playersW = rightEdge - playersX;
         }
 
-        top += 24;
+        top += 24 + inset;
         addRenderableWidget(Ui.button(Component.translatable("socialmod.team.title"), b -> openChild(new TeamScreen(this)))
-                .bounds(leftEdge, top - 24, Math.min(100, available / 3), 20).build());
-        if (ClientState.get().snapshot().visualAdmin) addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.title"), b -> openChild(new VisualEditorScreen(this)))
-                .bounds(leftEdge + Math.min(100, available / 3) + 4, top - 24, Math.min(100, available / 3), 20).build());
+                .bounds(leftEdge, top - 24 - inset, Math.min(100, available / 3), 20).build());
+        if (ClientState.get().snapshot().visualAdmin) addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.title"), b -> openChild(com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() ? new AdvancedCustomizationScreen(this) : new VisualEditorScreen(this)))
+                .bounds(leftEdge + Math.min(100, available / 3) + 4, top - 24 - inset, Math.min(100, available / 3), 20).build());
 
         // Columna de conversaciones: búsqueda arriba, botones abajo
+        if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
+            if (convW > 0) addRenderableWidget(new SocialBlockWidget(this, "conversations", convX, top, convW, bottom - top));
+            if (chatW > 0) addRenderableWidget(new SocialBlockWidget(this, "chat", chatX, top, chatW, bottom - top));
+            if (playersW > 0) addRenderableWidget(new SocialBlockWidget(this, "players", playersX, top, playersW, bottom - top));
+        }
         if (convW > 0) {
-            search = new EditBox(this.font, convX + 3, top + 3, convW - 6, 14, Component.translatable("socialmod.panel.search"));
+            search = new StyledEditBox(this.font, convX + 3, top + 3, convW - 6, 14, Component.translatable("socialmod.panel.search"));
             search.setHint(Component.translatable("socialmod.panel.search").withStyle(ChatFormatting.DARK_GRAY));
             search.setMaxLength(32);
             search.setValue(searchText);
@@ -226,7 +242,7 @@ public class SocialScreen extends Screen {
             int maxLength = hello == null ? 256 : hello.maxMessageLength();
             boolean sharing = hello == null || hello.sharingEnabled();
             int buttonsW = sharing ? 2 * 22 + gap() : 0;
-            input = new EditBox(this.font, chatX + 3, bottom - INPUT_HEIGHT - 3, chatW - 6 - buttonsW - 24, INPUT_HEIGHT,
+            input = new StyledEditBox(this.font, chatX + 3, bottom - INPUT_HEIGHT - 3, chatW - 6 - buttonsW - 24, INPUT_HEIGHT,
                     Component.translatable("socialmod.panel.input"));
             input.setMaxLength(maxLength);
             input.setHint(Component.translatable(selected == null ? "socialmod.panel.select_conversation" : "socialmod.panel.input")
@@ -279,7 +295,7 @@ public class SocialScreen extends Screen {
         Button button = Ui.button(Component.translatable(key), b -> {
             tab = target;
             rebuildWidgets();
-        }).bounds(x, top - 22, w, 20).build();
+        }).selected(tab == target).bounds(x, top - 22, w, 20).build();
         button.active = tab != target;
         addRenderableWidget(button);
     }
@@ -464,6 +480,10 @@ public class SocialScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (com.takumistudios.socialmod.client.SocialKeys.OPEN_PANEL.matches(event)) {
+            onClose();
+            return true;
+        }
         int key = event.key();
         if (input != null && getFocused() == input) {
             if (key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER) {
@@ -531,35 +551,66 @@ public class SocialScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (super.mouseClicked(event, doubleClick)) {
-            return true;
+        if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
+            // In 26.x vanilla routes the first hovered component. A passive block underneath
+            // another moved block must not capture its click; real controls retain priority.
+            var block = topBlock(event.x(), event.y());
+            boolean control = children().stream().anyMatch(child -> !(child instanceof SocialBlockWidget)
+                && child.isMouseOver(event.x(), event.y())
+                && (!(child instanceof net.minecraft.client.gui.components.AbstractWidget widget)
+                    || widget.visible && widget.active && !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.hidden(widget)));
+            if (block != null && !control && clickBlock(block.kind(), event)) return true;
+            return super.mouseClicked(event, doubleClick);
         }
-        boolean rightClick = event.button() == 1;
+        if (super.mouseClicked(event, doubleClick)) return true;
+        boolean rightClick = event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT;
         double mx = event.x();
         double my = event.y();
-        if (voiceX >= 0 && Ui.inside(mx, my, voiceX - 1, muteY - 1, 10, 10)) {
+        if (blockVisible("chat") && voiceX >= 0 && Ui.inside(mx, my, voiceX - 1, muteY - 1, 10, 10)) {
             ClientNet.action(voiceActive ? SocialAction.VOICE_LEAVE : SocialAction.VOICE_JOIN, voiceGroupId);
             return true;
         }
-        if (muteX >= 0 && selected != null && Ui.inside(mx, my, muteX - 1, muteY - 1, 10, 10)) {
+        if (blockVisible("chat") && muteX >= 0 && selected != null && Ui.inside(mx, my, muteX - 1, muteY - 1, 10, 10)) {
             ClientState.toggleMuted(selected);
             return true;
         }
-        if (convW > 0 && left.click(mx, my, rightClick)) {
+        if (convW > 0 && blockVisible("conversations") && left.click(mx, my, rightClick)) {
             return true;
         }
-        if (playersW > 0 && right.click(mx, my, rightClick)) {
+        if (playersW > 0 && blockVisible("players") && right.click(mx, my, rightClick)) {
             return true;
         }
-        return chatW > 0 && chatRows.click(mx, my, rightClick);
+        return chatW > 0 && blockVisible("chat") && chatRows.click(mx, my, rightClick);
+    }
+
+    private SocialBlockWidget topBlock(double x, double y) {
+        var children = children();
+        for (int i = children.size() - 1; i >= 0; i--) if (children.get(i) instanceof SocialBlockWidget block && block.visible && !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.hidden(block) && Ui.inside(x, y, block.getX(), block.getY(), block.getWidth(), block.getHeight())) return block;
+        return null;
+    }
+    private boolean clickBlock(String kind, MouseButtonEvent event) {
+        double x = event.x(), y = event.y(); boolean rightClick = event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT;
+        if (kind.equals("conversations")) return left.click(x, y, rightClick);
+        if (kind.equals("players")) return right.click(x, y, rightClick);
+        if (voiceX >= 0 && Ui.inside(x,y,voiceX-1,muteY-1,10,10)) { ClientNet.action(voiceActive ? SocialAction.VOICE_LEAVE : SocialAction.VOICE_JOIN,voiceGroupId); return true; }
+        if (muteX >= 0 && selected != null && Ui.inside(x,y,muteX-1,muteY-1,10,10)) { ClientState.toggleMuted(selected); return true; }
+        return chatRows.click(x,y,rightClick);
     }
 
     @Override
     public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
-        if (left.scroll(mx, my, scrollY) || right.scroll(mx, my, scrollY)) {
+        if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
+            var block = topBlock(mx,my); if (block == null) return super.mouseScrolled(mx,my,scrollX,scrollY);
+            if (block.kind().equals("conversations")) return left.scroll(mx,my,scrollY);
+            if (block.kind().equals("players")) return right.scroll(mx,my,scrollY);
+            if (chatRows.isOver(mx,my)) { chatScroll=Math.max(0,chatScroll+(int)(scrollY*12)); return true; }
+            return false;
+        }
+
+        if (blockVisible("conversations") && left.scroll(mx, my, scrollY) || blockVisible("players") && right.scroll(mx, my, scrollY)) {
             return true;
         }
-        if (chatRows.isOver(mx, my)) {
+        if (blockVisible("chat") && chatRows.isOver(mx, my)) {
             chatScroll = Math.max(0, chatScroll + (int) (scrollY * 12));
             return true;
         }
@@ -616,6 +667,7 @@ public class SocialScreen extends Screen {
         Theme theme = Ui.theme();
         if (VisualManager.get().mode.equals("full")) Ui.background(graphics, this.width, this.height);
         else Ui.panel(graphics, frameLeft - 3, frameTop - 3, frameRight + 3, frameBottom + 3);
+        if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
         if (convW > 0) {
             Ui.panel(graphics, convX, top, convX + convW, bottom);
             drawConversations(graphics, mouseX, mouseY);
@@ -628,7 +680,25 @@ public class SocialScreen extends Screen {
             Ui.panel(graphics, playersX, top, playersX + playersW, bottom);
             drawPlayers(graphics, mouseX, mouseY);
         }
+        }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private boolean blockVisible(String kind) {
+        for (var child : children()) if (child instanceof SocialBlockWidget block && block.kind().equals(kind)) return block.visible && !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.hidden(block);
+        return !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available();
+    }
+    public void drawBlock(String kind, GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h) {
+        int oldTop = top, oldBottom = bottom; top = y; bottom = y + h;
+        try {
+            Ui.panel(graphics, x, y, x + w, y + h);
+            switch (kind) {
+                case "conversations" -> { convX = x; convW = w; drawConversations(graphics, mouseX, mouseY); }
+                case "chat" -> { chatX = x; chatW = w; drawChat(graphics, mouseX, mouseY); }
+                case "players" -> { playersX = x; playersW = w; drawPlayers(graphics, mouseX, mouseY); }
+                default -> throw new IllegalArgumentException("Unknown block");
+            }
+        } finally { top = oldTop; bottom = oldBottom; }
     }
 
     // ---------- Conversaciones ----------
@@ -769,6 +839,12 @@ public class SocialScreen extends Screen {
         Theme theme = Ui.theme();
         int rowY = left.screenY(y);
         int height = 2 * ROW;
+        if (RowTemplates.enabled("conversation")) {
+            var data = new RowTemplates.Data(other, Map.of("name", Component.literal(title), "text", Component.literal(preview), "unread", Component.literal(unread > 0 ? "" + unread : ""), "status", Component.literal(status.symbol())), -1, key.equals(selected), false);
+            height = RowTemplates.height("conversation", w, data); RowTemplates.draw(graphics, "conversation", x, rowY, w, data.state(key.equals(selected), Ui.inside(mouseX, mouseY, x, rowY, w, height)));
+            Runnable profile = other == null ? null : () -> openChild(new ProfileScreen(this, other, title));
+            left.rows.add(new Ui.Row(convX, y, convW, height, () -> select(key), profile)); return y + height;
+        }
         if (key.equals(selected)) {
             graphics.fill(convX + 1, rowY - 1, convX + convW - 1, rowY + height - 1, theme.colors().highlight());
         }
@@ -894,6 +970,9 @@ public class SocialScreen extends Screen {
         int listBottom = bottom - INPUT_HEIGHT - 8 - actionsHeight - ROW;
         int listTop = y;
         // Escala de texto propia (PLAN 7.3): el texto del chat se ajusta en unidades sin escalar y se dibuja escalado
+        ClientState.ConversationCache cache = state.conversation(selected);
+        if (RowTemplates.enabled("message")) drawTemplateMessages(graphics, mouseX, mouseY, listTop, listBottom, cache);
+        else {
         float textScale = ClientConfig.get().panel.textScale / 100.0F;
         rebuildLines((int) ((w - 12) / textScale));
         int lineHeight = Math.round((font.lineHeight + 1) * textScale);
@@ -901,7 +980,7 @@ public class SocialScreen extends Screen {
         int viewHeight = listBottom - listTop;
         int maxScroll = Math.max(0, contentHeight - viewHeight);
         chatScroll = Mth.clamp(chatScroll, 0, maxScroll);
-        ClientState.ConversationCache cache = state.conversation(selected);
+
         if (chatScroll >= maxScroll && cache.hasMore && !cache.messages.isEmpty()) {
             long before = cache.messages.getFirst().id();
             if (historyRequestedBefore != before) {
@@ -951,6 +1030,13 @@ public class SocialScreen extends Screen {
         graphics.disableScissor();
         chatRows.end(viewHeight);
 
+        if (hoverItem != null) {
+            graphics.setTooltipForNextFrame(font, hoverItem, mouseX, mouseY);
+        } else if (hoverCoords != null) {
+            graphics.setTooltipForNextFrame(font, coordsTooltip(hoverCoords), mouseX, mouseY);
+        }
+        }
+
         // Pie: escribiendo / leído / aviso de transparencia
         int footerY = listBottom + 1;
         String footer = typingText(cache);
@@ -971,11 +1057,46 @@ public class SocialScreen extends Screen {
                     ? "socialmod.panel.muted" : "socialmod.panel.chat_disabled").withStyle(ChatFormatting.RED));
         }
 
-        if (hoverItem != null) {
-            graphics.setTooltipForNextFrame(font, hoverItem, mouseX, mouseY);
-        } else if (hoverCoords != null) {
-            graphics.setTooltipForNextFrame(font, coordsTooltip(hoverCoords), mouseX, mouseY);
+
+    }
+
+    private void drawTemplateMessages(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int listTop, int listBottom, ClientState.ConversationCache cache) {
+        var state = ClientState.get();
+        int width = Math.max(1, chatW - 8);
+        String language = Minecraft.getInstance().getLanguageManager().getSelected();
+        if (templateVersion != state.version() || templateWidth != width || templateRevision != RowTemplates.revision()
+                || !java.util.Objects.equals(templateConversation,selected) || !templateLanguage.equals(language)) {
+            var hello = state.hello(); boolean links = hello == null || hello.linksAllowed();
+            String selfName = state.snapshot().self.name;
+            var rows = new ArrayList<TemplateMessage>(); int total = 0;
+            for (var message : cache.messages) {
+                Component body = message.deleted() ? Component.translatable("socialmod.message.deleted") : MessageFormatter.format(message.text(), message.attachments(), links, Set.of(selfName));
+                if (message.edited()) body = body.copy().append(Component.translatable("socialmod.message.edited"));
+                var tag = state.tagOf(message.sender());
+                var data = new RowTemplates.Data(message.sender(), Map.of("name", Component.literal(message.senderName()), "time", Component.literal(Ui.time(message.time())), "text", body, "team", Component.literal(tag == null ? "" : tag.tag())), -1, false, false);
+                int height = RowTemplates.height("message",width,data); rows.add(new TemplateMessage(message,data,height)); total += height;
+            }
+            templateMessages = rows; templateHeight = total; templateVersion = state.version(); templateWidth = width;
+            templateRevision = RowTemplates.revision(); templateConversation = selected; templateLanguage = language;
         }
+        int total = templateHeight;
+        int viewHeight = Math.max(1, listBottom - listTop), maxScroll = Math.max(0, total - viewHeight); chatScroll = Mth.clamp(chatScroll, 0, maxScroll);
+        if (chatScroll >= maxScroll && cache.hasMore && !cache.messages.isEmpty()) { long before = cache.messages.getFirst().id(); if (historyRequestedBefore != before) { historyRequestedBefore = before; ClientNet.history(selected, before); } }
+        chatRows.begin(chatX, listTop, chatW, viewHeight); chatRows.scroll = 0;
+        graphics.enableScissor(chatX + 1, listTop, chatX + chatW - 1, listBottom);
+        int y = listBottom - total + chatScroll;
+        for (var row : templateMessages) {
+            if (y + row.height >= listTop && y <= listBottom) {
+                RowTemplates.draw(graphics, "message", chatX + 4, y, width, row.data.state(row.message.id() == selectedMessage, Ui.inside(mouseX, mouseY, chatX, y, chatW, row.height)));
+                long id = row.message.id(); chatRows.rows.add(new Ui.Row(chatX, y - listTop, chatW, row.height, () -> selectMessage(id), () -> selectMessage(id)));
+                if (Ui.inside(mouseX, mouseY, chatX, y, chatW, row.height)) for (var attachment : row.message.attachments()) {
+                    if (attachment.isItem() && attachment.item() != null) graphics.setTooltipForNextFrame(font, attachment.item().create(), mouseX, mouseY);
+                    else if (!attachment.isItem()) graphics.setTooltipForNextFrame(font, coordsTooltip(attachment), mouseX, mouseY);
+                }
+            }
+            y += row.height;
+        }
+        graphics.disableScissor(); chatRows.end(viewHeight);
     }
 
     /** Aviso de transparencia (PLAN 4.2) y del modo spy si el servidor lo activó (PLAN 9). */
@@ -1143,6 +1264,12 @@ public class SocialScreen extends Screen {
                 int rowY = right.screenY(y);
                 Role role = Role.byId(member.role);
                 PresenceStatus status = PresenceStatus.byId(member.status);
+                if (RowTemplates.enabled("player")) {
+                    UUID id = UUID.fromString(member.uuid);
+                    var data = new RowTemplates.Data(id, Map.of("name", Component.literal(member.name), "role", Component.literal(role == null ? "?" : role.letter()), "status", Component.literal(status.symbol())), -1, false, false);
+                    int height = RowTemplates.height("player", w, data); RowTemplates.draw(graphics, "player", x, rowY, w, data.state(false, Ui.inside(mouseX, mouseY, x, rowY, w, height)));
+                    right.rows.add(Ui.Row.of(playersX, y, playersW, height, () -> openChild(new ProfileScreen(this, id, member.name)))); y += height; continue;
+                }
                 VisualText.text(graphics, font, "[" + (role == null ? "?" : role.letter()) + "]", x, rowY, theme.colors().muted());
                 Ui.status(graphics, font, status, x + 16, rowY);
                 VisualText.text(graphics, font, Ui.trim(font, member.name, w - 26), x + 24, rowY, member.online ? theme.colors().text() : theme.colors().muted());
@@ -1177,6 +1304,12 @@ public class SocialScreen extends Screen {
             UUID id = info.getProfile().id();
             int rowY = right.screenY(y);
             PresenceStatus status = state.statusOf(id);
+            if (RowTemplates.enabled("player")) {
+                var tag = state.tagOf(id);
+                var data = new RowTemplates.Data(id, Map.of("name", Component.literal(name), "team", Component.literal(tag == null ? "" : tag.tag()), "status", Component.literal(state.statusOf(id).symbol())), -1, false, false);
+                int height = RowTemplates.height("player", w, data); RowTemplates.draw(graphics, "player", x, rowY, w, data.state(false, Ui.inside(mouseX, mouseY, x, rowY, w, height)));
+                right.rows.add(Ui.Row.of(playersX, y, playersW, height, () -> openChild(new ProfileScreen(this, id, name)))); y += height; continue;
+            }
             Heads.draw(graphics, id, x, rowY, 8);
             if (status != PresenceStatus.OFFLINE) {
                 Ui.status(graphics, font, status, x + 10, rowY);

@@ -144,3 +144,43 @@ Xaero's World Map / Minimap. Cada entrada indica el síntoma, la causa y cómo s
 ### Controles TEAM superpuestos y estilo expuesto
 
 El selector colocaba Crear, Elegir y Estilo en la misma fila, y mostraba Estilo a jugadores sin permisos. Se eliminaron los controles administrativos del modo jugador y se repartieron Crear/Elegir en dos mitades. La captura del selector y las acciones manipuladas del gametest verifican interfaz y permisos.
+
+### La tecla del panel no lo cerraba
+
+Minecraft entrega las pulsaciones a la pantalla abierta, por lo que el manejador del tick no recibía la tecla de apertura. SocialScreen ahora compara KeyEvent con la asignación actual y ejecuta onClose; la ruta del tick también alterna abrir/cerrar. El gametest de cliente abre y cierra el panel con K y con H reasignada, conservando la configuración original.
+
+### Restaurar mantenía el borrador antiguo a la vista
+
+Tras restaurar, el servidor actualizaba el diseño, pero el editor seguía mostrando su preview local anterior. La confirmación ahora cierra el editor y vuelve al panel con el diseño del servidor. El gametest publica una plantilla distinta y restaura Navidad mediante los botones reales, comprobando la fuente y la pantalla activa.
+
+### Listas movidas con FancyMenu no abrían perfiles (0.4.0)
+
+La prueba mostraba coordenadas y filas correctas, pero el clic se consumía en la ruta general de controles antes de llegar a la lista. SocialScreen ahora conserva la prioridad de los controles interactivos y dirige los clics al bloque visible superior usando sus límites finales. La prueba mueve y redimensiona Jugadores sobre Conversaciones, abre un perfil y comprueba que una lista oculta no consume la rueda.
+
+### Texto de filas recortado dos veces
+
+El recorte usaba coordenadas absolutas después de trasladar la matriz de dibujo, desplazando el área visible por segunda vez. El recorte ahora se configura antes de trasladar la matriz y se cierra después de restaurarla. Las capturas muestran nombres y horas en el panel real y el editor de filas.
+
+### Controles tapados por la barra de FancyMenu
+
+La barra superior cubría controles de SocialMod. La integración usa `CustomizationOverlay.registerOverlayVisibilityController` para ocultarla exclusivamente en esas pantallas; el editor completo mantiene su barra. La prueba también comprueba que los controles del editor de filas caben y no se superponen en una GUI de 427 × 240.
+
+### Apariencia local y caché de tema
+
+Al sustituir un diseño local se podía conservar la paleta anterior en caché. VisualManager invalida el tema al cambiar su fuente de diseño. Restablecer desactiva los layouts del ejemplo, guarda filas básicas y retira la apariencia local del siguiente arranque. Las escrituras y el ZIP se realizan fuera del hilo de render.
+
+### HUD visible en el editor pero ausente en partida
+
+SpiffyHUD sustituye temporalmente la pantalla activa por su overlay durante el render. Comprobar si había una pantalla abierta dentro de ese render ocultaba nuestros componentes y a la vez retiraba el HUD nativo. Ahora se conserva el estado real de la pantalla al final del tick del cliente y se aplica la misma condición de visibilidad al reemplazo y al render. La prueba verifica que el componente social haya dibujado datos durante la partida, además de capturar el resultado.
+
+### FancyMenu sin SpiffyHUD desactivaba la integración
+
+El verificador de clases JVM resolvía referencias a SpiffyOverlayScreen al cargar el backend de FancyMenu. Las llamadas que utilizan tipos de SpiffyHUD se movieron a un backend separado, cargado exclusivamente cuando el mod está instalado. Los perfiles de cliente verifican FancyMenu solo, ambos editores y la ausencia de ambos.
+
+### Botones del ratón en Minecraft 26.3
+
+Minecraft 26.3 utiliza valores SDL para el ratón: izquierda es 1 y derecha es 3; las versiones anteriores usaban 0 y 1. Comparar con 1 confundía selección y clic derecho, y las pruebas con clic 0 no reproducían un clic físico. El panel y el editor usan ahora `InputConstants.MOUSE_BUTTON_LEFT/RIGHT`. El gametest usa la misma constante oficial y verifica tanto seleccionar una fila como pulsar Volver en un perfil.
+
+### Recursos de filas durante el arranque de un modpack
+
+Las filas importadas pueden cargarse antes de terminar la primera recarga de recursos de Minecraft. Validarlas en ese momento podría descartar fuentes que todavía no estaban disponibles. La validación de recursos espera a la primera recarga; posteriores cargas se validan inmediatamente. El perfil `-PfancyMenu -PchristmasPack` arranca con el ZIP documentado instalado y exige que sus filas y apariencia se carguen.

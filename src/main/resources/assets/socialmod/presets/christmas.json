@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "mode": "full",
+  "decoration": "christmas",
+  "widthPercent": 88,
+  "heightPercent": 88,
+  "sidebarWidthPercent": 42,
+  "theme": {
+    "layout": "three_column",
+    "columns": [
+      {
+        "id": "conversations",
+        "weight": 3,
+        "min_width": 144
+      },
+      {
+        "id": "chat",
+        "weight": 6,
+        "min_width": 160
+      },
+      {
+        "id": "players",
+        "weight": 2,
+        "min_width": 110,
+        "collapsible": true
+      }
+    ],
+    "colors": {
+      "text": "#FFFFF4DB",
+      "muted": "#FFBCD5CD",
+      "accent": "#FFFFD978",
+      "unread": "#FFFFD978",
+      "background": "#F5081522",
+      "panel": "#FF102923",
+      "border": "#FFC8A65B",
+      "highlight": "#80522A32"
+    },
+    "toast": {
+      "background": "#F014302C",
+      "border": "#FFFFD978",
+      "width": 200
+    },
+    "textures": {
+      "background": "socialmod:christmas/background",
+      "panel": "socialmod:christmas/panel",
+      "toast": "socialmod:christmas/toast"
+    }
+  },
+  "font": "socialmod:christmas",
+  "buttonColor": -6547136,
+  "buttonHoverColor": -4387514,
+  "buttonDisabledColor": -10000000,
+  "titleColor": -9864,
+  "successColor": -9975952,
+  "dangerColor": -34480,
+  "warningColor": -9864,
+  "eventColor": -9864,
+  "borderWidth": 0,
+  "padding": 4,
+  "healthBackground": -14472666,
+  "healthHigh": -9975952,
+  "healthLow": -34480,
+  "tagBelow": true,
+  "tagIcon": true,
+  "tagBrackets": true,
+  "hudScale": 100,
+  "hudX": 0.98,
+  "hudY": 0.02,
+  "partyX": 0.02,
+  "partyY": 0.32,
+  "toastX": 0.98,
+  "toastY": 0.02,
+  "components": {},
+  "panelInset": 20,
+  "buttonTexture": "socialmod:christmas/button",
+  "buttonHoverTexture": "socialmod:christmas/button_hover",
+  "buttonSelectedTexture": "socialmod:christmas/button_selected",
+  "buttonDisabledTexture": "socialmod:christmas/button_disabled",
+  "inputTexture": "socialmod:christmas/input",
+  "inputFocusTexture": "socialmod:christmas/input_focus"
+}

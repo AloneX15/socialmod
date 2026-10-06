@@ -43,7 +43,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
     }
 
     private EditBox field(String key, int x, int y, int w, int max, String initial, boolean enabled) {
-        EditBox box = new EditBox(this.font, x, y, w, 18, Component.translatable("socialmod.group_settings." + key));
+        EditBox box = new StyledEditBox(this.font, x, y, w, 18, Component.translatable("socialmod.group_settings." + key));
         box.setMaxLength(max);
         box.setHint(Component.translatable("socialmod.group_settings." + key).withStyle(ChatFormatting.DARK_GRAY));
         box.setValue(drafts.getOrDefault(key, initial));
@@ -56,6 +56,7 @@ public class GroupSettingsScreen extends SocialChildScreen {
 
     @Override
     protected void init() {
+        super.init();
         fields.clear();
         SnapshotDto.GroupView group = ClientState.get().group(groupId);
         if (group == null) {

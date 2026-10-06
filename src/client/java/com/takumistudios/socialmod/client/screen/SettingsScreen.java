@@ -60,6 +60,7 @@ public class SettingsScreen extends SocialChildScreen {
 
     @Override
     protected void init() {
+        super.init();
         boolean connected = ClientState.get().connected();
         int totalWidth = connected ? 2 * COLUMN + 12 : COLUMN;
         int leftX = (this.width - totalWidth) / 2;
@@ -80,7 +81,7 @@ public class SettingsScreen extends SocialChildScreen {
                 ClientNet.action(SocialAction.SET_STATUS, next.id());
             }).bounds(leftX, y, COLUMN, 20).build());
             y += 22;
-            customStatus = new EditBox(this.font, leftX, y, COLUMN - 54, 20, Component.translatable("socialmod.settings.custom_status"));
+            customStatus = new StyledEditBox(this.font, leftX, y, COLUMN - 54, 20, Component.translatable("socialmod.settings.custom_status"));
             customStatus.setMaxLength(48);
             customStatus.setHint(Component.translatable("socialmod.settings.custom_status").withStyle(ChatFormatting.DARK_GRAY));
             customStatus.setValue(statusDraft != null ? statusDraft : self.customStatus);

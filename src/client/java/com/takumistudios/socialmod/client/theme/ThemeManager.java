@@ -34,6 +34,7 @@ public final class ThemeManager implements ResourceManagerReloadListener {
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
+        RowTemplates.resourcesReloaded();
         Optional<Resource> resource = manager.getResource(FILE);
         if (resource.isEmpty()) {
             current = Theme.DEFAULT;

@@ -47,8 +47,9 @@ public class InviteScreen extends SocialChildScreen {
 
     @Override
     protected void init() {
+        super.init();
         int left = panelLeft(WIDTH);
-        name = new EditBox(this.font, left, 30, WIDTH - 64, 20, Component.translatable("socialmod.invite.name"));
+        name = new StyledEditBox(this.font, left, 30, WIDTH - 64, 20, Component.translatable("socialmod.invite.name"));
         name.setMaxLength(16);
         name.setHint(Component.translatable("socialmod.invite.name").withStyle(ChatFormatting.DARK_GRAY));
         name.setValue(nameDraft);

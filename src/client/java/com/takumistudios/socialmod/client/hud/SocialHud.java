@@ -29,6 +29,7 @@ public final class SocialHud {
     }
 
     public static void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.replacesHud("social")) return;
         ClientConfig.Hud config = ClientConfig.get().hud;
         ClientState state = ClientState.get();
         if (!config.enabled || !state.connected() || ClientCompat.hudHidden() || ClientCompat.currentScreen() != null) {

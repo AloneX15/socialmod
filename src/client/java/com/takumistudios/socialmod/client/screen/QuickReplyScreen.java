@@ -40,10 +40,11 @@ public class QuickReplyScreen extends Screen {
 
     @Override
     protected void init() {
+        super.init();
         int width = Math.min(360, this.width - 20);
         int left = (this.width - width) / 2;
         int top = this.height - HEIGHT - 40;
-        input = new EditBox(this.font, left + 4, top + 14, width - 8, 16, Component.translatable("socialmod.panel.input"));
+        input = new StyledEditBox(this.font, left + 4, top + 14, width - 8, 16, Component.translatable("socialmod.panel.input"));
         Payloads.HelloS2C hello = ClientState.get().hello();
         input.setMaxLength(hello == null ? 256 : hello.maxMessageLength());
         input.setValue(draft);

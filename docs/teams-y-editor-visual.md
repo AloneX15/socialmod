@@ -113,10 +113,18 @@ Creado por **TakumiStudios**.
 
 ## Mejoras del editor
 
-El inspector agrupa Ventana, Colores, Textos, HUD, Nametag, Recursos y Elemento seleccionado. Plantilla alterna entre los tres modos y restaura su estructura. Elegir textura muestra miniaturas de los sprites disponibles en los paquetes cargados.
+El inspector agrupa Ventana, Colores, Textos, HUD, Nametag, Recursos y Elemento seleccionado. Plantilla abre el selector con Compacta, Lateral, Pantalla completa y Navidad: Refugio de invierno. Elegir textura muestra miniaturas de los sprites disponibles en los paquetes cargados.
+
+La plantilla navideña incluye texturas pixel art y fuente propia; las guías ilustradas están en [español](christmas-es.md) y [English](christmas-en.md).
 
 Arrastrar un fondo de panel mueve los controles y textos contenidos con el mismo desplazamiento. El movimiento se ajusta a pasos de cuatro píxeles; durante el arrastre aparece una cuadrícula. El redimensionado sigue siendo individual.
 
 Publicar comprueba los controles modificados, textos recortados y texturas ausentes. Restaurar recupera el diseño publicado anteriormente, previa confirmación. El servidor conserva `visual.previous.json` y hasta veinte copias en `config/socialmod/visual-history/`.
 
 La selección TEAM muestra el equipo actual; las confirmaciones indican acción, destino y valor. Los controles administrativos se encuentran en Gestionar.
+
+## Integración con FancyMenu y SpiffyHUD (0.4.0)
+
+Con FancyMenu instalado, Editor visual abre Personalización avanzada. Los ajustes básicos siguen accesibles desde esa ventana. Los layouts, las filas y la apariencia local se distribuyen con el modpack del cliente; Publicar en el editor básico sigue publicando solamente el preset básico del servidor. Mientras exista una apariencia local avanzada, esta tiene prioridad sobre el preset básico, excepto durante una vista previa del editor. Restablecer template local devuelve la apariencia al servidor.
+
+Los bloques de conversaciones, chat y jugadores son controles identificables por FancyMenu. Sus límites finales se utilizan para dibujar e interactuar. SpiffyHUD incorpora los componentes de estado, party, pings y avisos; cada componente visible sustituye el HUD nativo equivalente. Las guías de Navidad describen los identificadores y placeholders disponibles, con capturas reales en ambos idiomas.

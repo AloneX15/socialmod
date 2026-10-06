@@ -14,10 +14,26 @@ import org.jspecify.annotations.Nullable;
 public abstract class SocialChildScreen extends Screen {
     protected final @Nullable Screen parent;
     private int lastVersion = -1;
+    private net.minecraft.client.gui.components.AbstractWidget content;
 
     protected SocialChildScreen(@Nullable Screen parent, Component title) {
         super(title);
         this.parent = parent;
+    }
+
+    @Override protected void init() {
+        content = null;
+        if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() || getClass().getSimpleName().startsWith("Visual") || this instanceof AdvancedCustomizationScreen || this instanceof RowTemplateScreen) return;
+        content = new net.minecraft.client.gui.components.AbstractWidget(0,0,width,height,title) {
+            @Override public boolean isMouseOver(double x,double y) { return false; }
+            @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event,boolean doubleClick) { return false; }
+            @Override public void extractWidgetRenderState(GuiGraphicsExtractor graphics,int mouseX,int mouseY,float partial) {
+                graphics.pose().pushMatrix(); graphics.pose().translate(getX(),getY()); graphics.pose().scale(getWidth()/(float)Math.max(1,SocialChildScreen.this.width),getHeight()/(float)Math.max(1,SocialChildScreen.this.height));
+                try { if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) drawContent(graphics,mouseX,mouseY); } finally { graphics.pose().popMatrix(); }
+            }
+            @Override protected void updateWidgetNarration(net.minecraft.client.gui.narration.NarrationElementOutput out) { defaultButtonNarrationText(out); }
+        };
+        com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identify(content,"screen_content"); addRenderableWidget(content);
     }
 
     @Override
@@ -62,7 +78,7 @@ public abstract class SocialChildScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Ui.background(graphics, this.width, this.height);
-        drawContent(graphics, mouseX, mouseY);
+        if (content == null || !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) drawContent(graphics, mouseX, mouseY);
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 

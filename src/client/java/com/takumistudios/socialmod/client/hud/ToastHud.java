@@ -209,7 +209,12 @@ public final class ToastHud {
 
     // ---------- Dibujo ----------
 
+    public static java.util.List<ToastData> customizationRows() {
+        long now = System.currentTimeMillis(), duration = ClientConfig.get().toasts.durationSeconds * 1000L;
+        return ACTIVE.stream().filter(a -> now - a.receivedAt <= duration).limit(ClientConfig.get().toasts.maxVisible).map(a -> a.data).toList();
+    }
     public static void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.replacesHud("toasts")) return;
         if (ACTIVE.isEmpty() || ClientCompat.hudHidden()) {
             return;
         }

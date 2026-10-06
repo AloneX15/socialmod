@@ -52,7 +52,14 @@ public final class Ui {
         }
         Theme theme = theme();
         if (theme.textures().panel().isPresent()) {
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, theme.textures().panel().get(), x1, y1, x2 - x1, y2 - y1);
+            int inset = VisualManager.panelInset(graphics.guiHeight());
+            int sourceBorder = theme.textures().panel().get().toString().equals("socialmod:christmas/panel") ? 20 : VisualManager.get().panelInset;
+            float scale = sourceBorder == 0 ? 1 : Math.max(1, inset) / (float) sourceBorder;
+            graphics.pose().pushMatrix();
+            graphics.pose().scale(scale, scale);
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, theme.textures().panel().get(), Math.round((x1 - inset) / scale), Math.round((y1 - inset) / scale), Math.round((x2 - x1 + inset * 2) / scale), Math.round((y2 - y1 + inset * 2) / scale));
+            graphics.pose().popMatrix();
+            if (inset > 0) graphics.fill(x1, y1, x2, y2, theme.colors().panel());
             return;
         }
         graphics.fill(x1, y1, x2, y2, theme.colors().panel());
@@ -61,11 +68,14 @@ public final class Ui {
 
     /** Fondo de pantalla completa del panel: textura del tema o color. */
     public static void background(GuiGraphicsExtractor graphics, int width, int height) {
+        var currentScreen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen();
+        if (currentScreen != null && com.takumistudios.socialmod.client.compat.fancy.FancyBridge.background(currentScreen)) return;
         Theme theme = theme();
         if (theme.textures().background().isPresent()) {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, theme.textures().background().get(), 0, 0, width, height);
         } else {
             graphics.fill(0, 0, width, height, theme.colors().background());
+
         }
     }
 

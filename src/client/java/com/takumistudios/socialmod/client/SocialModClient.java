@@ -45,6 +45,9 @@ public final class SocialModClient implements ClientModInitializer {
     public void onInitializeClient() {
         ClientConfig.load();
         SocialKeys.register();
+        com.takumistudios.socialmod.client.compat.fancy.FancyBridge.register();
+        com.takumistudios.socialmod.client.theme.RowTemplates.load();
+        com.takumistudios.socialmod.client.theme.LocalSeriesDesign.load();
         VisualManager.register();
 
         ClientPlayNetworking.registerGlobalReceiver(Payloads.HelloS2C.TYPE, (payload, context) -> guarded("hello", () -> {
@@ -136,7 +139,8 @@ public final class SocialModClient implements ClientModInitializer {
             PartyClient.sendPing(client);
         }
         while (SocialKeys.OPEN_PANEL.consumeClick()) {
-            openPanel(null);
+            if (ClientCompat.currentScreen() instanceof SocialScreen panel) panel.onClose();
+            else openPanel(null);
         }
         while (SocialKeys.QUICK_REPLY.consumeClick()) {
             String target = quickReplyTarget();

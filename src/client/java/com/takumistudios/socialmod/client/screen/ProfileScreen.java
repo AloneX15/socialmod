@@ -87,6 +87,7 @@ public class ProfileScreen extends SocialChildScreen {
 
     @Override
     protected void init() {
+        super.init();
         ClientState state = ClientState.get();
         boolean self = target.equals(state.selfId());
         int left = panelLeft(WIDTH);
@@ -157,7 +158,7 @@ public class ProfileScreen extends SocialChildScreen {
                 }
             }
             if (friend != null) {
-                note = new EditBox(this.font, left, y + 52, WIDTH - 64, 18, Component.translatable("socialmod.profile.note"));
+                note = new StyledEditBox(this.font, left, y + 52, WIDTH - 64, 18, Component.translatable("socialmod.profile.note"));
                 note.setMaxLength(128);
                 note.setHint(Component.translatable("socialmod.profile.note").withStyle(ChatFormatting.DARK_GRAY));
                 note.setValue(noteDraft != null ? noteDraft : friend.note);

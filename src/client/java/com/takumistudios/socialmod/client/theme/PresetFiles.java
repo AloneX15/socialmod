@@ -53,6 +53,17 @@ public final class PresetFiles {
             add(zip, "pack.mcmeta", "{\"pack\":{\"description\":\"SocialMod series — TakumiStudios\",\"min_format\":" + format + ",\"max_format\":" + format + "}}");
             add(zip, "assets/socialmod/themes/default.json", VisualDesign.GSON.toJson(design.theme));
             Path assets = directory.resolve("assets");
+            if (design.decoration.equals("christmas") || design.font.equals("socialmod:christmas")) {
+                for (String path : com.takumistudios.socialmod.common.model.VisualPresets.assetPaths()) {
+                    String name = "assets/socialmod/" + path;
+                    Path override = assets.resolve("socialmod").resolve(path);
+                    if (Files.isRegularFile(override, LinkOption.NOFOLLOW_LINKS) && override.toRealPath().startsWith(assets.toRealPath())) continue;
+                    try (var input = PresetFiles.class.getResourceAsStream("/" + name)) {
+                        if (input == null) throw new java.io.IOException("Missing bundled Christmas asset: " + path);
+                        zip.putNextEntry(new ZipEntry(name)); input.transferTo(zip); zip.closeEntry();
+                    }
+                }
+            }
             if (Files.isDirectory(assets)) try (var paths = Files.walk(assets)) {
                 for (Path file : paths.filter(Files::isRegularFile).toList()) {
                     if (Files.isSymbolicLink(file) || !file.toRealPath().startsWith(assets.toRealPath())) continue;

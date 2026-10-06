@@ -41,12 +41,13 @@ public class TeamScreen extends SocialChildScreen {
                 if (!state.teamAdmin && !state.self.teamChosen && !team.archived) confirm(SocialAction.TEAM_CHOOSE, team.id, "");
                 else { playerDraft = player == null ? playerDraft : player.getValue(); rebuildWidgets(); }
             }).bounds(x, y, w, 20).build();
+            com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identify(button, "team_" + team.id);
             addRenderableWidget(button); y += 22;
         }
         addRenderableWidget(Ui.button(Component.literal("<"), b -> { saveDrafts(); page = Math.max(0, page - 1); rebuildWidgets(); }).bounds(x, y, 28, 20).build());
         addRenderableWidget(Ui.button(Component.literal(">"), b -> { saveDrafts(); page++; rebuildWidgets(); }).bounds(x + w - 28, y, 28, 20).build());
         y += 24;
-        name = new EditBox(font, x, y, management ? w / 2 - 2 : w - 84, 20, Component.translatable("socialmod.team.name")); name.setMaxLength(48); name.setValue(nameDraft);
+        name = new StyledEditBox(font, x, y, management ? w / 2 - 2 : w - 84, 20, Component.translatable("socialmod.team.name")); name.setMaxLength(48); name.setValue(nameDraft);
         name.setHint(Ui.hint(Component.translatable("socialmod.team.name"))); addRenderableWidget(name);
         if (!management) {
             player = null;
@@ -58,7 +59,7 @@ public class TeamScreen extends SocialChildScreen {
             create.active = state.teamAdmin || !state.self.teamChosen; addRenderableWidget(create);
             if (state.teamAdmin && !state.self.teamChosen) addRenderableWidget(Ui.button(Component.translatable("socialmod.team.title"), b -> confirm(SocialAction.TEAM_CHOOSE, selected, "")).bounds(x + w / 2, y, w / 2, 20).build());
         } else {
-            player = new EditBox(font, x + w / 2 + 2, y, w / 2 - 2, 20, Component.translatable("socialmod.team.player")); player.setMaxLength(36); player.setValue(playerDraft);
+            player = new StyledEditBox(font, x + w / 2 + 2, y, w / 2 - 2, 20, Component.translatable("socialmod.team.player")); player.setMaxLength(36); player.setValue(playerDraft);
             player.setHint(Ui.hint(Component.translatable("socialmod.team.player"))); addRenderableWidget(player); y += 24;
             String[] labels = {"assign", "reset", "archive", "restore", "rename"};
             SocialAction[] actions = {SocialAction.TEAM_ASSIGN, SocialAction.TEAM_RESET, SocialAction.TEAM_ARCHIVE, SocialAction.TEAM_RESTORE, SocialAction.TEAM_RENAME};
@@ -71,7 +72,7 @@ public class TeamScreen extends SocialChildScreen {
                 }).bounds(x + i * w / 5, y, w / 5 - 2, 20).build());
             }
             y += 24;
-            EditBox limit = new EditBox(font, x, y, w / 3 - 2, 20, Component.translatable("socialmod.team.max")); limit.setMaxLength(4); limit.setValue(String.valueOf(state.maxTeams)); addRenderableWidget(limit);
+            EditBox limit = new StyledEditBox(font, x, y, w / 3 - 2, 20, Component.translatable("socialmod.team.max")); limit.setMaxLength(4); limit.setValue(String.valueOf(state.maxTeams)); addRenderableWidget(limit);
             addRenderableWidget(Ui.button(Component.translatable("socialmod.team.max"), b -> ClientNet.action(SocialAction.TEAM_LIMIT, limit.getValue())).bounds(x + w / 3, y, w / 3 - 2, 20).build());
             addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.style"), b -> {
                 saveDrafts(); ClientCompat.setScreen(new TagStyleScreen(this, nameDraft, color, icon, "", (rgb, chosen) -> {

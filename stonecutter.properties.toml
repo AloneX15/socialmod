@@ -3,11 +3,16 @@
 mod.id = "socialmod"
 mod.name = "SocialMod"
 mod.group = "com.takumistudios.socialmod"
-mod.version = "0.3.1"
+mod.version = "0.4.0"
 
 deps.fabric_loader = "0.19.5"
 
 ["26.1.2"]
+compat.fancymenu = "ezkGhzrK"
+compat.spiffyhud = "HvQ69fuB"
+compat.konkrete = "Y6HGzcl3"
+compat.melody = "V4DQs36M"
+
 mod.mc_compat = ">=26.1 <26.2-"
 mod.mc_releases = ["26.1", "26.1.1", "26.1.2"]
 deps.fabric_api = "0.155.3+26.1.2"
@@ -23,8 +28,14 @@ compat.voicechat = "fabric-2.6.24+26.1.2"
 compat.forgeconfigapiport = "jUe0ucoE"  # id de la versión Fabric (el número se repite en NeoForge)
 
 ["26.2"]
+compat.fancymenu = "2BXE3l12"
+compat.spiffyhud = "pcI9ifru"
+compat.konkrete = "Ra1AWDOa"
+compat.melody = "ItVQn1cW"
+
 mod.mc_compat = "~26.2"
 mod.mc_releases = ["26.2"]
+
 deps.fabric_api = "0.161.0+26.2"
 deps.placeholder_api = "3.1.0-beta.1+26.2"
 deps.modmenu = "20.0.3"
@@ -38,8 +49,14 @@ compat.voicechat = "fabric-2.6.24+26.2"
 compat.forgeconfigapiport = "rSd3GiG8"  # id de la versión Fabric
 
 ["26.3"]
+compat.fancymenu = "CBLbyHzH"
+compat.spiffyhud = "2M9VaKhe"
+compat.konkrete = "pQLA2B54"
+compat.melody = "gjl2Yw81"
+
 mod.mc_compat = "~26.3"
 mod.mc_releases = ["26.3"]
+
 deps.fabric_api = "0.161.0+26.3"
 deps.placeholder_api = "3.2.0+26.3"
 deps.modmenu = "21.0.0"

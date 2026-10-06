@@ -41,14 +41,15 @@ public class CreateGroupScreen extends SocialChildScreen {
 
     @Override
     protected void init() {
+        super.init();
         int left = panelLeft(WIDTH);
         int y = this.height / 2 - 40;
-        name = new EditBox(this.font, left, y, WIDTH, 20, Component.translatable("socialmod.create.name"));
+        name = new StyledEditBox(this.font, left, y, WIDTH, 20, Component.translatable("socialmod.create.name"));
         name.setMaxLength(24);
         name.setHint(Ui.hint(Component.translatable("socialmod.create.name")));
         name.setValue(nameDraft);
         addRenderableWidget(name);
-        tag = new EditBox(this.font, left, y + 26, 80, 20, Component.translatable("socialmod.create.tag"));
+        tag = new StyledEditBox(this.font, left, y + 26, 80, 20, Component.translatable("socialmod.create.tag"));
         tag.setMaxLength(5);
         tag.setHint(Ui.hint(Component.translatable("socialmod.create.tag")));
         tag.setValue(tagDraft);

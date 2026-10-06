@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0
+
+- Optional FancyMenu and SpiffyHUD client integrations using registered elements, editor wrappers and live placeholders.
+- Stable screen and control identifiers; movable, resizable social blocks retain their native actions and scrolling.
+- Detailed local row templates for messages, conversations, players, party members and notifications, with fonts, textures, wrapping and undo/redo.
+- Independent custom social, party, ping and notification HUD components with native fallback.
+- Editable Christmas modpack example, atomic local saves, template reset and bounded ZIP export of instance-relative assets.
+- Spanish and English guides with actual editor and in-game captures.
+
+## 0.3.2
+
+- Close the social panel using its assigned key, including remapped bindings.
+- Christmas Winter Lodge pixel-art template: illustrated nine-slice frames, snowy scenery, beveled controls and a bundled bitmap font with Spanish glyphs.
+- Configurable input textures, selected button sprites and frame insets; exported presets include bundled assets.
+- Restoring a preset closes the draft editor so the restored server design is immediately visible.
+- Explicit template chooser and bilingual illustrated setup documentation.
+
 ## 0.3.1
 
 - Visual inspector categories, texture thumbnails, layout templates and grouped panel movement with grid snapping.

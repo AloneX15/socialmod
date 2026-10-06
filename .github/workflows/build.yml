@@ -119,7 +119,7 @@ jobs:
           if-no-files-found: ignore
 
   client:
-    name: Client test MC ${{ matrix.minecraft }}
+    name: Client test MC ${{ matrix.minecraft }} (${{ matrix.profile }})
     runs-on: ubuntu-latest
     # Si el juego se cuelga (p. ej. sin contexto gráfico), el job no puede bloquear la CI
     timeout-minutes: 15
@@ -127,6 +127,10 @@ jobs:
       fail-fast: false
       matrix:
         minecraft: ["26.1.2", "26.2", "26.3"]
+        profile: [native, fancy, both]
+        include:
+          - minecraft: "26.3"
+            profile: christmas
     steps:
       - uses: actions/checkout@v7
 
@@ -150,13 +154,13 @@ jobs:
         env:
           # Renderizado por software (Mesa): 26.3 necesita un visual GLX de 24 bits y acaba usando Vulkan con lavapipe
           LIBGL_ALWAYS_SOFTWARE: "1"
-        run: xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX +render" ./gradlew :${{ matrix.minecraft }}:runClientGameTest --stacktrace
+        run: xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX +render" ./gradlew :${{ matrix.minecraft }}:runClientGameTest ${{ matrix.profile == 'fancy' && '-PfancyMenu -PfancyOnly' || matrix.profile == 'both' && '-PfancyMenu' || matrix.profile == 'christmas' && '-PfancyMenu -PchristmasPack' || '' }} --stacktrace
 
       - name: Upload screenshots
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: screenshots-mc${{ matrix.minecraft }}
+          name: screenshots-mc${{ matrix.minecraft }}-${{ matrix.profile }}
           path: versions/${{ matrix.minecraft }}/build/run/clientGameTest/screenshots/
           if-no-files-found: ignore
 
@@ -164,7 +168,7 @@ jobs:
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: client-logs-mc${{ matrix.minecraft }}
+          name: client-logs-mc${{ matrix.minecraft }}-${{ matrix.profile }}
           path: versions/${{ matrix.minecraft }}/build/run/clientGameTest/logs/
           if-no-files-found: ignore
 

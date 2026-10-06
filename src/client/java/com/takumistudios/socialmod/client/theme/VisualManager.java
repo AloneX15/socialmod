@@ -16,6 +16,7 @@ public final class VisualManager {
     private static VisualDesign active = new VisualDesign(), preview;
     private static final Map<AbstractWidget, String> IDS = new java.util.WeakHashMap<>();
     private static Theme theme;
+    private static VisualDesign themeSource;
     private static final java.util.Set<Screen> REGISTERED = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
     private static Screen drawing;
     private static int panelIndex;
@@ -36,7 +37,8 @@ public final class VisualManager {
         DRAWN.get(drawing).put(id, value); return value;
     }
     public static VisualDesign.Rect drawnRect(Drawn value) { return value == null ? null : get().components.get(value.id()); }
-    public static VisualDesign get() { return preview == null ? active : preview; }
+    public static int panelInset(int fallbackHeight) { int height = drawing == null ? fallbackHeight : drawing.height; return Math.min(get().panelInset, height < 220 ? 12 : 24); }
+    public static VisualDesign get() { if (preview != null) return preview; var local = LocalSeriesDesign.get(); return local == null || !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() ? active : local; }
     public static void accept(VisualDesign design) {
         try { design.validate(); active = design.copy(); theme = null; }
         catch (RuntimeException e) { SocialMod.LOGGER.warn("Preset visual inválido; se conserva el anterior", e); }
@@ -44,8 +46,10 @@ public final class VisualManager {
     public static void preview(VisualDesign design) { preview = design; theme = null; }
     public static void reset() { active = new VisualDesign(); preview = null; theme = null; }
     public static Theme theme(Theme fallback) {
-        if (get().theme.size() == 0) return fallback;
-        if (theme == null) theme = Theme.CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, get().theme).result().orElse(fallback);
+        var source = get();
+        if (source != themeSource) { themeSource = source; theme = null; }
+        if (source.theme.size() == 0) return fallback;
+        if (theme == null) theme = Theme.CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, source.theme).result().orElse(fallback);
         return theme;
     }
     public static void register() {
@@ -63,7 +67,7 @@ public final class VisualManager {
         for (AbstractWidget widget : Screens.getWidgets(screen)) {
             String label = widget.getMessage().getContents() instanceof TranslatableContents t ? t.getKey() : widget.getMessage().getString();
             // Translation keys remain stable across languages. Dynamic player/team buttons use an explicit occurrence suffix.
-            String base = get().mode + "/" + screen.getClass().getSimpleName() + "/" + widget.getClass().getSimpleName() + "/" + label;
+            String base = get().mode + "/" + screen.getClass().getSimpleName() + "/" + (widget instanceof EditBox ? "EditBox" : widget.getClass().getSimpleName()) + "/" + label;
             int index = counts.merge(base, 1, Integer::sum); String id = base + "/" + index;
             if (id.length() > 180) id = base.substring(0, Math.min(base.length(), 160)) + "/" + index;
             result.put(id, widget); IDS.put(widget, id);
@@ -73,7 +77,11 @@ public final class VisualManager {
     public static VisualDesign.Rect rect(AbstractWidget widget) { return get().components.get(IDS.get(widget)); }
     public static void validateControls(Screen screen) {
         var design = get();
-        for (String sprite : new String[]{design.buttonTexture, design.buttonHoverTexture, design.buttonDisabledTexture}) validateSprite(sprite);
+        for (String sprite : new String[]{design.buttonTexture, design.buttonHoverTexture, design.buttonDisabledTexture, design.buttonSelectedTexture, design.inputTexture, design.inputFocusTexture}) validateSprite(sprite);
+        var theme = theme(Theme.DEFAULT);
+        theme.textures().background().ifPresent(id -> validateSprite(id.toString()));
+        theme.textures().panel().ifPresent(id -> validateSprite(id.toString()));
+        theme.textures().toast().ifPresent(id -> validateSprite(id.toString()));
         for (var rect : design.components.values()) validateSprite(rect.texture);
         var widgets = widgets(screen);
         for (var entry : widgets.entrySet()) {
@@ -91,6 +99,7 @@ public final class VisualManager {
         if (net.minecraft.client.Minecraft.getInstance().getResourceManager().getResource(path).isEmpty()) throw new IllegalArgumentException("Missing texture: " + sprite);
     }
     public static void apply(Screen screen) {
+        if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.customized(screen)) return;
         for (var entry : widgets(screen).entrySet()) {
             var widget = entry.getValue(); var rect = get().components.get(entry.getKey()); if (rect == null) continue;
             int w = Math.max(20, Math.min(screen.width, Math.round(rect.w * screen.width)));

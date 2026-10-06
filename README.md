@@ -254,6 +254,20 @@ Issues y propuestas en el [repositorio](../../issues). Las vulnerabilidades se r
 
 ---
 
+## Personalización avanzada para series
+
+Desde la versión 0.4.0, **FancyMenu** y **SpiffyHUD** son integraciones opcionales de cliente. El editor permite mover y redimensionar los bloques del panel, personalizar las filas y colocar componentes de HUD con datos reales de SocialMod. Sin estos mods se conserva la interfaz básica.
+
+El botón **Editor visual** abre las herramientas avanzadas cuando FancyMenu está instalado. El diseño se distribuye mediante el modpack, con exportación a `config/socialmod/presets/socialmod-series.zip`. FancyMenu requiere Konkrete y Melody; SpiffyHUD añade la edición del HUD.
+
+- [Guía navideña en español](docs/christmas-es.md).
+- [Christmas guide in English](docs/christmas-en.md).
+- [Template avanzado para el modpack](docs/examples/christmas/christmas-modpack.zip).
+
+Pruebas opcionales: `./gradlew :26.3:runClientGameTest -PfancyMenu` (ambos editores) y `-PfancyMenu -PfancyOnly` (FancyMenu sin SpiffyHUD).
+
 Creado por **TakumiStudios**.
 
 <sub>SocialMod · TakumiStudios · Licencia MIT</sub>
+
+Plantilla navideña con guías ilustradas: [Español](docs/christmas-es.md) | [English](docs/christmas-en.md).

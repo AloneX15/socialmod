@@ -70,9 +70,10 @@ public class TagStyleScreen extends SocialChildScreen {
 
     @Override
     protected void init() {
+        super.init();
         int left = panelLeft(WIDTH);
         int top = top();
-        hex = new EditBox(this.font, left + SQUARE + HUE_W + 10, top + 4 * SWATCH + 22, 64, 18, Component.translatable("socialmod.group_settings.color"));
+        hex = new StyledEditBox(this.font, left + SQUARE + HUE_W + 10, top + 4 * SWATCH + 22, 64, 18, Component.translatable("socialmod.group_settings.color"));
         hex.setMaxLength(7);
         hex.setHint(Ui.hint(Component.translatable("socialmod.group_settings.color")));
         hex.setValue(hexOf(rgb()));

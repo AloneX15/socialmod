@@ -92,6 +92,18 @@ dependencies {
         localRuntime("maven.modrinth:xaeros-world-map:${sc.properties.get<String>("compat.xaero_worldmap")}")
     }
 
+    "gametestCompileOnly"("maven.modrinth:fancymenu:${sc.properties.get<String>("compat.fancymenu")}")
+    "gametestCompileOnly"("maven.modrinth:spiffyhud:${sc.properties.get<String>("compat.spiffyhud")}")
+    // Optional client editors; never nested in the published jar.
+    "clientCompileOnly"("maven.modrinth:fancymenu:${sc.properties.get<String>("compat.fancymenu")}")
+    "clientCompileOnly"("maven.modrinth:spiffyhud:${sc.properties.get<String>("compat.spiffyhud")}")
+    if (project.hasProperty("fancyMenu")) {
+        localRuntime("maven.modrinth:fancymenu:${sc.properties.get<String>("compat.fancymenu")}")
+        localRuntime("maven.modrinth:konkrete:${sc.properties.get<String>("compat.konkrete")}")
+        localRuntime("maven.modrinth:melody:${sc.properties.get<String>("compat.melody")}")
+        if (!project.hasProperty("fancyOnly")) localRuntime("maven.modrinth:spiffyhud:${sc.properties.get<String>("compat.spiffyhud")}")
+    }
+
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     // Backend h2 en las pruebas (en servidores el driver va en config/socialmod/drivers, no dentro del jar)
@@ -173,6 +185,19 @@ publishing {
                     username = providers.environmentVariable("MAVEN_USERNAME").orNull
                     password = providers.environmentVariable("MAVEN_PASSWORD").orNull
                 }
+            }
+        }
+    }
+}
+
+// Boots a clean client with the documented exported modpack already installed.
+if (project.hasProperty("christmasPack")) {
+    tasks.named<JavaExec>("runClientGameTest") {
+        systemProperty("socialmod.test.christmasPack", "true")
+        doFirst {
+            project.copy {
+                from(zipTree(rootProject.file("docs/examples/christmas/christmas-modpack.zip")))
+                into(project.layout.buildDirectory.dir("run/clientGameTest"))
             }
         }
     }

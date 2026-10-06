@@ -35,8 +35,8 @@ public final class PartyHud {
         if (!ClientState.get().connected() || ClientCompat.hudHidden() || ClientCompat.currentScreen() != null) {
             return;
         }
-        var members = config.hud.partyHealth ? PartyClient.members() : java.util.List.<Payloads.PartyMember>of();
-        var pings = PartyClient.pings();
+        var members = config.hud.partyHealth && !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.replacesHud("party") ? PartyClient.members() : java.util.List.<Payloads.PartyMember>of();
+        var pings = com.takumistudios.socialmod.client.compat.fancy.FancyBridge.replacesHud("pings") ? java.util.List.<PartyClient.ActivePing>of() : PartyClient.pings();
         if (members.isEmpty() && pings.isEmpty()) {
             return;
         }

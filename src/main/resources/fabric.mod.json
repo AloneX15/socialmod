@@ -30,6 +30,8 @@
     "luckperms": "*"
   },
   "suggests": {
+    "fancymenu": "*",
+    "spiffyhud": "*",
     "placeholder-api": "*",
     "modmenu": "*",
     "xaerominimap": "*",

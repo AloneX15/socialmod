@@ -1,0 +1,21 @@
+[
+  "textures/gui/sprites/christmas/background.png",
+  "textures/gui/sprites/christmas/button.png",
+  "textures/gui/sprites/christmas/button.png.mcmeta",
+  "textures/gui/sprites/christmas/button_disabled.png",
+  "textures/gui/sprites/christmas/button_disabled.png.mcmeta",
+  "textures/gui/sprites/christmas/button_hover.png",
+  "textures/gui/sprites/christmas/button_hover.png.mcmeta",
+  "textures/gui/sprites/christmas/button_selected.png",
+  "textures/gui/sprites/christmas/button_selected.png.mcmeta",
+  "textures/gui/sprites/christmas/input.png",
+  "textures/gui/sprites/christmas/input.png.mcmeta",
+  "textures/gui/sprites/christmas/input_focus.png",
+  "textures/gui/sprites/christmas/input_focus.png.mcmeta",
+  "textures/gui/sprites/christmas/panel.png",
+  "textures/gui/sprites/christmas/panel.png.mcmeta",
+  "textures/gui/sprites/christmas/toast.png",
+  "textures/gui/sprites/christmas/toast.png.mcmeta",
+  "textures/font/christmas.png",
+  "font/christmas.json"
+]

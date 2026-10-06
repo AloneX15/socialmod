@@ -26,6 +26,9 @@ public final class VisualDesign {
     public boolean tagBelow = true, tagIcon = true, tagBrackets = true;
     public float hudX = .98f, hudY = .02f, partyX = .02f, partyY = .3f, toastX = .98f, toastY = .02f;
     public int hudScale = 100;
+    public String decoration = "none";
+    public int panelInset = 0;
+    public String inputTexture = "", inputFocusTexture = "", buttonSelectedTexture = "";
     public Map<String, Rect> components = new LinkedHashMap<>();
     public static final class Rect {
         public float x, y, w, h;
@@ -43,9 +46,10 @@ public final class VisualDesign {
     public VisualDesign copy() { return parse(GSON.toJson(this)); }
     public void validate() {
         if (GSON.toJson(this).length() > 65536) throw new IllegalArgumentException("Visual size");
+        if (!java.util.List.of("none", "christmas").contains(decoration)) throw new IllegalArgumentException("Decoration");
         if (version != 1 || !java.util.List.of("compact", "sidebar", "full").contains(mode)
                 || sidebarWidthPercent < 25 || sidebarWidthPercent > 75 || widthPercent < 35 || widthPercent > 100 || heightPercent < 45 || heightPercent > 100
-                || borderWidth < 0 || borderWidth > 8 || padding < 0 || padding > 24 || hudScale < 50 || hudScale > 200
+                || panelInset < 0 || panelInset > 24 || borderWidth < 0 || borderWidth > 8 || padding < 0 || padding > 24 || hudScale < 50 || hudScale > 200
                 || components == null || components.size() > 200 || theme == null) throw new IllegalArgumentException("Invalid visual design");
         if (resourcePackUrl == null || resourcePackSha1 == null) throw new IllegalArgumentException("Resource pack");
         if (!resourcePackUrl.isEmpty()) {
@@ -53,7 +57,7 @@ public final class VisualDesign {
             if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null || !resourcePackSha1.matches("[a-fA-F0-9]{40}")) throw new IllegalArgumentException("Resource pack URL/hash");
         }
         if (com.takumistudios.socialmod.client.theme.Theme.CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, theme).result().isEmpty()) throw new IllegalArgumentException("Invalid theme");
-        resource(font, false); resource(buttonTexture, true); resource(buttonHoverTexture, true); resource(buttonDisabledTexture, true);
+        resource(font, false); resource(buttonTexture, true); resource(buttonHoverTexture, true); resource(buttonDisabledTexture, true); resource(buttonSelectedTexture, true); resource(inputTexture, true); resource(inputFocusTexture, true);
         for (float n : new float[]{hudX, hudY, partyX, partyY, toastX, toastY}) if (!Float.isFinite(n) || n < 0 || n > 1) throw new IllegalArgumentException("Invalid anchor");
         for (var entry : components.entrySet()) {
             Rect r = entry.getValue();

@@ -99,7 +99,7 @@ public final class VisualEditorScreen extends SocialChildScreen {
             if (property.key.toLowerCase(Locale.ROOT).contains("texture")) {
                 addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.choose_resource"), b -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new VisualResourceScreen(this, chosen -> applyProperty(property, chosen)))).bounds(4, y, sidebar - 8, 18).build()); y += 40; continue;
             }
-            EditBox box = new EditBox(font, 4, y, sidebar - 38, 18, Component.literal(property.key)); box.setMaxLength(512); box.setValue(value); addRenderableWidget(box);
+            EditBox box = new StyledEditBox(font, 4, y, sidebar - 38, 18, Component.literal(property.key)); box.setMaxLength(512); box.setValue(value); addRenderableWidget(box);
             addRenderableWidget(Ui.button(Component.literal("✓"), b -> {
                 applyProperty(property, box.getValue());
             }).bounds(sidebar - 32, y, 28, 18).build()); y += 40;
@@ -116,13 +116,11 @@ public final class VisualEditorScreen extends SocialChildScreen {
             String label = labels[i]; int bw = Math.max(30, (width - 8) / labels.length);
             addRenderableWidget(Ui.button(Component.translatable("socialmod.visual." + label), b -> {
                 switch (label) {
-                    case "preset" -> { checkpoint(); draft.components.clear(); draft.theme = new JsonObject(); draft.buttonTexture = draft.buttonHoverTexture = draft.buttonDisabledTexture = "";
-                        draft.mode = switch (draft.mode) { case "compact" -> "sidebar"; case "sidebar" -> "full"; default -> "compact"; };
-                        draft.widthPercent = 78; draft.heightPercent = 78; draft.sidebarWidthPercent = 40; refresh(); }
+                    case "preset" -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new VisualTemplateScreen(this, preset -> { checkpoint(); draft = preset; selected = ""; page = category = 0; refresh(); }));
                     case "reset" -> { checkpoint(); if (selected.isEmpty()) draft = new VisualDesign(); else draft.components.remove(selected); refresh(); }
                     case "import", "export" -> files(label);
                     case "publish" -> { try { draft.validate(); VisualManager.validateControls(canvas); ClientNet.action(SocialAction.VISUAL_PUBLISH, "", VisualDesign.GSON.toJson(draft)); status = Component.translatable("socialmod.visual.sent").getString(); } catch (RuntimeException e) { status = Component.translatable("socialmod.visual.invalid").getString(); } }
-                    case "rollback" -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(ok -> { if (ok) ClientNet.action(SocialAction.VISUAL_ROLLBACK, ""); com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(this); }, Component.translatable("socialmod.visual.rollback"), Component.translatable("socialmod.visual.rollback_help")));
+                    case "rollback" -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(ok -> { if (ok) { ClientNet.action(SocialAction.VISUAL_ROLLBACK, ""); onClose(); } else com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(this); }, Component.translatable("socialmod.visual.rollback"), Component.translatable("socialmod.visual.rollback_help")));
                     case "back" -> onClose();
                 }
             }).bounds(4 + i * bw, height - 24, bw - 2, 20).build());
@@ -204,7 +202,7 @@ public final class VisualEditorScreen extends SocialChildScreen {
                 AbstractWidget widget = entry.getValue(); if (!widget.isMouseOver(x, y)) continue;
                 checkpoint(); dragGroup.clear(); selected = entry.getKey();
                 draft.components.putIfAbsent(selected, new VisualDesign.Rect((float) widget.getX() / canvasW, (float) widget.getY() / canvasH, (float) widget.getWidth() / canvasW, (float) widget.getHeight() / canvasH));
-                dragging = true; dragRemainderX = dragRemainderY = 0; resize = event.button() == 1; page = 0; category = 6; rebuildWidgets(); return true;
+                dragging = true; dragRemainderX = dragRemainderY = 0; resize = event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT; page = 0; category = 6; rebuildWidgets(); return true;
             }
             var drawn = new ArrayList<>(VisualManager.drawn(canvas));
             drawn.sort(Comparator.comparing(value -> !value.text()));
@@ -213,7 +211,7 @@ public final class VisualEditorScreen extends SocialChildScreen {
                 if (!value.text()) capturePanel(value); else dragGroup.clear();
                 float rx = Math.max(0, Math.min(.98f, (float) value.x() / canvasW)), ry = Math.max(0, Math.min(.98f, (float) value.y() / canvasH));
                 draft.components.putIfAbsent(selected, new VisualDesign.Rect(rx, ry, Math.max(.001f, Math.min(1 - rx, (float) value.w() / canvasW)), Math.max(.001f, Math.min(1 - ry, (float) value.h() / canvasH))));
-                dragging = true; dragRemainderX = dragRemainderY = 0; resize = event.button() == 1; page = 0; category = 6; rebuildWidgets(); return true;
+                dragging = true; dragRemainderX = dragRemainderY = 0; resize = event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT; page = 0; category = 6; rebuildWidgets(); return true;
             }
             selected = ""; rebuildWidgets(); return true;
         }
