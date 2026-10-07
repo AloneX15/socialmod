@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.0
+
+- Navidad gráfica con los seis botones PNG y ocho iconos originales proporcionados: sustituye al ejemplo Social limpio, conserva Dedsafío y mantiene visible el mundo. Imágenes editables por variante o control, estados de botón, accesibilidad, respaldos y exportación completa.
+
+- Replace the former Christmas guide with illustrated Christmas and Dedsafio profiles using FancyMenu and SpiffyHUD, translucent panels and no full-screen background or blur.
+- Add bilingual guides and per-Minecraft design packages; retain legacy assets for existing user customizations.
+- Preserve row editor drafts, reject invalid navigation, cap undo history and restore render state on failure.
+- Keep failed conversation reads unavailable rather than overwriting old history with empty data; prepare large storage indexes in bounded batches and drain profile writes at shutdown.
+- Protocol 4: send only changed snapshot sections, chunk large updates, apply them atomically and request a fresh baseline on synchronization errors. Update clients and server together.
+- Add dependency version predicates to profile manifests and review; legacy manifests remain readable with an unspecified-version warning.
+
+- Query permission providers at action time, deny protected actions on provider failure, and recheck authorization after asynchronous chat/history loads.
+- Add real LuckPerms tests for grants, denials, revocation, contexts and integer metadata; document boolean nodes and colon-separated limit metadata.
+- Batch snapshots to 20 recipients per tick, share TEAM views within a batch, skip identical payloads and bound outgoing snapshot size.
+- Coalesce pending writes, retain failed snapshots for bounded retries and close storage only after queued I/O drains.
+- Reuse custom HUD rows and measurements, index SpiffyHUD elements per tick, isolate SpiffyHUD failures from FancyMenu and respect HUD preferences.
+- Reject ZIP symlinks, Windows filename aliases and file/directory collisions; validate restored profile state before touching design files.
+- Hide activity timestamps of invisible friends, bound notification queues and rate-limit expensive export/report requests.
+
 ## 0.5.0
 
 - Named local series profiles: save, duplicate and activate complete panel, row and HUD designs.
@@ -39,7 +58,6 @@
 - Ventana compacta, panel lateral y pantalla completa; editor de controles, textos, fondos, colores y recursos.
 - Presets visuales versionados, exportacion/importacion de packs y aspecto obligatorio del servidor.
 - Protocolo 3: actualizar cliente y servidor juntos. Guia en `docs/teams-y-editor-visual.md`.
-
 
 ## 0.2.0 — integraciones y correcciones
 

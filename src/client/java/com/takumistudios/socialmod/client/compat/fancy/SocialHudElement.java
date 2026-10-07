@@ -20,18 +20,31 @@ public final class SocialHudElement extends AbstractElement {
     final String kind;
     boolean failed;
     private long hudFrames;
-    public final Property.StringProperty rowKind;
+    private long checkedTick = -1, rowsRevision = -1;
+    private int stateVersion = -1, measuredWidth = -1;
+    private boolean cachedPreview;
+    private Object partyMembers;
+    private List<RowTemplates.Data> cachedRows = List.of();
+    private int[] rowHeights = new int[0];
+    private String measuredKind;
+    private static final String[] ARROWS = {"\u2191","\u2197","\u2192","\u2198","\u2193","\u2199","\u2190","\u2196"};
+    public final Property.StringProperty rowKind,skinIcon;
+    public final Property.BooleanProperty festiveFrame;
     SocialHudElement(Builder builder) {
         super(builder); kind = builder.kind;
         rowKind = putProperty(Property.stringProperty("socialmod_row", switch(kind) { case "toasts" -> "toast"; case "social" -> "conversation"; case "pings" -> "message"; default -> "party"; }, false, false, "socialmod.advanced.row_kind"));
+        skinIcon=putProperty(Property.stringProperty("socialmod_skin_icon","",false,false,"socialmod.advanced.festive_icon"));
+        festiveFrame=putProperty(Property.booleanProperty("socialmod_festive_frame",false,"socialmod.advanced.festive_frame"));
         baseWidth = 180; baseHeight = 40;
     }
     @Override public boolean shouldRender() {
         boolean preview = isEditor();
-        if (failed || ClientCompat.hudHidden()) return false;
+        if (failed || !FancyBridge.spiffy() || ClientCompat.hudHidden()) return false;
         if (!preview && (!ClientState.get().connected() || (!kind.equals("toasts") && FancyBackend.gameScreenOpen))) return false;
         if (kind.equals("social") && !ClientConfig.get().hud.enabled) return false;
         if (kind.equals("party") && !ClientConfig.get().hud.partyHealth) return false;
+        if (kind.equals("pings") && !ClientConfig.get().ping.enabled) return false;
+        if (kind.equals("toasts") && !ClientConfig.get().toasts.enabled) return false;
         return super.shouldRender();
     }
     @Override public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partial) {
@@ -39,16 +52,47 @@ public final class SocialHudElement extends AbstractElement {
         boolean preview = isEditor();
         boolean clipped = false;
         try {
-            var rows = rows(preview);
+            var rows = cachedRows(preview);
+            if(!preview && rows.isEmpty())return;
             if (!preview && !rows.isEmpty()) hudFrames++;
             int x = getAbsoluteX(), y = getAbsoluteY(), w = Math.max(24, getAbsoluteWidth());
             graphics.enableScissor(x, y, x + w, y + Math.max(12, getAbsoluteHeight())); clipped = true;
+            boolean festive=festiveFrame.get() && com.takumistudios.socialmod.client.theme.ChristmasSkin.enabled();
+            if(festive) {
+                com.takumistudios.socialmod.client.screen.Ui.panel(graphics,x,y,x+w,y+Math.max(12,getAbsoluteHeight()));
+                if(com.takumistudios.socialmod.client.theme.ChristmasSkin.ICONS.contains(skinIcon.get()))com.takumistudios.socialmod.client.theme.ChristmasSkin.icon(graphics,skinIcon.get(),x+4,y+5,12);
+                x+=20;w=Math.max(12,w-24);y+=5;
+            }
             var template = RowTemplates.template(rowKind.get());
             if (template == null) template = RowTemplates.template("party");
-            for (var row : rows) { RowTemplates.draw(graphics, template, x, y, w, row); y += RowTemplates.height(template, w, row); }
+            String selectedKind = rowKind.get();
+            if (measuredWidth != w || rowsRevision != RowTemplates.revision() || !Objects.equals(measuredKind, selectedKind)) {
+                rowHeights = new int[rows.size()];
+                for (int i = 0; i < rows.size(); i++) rowHeights[i] = RowTemplates.height(template, w, rows.get(i));
+                measuredWidth = w; rowsRevision = RowTemplates.revision(); measuredKind = selectedKind;
+            }
+            for (int i = 0; i < rows.size(); i++) {
+                RowTemplates.draw(graphics, template, x, y, w, rows.get(i), rowHeights[i]);
+                y += rowHeights[i];
+            }
 
-        } catch (RuntimeException e) { failed = true; SocialMod.LOGGER.warn("Custom HUD component failed; restoring the basic component: " + kind, e); }
+        } catch (RuntimeException | LinkageError e) { failed = true; SocialMod.LOGGER.warn("Custom HUD component failed; restoring the basic component: " + kind, e); }
         finally { if (clipped) graphics.disableScissor(); }
+    }
+    private List<RowTemplates.Data> cachedRows(boolean preview) {
+        long tick = FancyBackend.hudTick;
+        if (checkedTick == tick && cachedPreview == preview) return cachedRows;
+        checkedTick = tick;
+        var state = ClientState.get();
+        boolean changed = cachedPreview != preview || stateVersion != state.version()
+                || (kind.equals("party") && partyMembers != PartyClient.members())
+                || kind.equals("pings") || kind.equals("toasts");
+        if (changed || stateVersion == -1) {
+            var next = rows(preview);
+            if (!next.equals(cachedRows)) { cachedRows = List.copyOf(next); measuredWidth = -1; }
+            stateVersion = state.version(); partyMembers = PartyClient.members(); cachedPreview = preview;
+        }
+        return cachedRows;
     }
     private List<RowTemplates.Data> rows(boolean preview) {
         var state = ClientState.get();
@@ -67,7 +111,7 @@ public final class SocialHudElement extends AbstractElement {
                     double dx=ping.x()+.5-player.getX(), dz=ping.z()+.5-player.getZ();
                     int distance=(int)Math.round(Math.sqrt(dx*dx+dz*dz));
                     String[] arrows={"\u2191","\u2197","\u2192","\u2198","\u2193","\u2199","\u2190","\u2196"};
-                    arrow=arrows[Math.floorMod((int)Math.round((Math.toDegrees(Math.atan2(-dx,dz))-player.getYRot())/45),8)];
+                    arrow=ARROWS[Math.floorMod((int)Math.round((Math.toDegrees(Math.atan2(-dx,dz))-player.getYRot())/45),8)];
                     where=arrow+" "+distance+" m | "+where;
                 }
                 rows.add(new RowTemplates.Data(null,Map.of("name",Component.literal(ping.name()),"text",Component.literal(where),"icon",Component.literal(arrow)), -1,false,false));

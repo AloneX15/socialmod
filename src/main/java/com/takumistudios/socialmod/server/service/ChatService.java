@@ -226,12 +226,9 @@ public final class ChatService {
         message.attachments = attachments;
         String finalTitle = title;
         social.storage().withConversation(conversation.key(), loaded -> {
-            if (!conversation.isDirect()) {
-                Group group = social.groups().get(conversation.groupId());
-                if (group == null || group.archived || !social.groups().canAccess(group, sender.getUUID(), conversation.channel())) return;
-            }
+            if (!canCompleteSend(sender, conversation)) return;
             append(sender, conversation, loaded, message, finalTitle);
-        });
+        }, () -> social.notifier().feedback(sender,false,"socialmod.error.storage_unavailable"));
         if (conversation.isDirect()) {
             UUID other = conversation.other(sender.getUUID());
             record.lastDirectPartner = other;
@@ -451,6 +448,25 @@ public final class ChatService {
         return out;
     }
 
+    private boolean canCompleteSend(ServerPlayer sender, ConversationId conversation) {
+        ServerConfig config = ServerConfig.get();
+        PlayerRecord self = social.storage().player(sender.getUUID());
+        if (sender.hasDisconnected() || self == null || self.isMuted(System.currentTimeMillis())) return false;
+        if (conversation.isDirect()) {
+            if (!config.modules.privateMessages || !PermissionBridge.allows(sender, PermissionBridge.CHAT_PRIVATE)) return false;
+            UUID otherId = conversation.other(sender.getUUID());
+            PlayerRecord other = social.storage().player(otherId);
+            return other != null && !self.blocked.contains(otherId)
+                    && (config.modules.mailbox || social.online(otherId) != null)
+                    && (PermissionBridge.isStaff(sender, PermissionBridge.MOD_BYPASS)
+                        || (!other.blocked.contains(sender.getUUID())
+                            && PresenceService.privacyAllows(other.whoCanMessage, other.friends.contains(sender.getUUID()))));
+        }
+        Group group = social.groups().get(conversation.groupId());
+        return group != null && !group.archived && (group.party ? config.modules.parties : config.modules.groups)
+                && social.groups().canAccess(group, sender.getUUID(), conversation.channel());
+    }
+
     private static int color(String name, int fallback) {
         return name == null ? fallback : net.minecraft.network.chat.TextColor.parseColor(name.toLowerCase(Locale.ROOT)).result()
                 .map(net.minecraft.network.chat.TextColor::getValue).orElse(fallback);
@@ -503,6 +519,7 @@ public final class ChatService {
         int pageSize = ServerConfig.get().chat.historyPageSize;
         String title = titleFor(player.getUUID(), conversation);
         social.storage().withConversation(conversation.key(), loaded -> {
+            if (player.hasDisconnected() || !canRead(player.getUUID(), conversation)) return;
             List<ChatMessage> page = loaded.page(beforeId, pageSize + 1);
             boolean hasMore = page.size() > pageSize;
             if (hasMore) {
@@ -517,6 +534,10 @@ public final class ChatService {
                 views.add(toView(message));
             }
             social.send(player, new Payloads.MessagesS2C(conversation.key(), title, Payloads.MessagesMode.HISTORY, hasMore, views));
+        }, () -> {
+            if(player.hasDisconnected())return;
+            social.notifier().feedback(player,false,"socialmod.error.storage_unavailable");
+            social.send(player,new Payloads.MessagesS2C(conversation.key(),title,Payloads.MessagesMode.UNAVAILABLE,true,List.of()));
         });
     }
 
@@ -529,9 +550,10 @@ public final class ChatService {
         if (conversation == null || !canRead(player.getUUID(), conversation)) {
             return;
         }
-        boolean staff = PermissionBridge.isStaff(player, PermissionBridge.MOD_HISTORY);
         long window = ServerConfig.get().chat.editWindowSeconds * 1000L;
         social.storage().withConversation(conversation.key(), loaded -> {
+            if (player.hasDisconnected() || !canRead(player.getUUID(), conversation)) return;
+            boolean staff = PermissionBridge.isStaff(player, PermissionBridge.MOD_HISTORY);
             if (!conversation.isDirect()) {
                 Group group = social.groups().get(conversation.groupId()); if (group == null || group.archived || !canRead(player.getUUID(), conversation)) return;
             }
@@ -677,6 +699,7 @@ public final class ChatService {
             String title = titleFor(player.getUUID(), conversation);
             Group group = conversation.isDirect() ? null : social.groups().get(conversation.groupId());
             social.storage().withConversation(conversation.key(), loaded -> {
+                if (player.hasDisconnected() || !canRead(player.getUUID(), conversation)) return;
                 player.sendSystemMessage(Component.literal("— " + title + " —").withStyle(ChatFormatting.GOLD));
                 List<ChatMessage> page = loaded.page(0, count);
                 for (ChatMessage message : page) {

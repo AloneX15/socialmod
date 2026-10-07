@@ -102,11 +102,36 @@ Con LuckPerms (o cualquier proveedor de la Fabric Permission API) los nodos se e
 | Nodo | Uso | Por defecto |
 |---|---|---|
 | `socialmod.chat.private` | Enviar privados | todos |
+| `socialmod.chat.links` | Enlaces clicables en mensajes | todos |
+| `socialmod.team.create` | Crear TEAM cuando lo permite la configuración | todos |
+| `socialmod.admin.teams` | Administrar TEAM, asignaciones y límites | OP 2 |
+| `socialmod.admin.visuals` | Publicar y restaurar apariencia de servidor | OP 2 |
 | `socialmod.group.create` | Crear grupos | todos |
 | `socialmod.party.create` | Crear parties | todos |
 | `socialmod.data.export` · `socialmod.data.delete` | Derechos sobre los datos | todos |
 | `socialmod.mod.bypass` | Saltarse privacidad y anti-spam | OP 2 |
-| `socialmod.limit.groups` (entero) | Grupos por jugador; sustituye a `limits.maxGroupsPerPlayer` | config |
-| `socialmod.limit.friends` (entero) | Amigos por jugador; sustituye a `limits.maxFriends` | config |
+| `socialmod:limit.groups` (metadato entero) | Grupos por jugador; sustituye a `limits.maxGroupsPerPlayer` | config |
+| `socialmod:limit.friends` (metadato entero) | Amigos por jugador; sustituye a `limits.maxFriends` | config |
 
 Todos los cambios de moderación y de gestión de grupos quedan en `<mundo>/socialmod/audit.log`.
+
+## LuckPerms: permisos y límites
+
+LuckPerms sigue siendo opcional. Sin proveedor se aplican los valores por defecto de las tablas. Las acciones consultan al proveedor en el momento de ejecutarse; SocialMod no conserva una caché adicional. Una denegación explícita prevalece sobre OP. Si el proveedor falla, la acción protegida se deniega y se registra un aviso limitado; un límite ausente o inválido conserva el valor de configuración.
+
+Los permisos booleanos usan puntos; los límites enteros usan metadatos con el identificador completo y dos puntos. Ejemplo:
+
+```text
+/lp group default permission set socialmod.chat.private true
+/lp group restricted permission set socialmod.chat.private false
+/lp group staff permission set socialmod.mod.history true
+/lp group designers permission set socialmod.admin.visuals true
+/lp group vip meta set socialmod:limit.groups 7
+/lp group vip meta set socialmod:limit.friends 300
+```
+
+Los metadatos no son permisos booleanos. Un valor negativo equivale a cero; los contextos y la herencia se resuelven en LuckPerms. La conversión está definida en su [integración oficial con Fabric Permission API v1](https://github.com/LuckPerms/LuckPerms/blob/master/fabric/src/main/java/me/lucko/luckperms/fabric/listeners/FabricPermissionsApiV1Listener.java).
+
+El perfil `./gradlew :26.3:runGameTest -PluckPerms` usa LuckPerms real y comprueba concesión, denegación, revocación, contextos y metadatos enteros. Sustituye `26.3` por cualquiera de las otras versiones soportadas.
+
+La exportación personal se limita a una solicitud por minuto y jugador, compartida entre comando y panel. Los reportes admiten una ráfaga de tres y recuperan una solicitud cada cinco segundos. Los estados de ambos límites se liberan al desconectar.

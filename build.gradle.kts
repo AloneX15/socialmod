@@ -76,6 +76,11 @@ dependencies {
     journeyMapMod("maven.modrinth:journeymap:${sc.properties.get<String>("compat.journeymap")}")
     "clientCompileOnly"(fileTree(layout.buildDirectory.dir("journeymap-api")).builtBy(extractJourneyMapApi))
 
+    "gametestCompileOnly"("net.luckperms:api:5.5")
+    if (project.hasProperty("luckPerms")) {
+        localRuntime("maven.modrinth:luckperms:DzQPkkXY")
+    }
+
     // Modpack de pruebas de compatibilidad (PLAN 14): ./gradlew runGameTest -PcompatPack
     if (project.hasProperty("compatPack")) {
         localRuntime("maven.modrinth:placeholder-api:${sc.properties.get<String>("deps.placeholder_api")}")
@@ -191,15 +196,22 @@ publishing {
 }
 
 // Boots a clean client with the documented exported modpack already installed.
-if (project.hasProperty("christmasPack")) {
+if (project.hasProperty("seriesPack")) {
     tasks.named<JavaExec>("runClientGameTest") {
-        systemProperty("socialmod.test.christmasPack", "true")
+        systemProperty("socialmod.test.seriesPack", "true")
         doFirst {
             project.copy {
-                val packName = if (mcVersion == "26.3") "christmas-modpack.zip" else "christmas-modpack-$mcVersion.zip"
-                from(zipTree(rootProject.file("docs/examples/christmas/$packName")))
+                val style = project.findProperty("seriesPack").toString().let { if (it == "dedsafio") it else "christmas" }
+                from(zipTree(rootProject.file("docs/examples/series/$style-$mcVersion.zip")))
                 into(project.layout.buildDirectory.dir("run/clientGameTest"))
             }
         }
+    }
+}
+
+// Dedicated profile: normal mock players bypass login preloading and LuckPerms rejects them.
+if (project.hasProperty("luckPerms")) {
+    tasks.named<JavaExec>("runGameTest") {
+        systemProperty("fabric-api.gametest.filter", "socialmod-test:social_mod_game_tests_optional_luck_perms_checks_real_permissions_and_integer_metadata")
     }
 }

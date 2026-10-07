@@ -133,7 +133,6 @@ Xaero's World Map / Minimap. Cada entrada indica el síntoma, la causa y cómo s
 - Resultado: 3 builds completas seguidas en verde (3 versiones × 22 gametests + 35 unitarias) y el compat pack y el test
   de cliente en verde en las 3 versiones.
 
-
 ## Nametag con varios grupos (0.3.0)
 
 - Sintoma: la identidad visible de un jugador perteneciente a varios grupos dependia del grupo principal y su fallback.
@@ -183,7 +182,7 @@ Minecraft 26.3 utiliza valores SDL para el ratón: izquierda es 1 y derecha es 3
 
 ### Recursos de filas durante el arranque de un modpack
 
-Las filas importadas pueden cargarse antes de terminar la primera recarga de recursos de Minecraft. Validarlas en ese momento podría descartar fuentes que todavía no estaban disponibles. La validación de recursos espera a la primera recarga; posteriores cargas se validan inmediatamente. El perfil `-PfancyMenu -PchristmasPack` arranca con el ZIP documentado instalado y exige que sus filas y apariencia se carguen.
+Las filas importadas pueden cargarse antes de terminar la primera recarga de recursos de Minecraft. Validarlas en ese momento podría descartar fuentes que todavía no estaban disponibles. La validación de recursos espera a la primera recarga; posteriores cargas se validan inmediatamente. Los perfiles actuales `-PfancyMenu -PseriesPack=clean` y `-PfancyMenu -PseriesPack=dedsafio` arrancan con el ZIP documentado instalado y exigen que sus filas y apariencia se carguen.
 
 ### Exportación de configuraciones ajenas a la serie (0.5.0)
 
@@ -192,3 +191,41 @@ El exportador anterior copiaba toda la configuración de FancyMenu, incluidas pr
 ### Cambio de perfil y recuperación del diseño previo (0.5.0)
 
 Sobrescribir archivos sin conservar su origen puede perder el diseño anterior; restaurar un layout retirado como activo puede además superponerlo al nuevo. Cada activación respalda los archivos afectados y el estado del perfil, conserva el contenido original de archivos existentes y retira o desactiva los layouts que dejan de usarse. La restauración recupera los bytes anteriores y elimina archivos nuevos. Los tests cubren colisiones, perfiles sin filas locales, layouts retirados y restauración tras reiniciar el servicio; el gametest recarga los editores reales, activa/importa y restaura perfiles.
+
+## Revisión de rendimiento, seguridad y compatibilidad (2026-10-07)
+
+### Permisos obsoletos y autorización antes de una carga asíncrona
+
+La caché propia retenía permisos cinco segundos y algunas operaciones reutilizaban autorizaciones anteriores a cargar el historial. Se consulta al proveedor en cada acción y se revalidan privacidad, pertenencia, silencio y permisos al completar la carga. Ante una excepción del proveedor se deniega la acción. Las regresiones incluyen revocación, fallo del proveedor, mensaje pendiente al cerrar la privacidad y un perfil con LuckPerms real, contextos y metadatos.
+
+### Escrituras perdidas tras un fallo y cierre de backend durante E/S
+
+El estado dejaba de estar marcado como pendiente antes de saber si el backend había escrito; el cierre por timeout podía cerrar una conexión JDBC todavía en uso. Se conserva la última copia JSON por documento, se agrupan escrituras, se reintenta y se cierra el backend desde su executor después de las operaciones pendientes. Los tests cubren 10.000 revisiones de un documento, copia inmutable, fallo temporal, recuperación sin otra modificación y cierre interrumpido. Un fallo permanente durante el apagado se registra como datos sin guardar; no se promete persistencia cuando el almacenamiento continúa inaccesible.
+
+### Coste del HUD y aislamiento de los editores
+
+Se creaban filas, mapas y textos en cada frame y se recorrían todos los elementos para cada consulta de reemplazo. Las filas se calculan como máximo una vez por tick, con reutilización cuando no cambian los datos; las alturas se invalidan por anchura, template y revisión de recursos. El índice se actualiza por tick y la visibilidad se consulta durante el render. Una avería de SpiffyHUD ya no desactiva FancyMenu. Los perfiles de cliente verifican render real, reutilización, F1 y recuperación del HUD nativo.
+
+### ZIP y respaldo con nombres ambiguos
+
+Dos rutas distintas podían designar el mismo archivo en Windows; el estado embebido en un respaldo solo se comprobaba por tamaño. Se validan nombres, colisiones de directorios, entradas simbólicas del directorio central ZIP y el estado restaurado antes de escribir. Los modelos y metadatos JSON rechazan una profundidad superior a 64 niveles antes de la deserialización recursiva. Las regresiones comprueban que un rechazo conserva los archivos instalados y que los templates distribuidos siguen siendo válidos.
+
+### Privacidad y límites de trabajo
+
+La última actividad de un amigo invisible podía aparecer en el snapshot aunque su estado figurase como desconectado. Se oculta ese timestamp y se cubre con gametest. Los snapshots se procesan en lotes de veinte destinatarios, se descartan duplicados y se liberan sus cachés al salir. Una conexión de 200 jugadores puede necesitar diez ticks para recibir una actualización global. Se limitan exportaciones y reportes en el servicio común, además del límite global de paquetes.
+
+## 0.6.0: editores, perfiles y sincronización
+
+- Síntoma: cambiar de fila o página perdía campos y ocultaba errores. Causa: reconstrucción de widgets sin validar. Solución: aplicar antes de navegar, conservar entradas inválidas y borradores al redimensionar, limitar todo el historial a 40. Regresión: pruebas reales del editor con campos inválidos, navegación y resize.
+- Síntoma: una lectura fallida podía crear una conversación vacía escribible. Solución: no ejecutar acciones ni cachear datos vacíos cuando la lectura falla; permitir reintento. Regresión: `failedReadDoesNotCreateWritableEmptyHistoryAndCanBeRetried`.
+- Síntoma: preparación de índices grandes concentrada en un tick. Solución: lotes de 16 registros con drenaje completo al apagar. Regresión: `largeIndexesPrepareOverSeveralTicksAndShutdownDrainsThem`.
+- Síntoma: estado grande descartado y panel desactualizado. Solución: protocolo 4, secciones modificadas, fragmentos y aplicación atómica hasta 8 MiB; recuperación con nueva base. Regresión: `SnapshotSyncTest`.
+- Síntoma: ZIP aprobado sin comprobar versiones de mods. Solución: predicados de versión en manifiesto y validación previa; aviso para manifiestos antiguos. Regresión: `versionRequirementsAreValidatedAndLegacyManifestsRemainReadable`.
+- Síntoma: el ejemplo navideño ocultaba el juego. Solución: dos perfiles sin fondos globales y con paneles semitransparentes. Regresión: `SeriesTemplatesTest` y capturas de FancyMenu/SpiffyHUD en las tres versiones.
+
+## Navidad gráfica: imágenes y perfiles
+
+- **Síntoma:** la guía anterior ofrecía un diseño neutro en lugar de los botones ilustrados solicitados. **Causa:** interpretación incompleta del objetivo visual. **Solución:** Navidad gráfica reutiliza exactamente los seis PNG y ocho iconos adjuntos, con estados, adaptación del centro y transparencia del mundo. **Prueba:** galería en juego, controles pequeños, alto contraste y ZIP con recursos.
+- **Síntoma:** FancyMenu se desactivaba mientras una imagen todavía se estaba cargando. **Causa:** una textura asíncrona puede tener un identificador nulo hasta estar preparada. **Solución:** utilizar el PNG incluido como respaldo mientras la copia editable carga. **Prueba:** primera apertura con FancyMenu, instalación y recarga reales.
+- **Síntoma:** guardar un perfil tras cambiar de Navidad a Dedsafío podía fallar por imágenes ausentes. **Causa:** se conservaba el layout desactivado, pero se retiraban sus recursos. **Solución:** conservar imágenes asociadas a los ejemplos desactivados, byte por byte, dentro de la operación respaldada. **Prueba:** cambio, exportación, restauración y regresión con bytes binarios.
+- **Síntoma:** aparecían cajas vacías en el HUD navideño. **Causa:** se dibujaba el borde antes de comprobar si había filas. **Solución:** omitir componentes vacíos en juego; mantener su vista previa en el editor. **Prueba:** capturas de panel y HUD y comprobación de render de SpiffyHUD.

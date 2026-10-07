@@ -59,6 +59,67 @@ public class SocialModGameTests {
         return player.getUUID().toString();
     }
 
+    @GameTest public void permissionsApplyRevocationsAndProviderFailuresImmediately(GameTestHelper helper) {
+        PermissionRegressionTests.check(player(helper)); helper.succeed();
+    }
+
+    @GameTest(maxTicks = 400) public void optionalLuckPermsChecksRealPermissionsAndIntegerMetadata(GameTestHelper helper) {
+        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("luckperms")) LuckPermsIntegrationTests.run(helper);
+        else helper.succeed();
+    }
+
+    @GameTest public void pendingPrivateMessageRechecksRecipientPrivacy(GameTestHelper helper) {
+        var social = social(helper); var sender = player(helper); var recipient = player(helper);
+        var conversation = ConversationId.direct(sender.getUUID(), recipient.getUUID());
+        social.chat().send(sender, conversation.key(), "privacy regression");
+        social.record(recipient).whoCanMessage = Privacy.NOBODY;
+        helper.succeedWhen(() -> {
+            var loaded = social.storage().cachedConversation(conversation.key());
+            check(helper, loaded != null, "Conversation is still loading");
+            check(helper, loaded.messages.isEmpty(), "Pending message bypassed recipient privacy");
+        });
+    }
+
+    @GameTest public void invisibleFriendDoesNotExposeLastSeenInSnapshot(GameTestHelper helper) {
+        var social = social(helper); var viewer = player(helper); var hidden = player(helper);
+        social.record(viewer).friends.add(hidden.getUUID());
+        social.record(hidden).status = com.takumistudios.socialmod.common.model.PresenceStatus.INVISIBLE;
+        social.record(hidden).lastSeen = System.currentTimeMillis();
+        var friend = social.snapshots().build(viewer).friends.getFirst();
+        check(helper, friend.status.equals("offline") && friend.lastSeen == 0, "Invisible friend exposed activity timestamp");
+        helper.succeed();
+    }
+
+    @GameTest public void historicalIndexesPrepareInBoundedBatches(GameTestHelper helper) { StoragePerformanceProbe.measure(); helper.succeed(); }
+
+    @GameTest public void snapshotsUseBoundedBatchesAndSuppressIdenticalPayloads(GameTestHelper helper) throws Exception {
+        var social = social(helper); var players = new java.util.ArrayList<ServerPlayer>();
+        for (int i = 0; i < 25; i++) { var p = player(helper); players.add(p); social.onHello(p, com.takumistudios.socialmod.common.net.Payloads.PROTOCOL_VERSION); }
+        var pendingField = social.snapshots().getClass().getDeclaredField("pending"); pendingField.setAccessible(true);
+        @SuppressWarnings("unchecked") var pending = (java.util.Set<java.util.UUID>) pendingField.get(social.snapshots());
+        long before = players.stream().filter(p -> pending.contains(p.getUUID())).count();
+        social.snapshots().tick();
+        long after = players.stream().filter(p -> pending.contains(p.getUUID())).count();
+        check(helper, before == 25 && after >= 5, "Snapshot tick exceeded its 20 recipient budget");
+        var viewer = players.getFirst(); social.snapshots().sendNow(viewer);
+        var cacheField = social.snapshots().getClass().getDeclaredField("lastSent"); cacheField.setAccessible(true);
+        @SuppressWarnings("unchecked") var cache = (java.util.Map<java.util.UUID, com.google.gson.JsonObject>) cacheField.get(social.snapshots());
+        var first = cache.get(viewer.getUUID()); social.snapshots().tick(); social.snapshots().sendNow(viewer);
+        check(helper, first != null && first == cache.get(viewer.getUUID()), "Identical snapshot was retransmitted");
+        for (var p : players) { social.snapshots().forget(p.getUUID()); check(helper, !pending.contains(p.getUUID()) && !cache.containsKey(p.getUUID()), "Snapshot cache leaked after disconnect"); }
+        helper.succeed();
+    }
+
+    @GameTest public void repeatedHandshakeKeepsPanelSubscription(GameTestHelper helper) {
+        var social = social(helper); var viewer = player(helper);
+        social.onHello(viewer, com.takumistudios.socialmod.common.net.Payloads.PROTOCOL_VERSION);
+        social.presence().setPanelOpen(viewer, true);
+        var session = social.session(viewer.getUUID());
+        social.onHello(viewer, -1);
+        check(helper, social.session(viewer.getUUID()) == session && session.panelOpen, "Handshake reset valid session");
+        social.presence().setPanelOpen(viewer, false); helper.succeed();
+    }
+
     @GameTest
     public void christmasPresetSharesTexturesFontAndFrameSettings(GameTestHelper helper) {
         SocialServer social = social(helper); ServerPlayer first = player(helper), second = player(helper);
@@ -510,6 +571,7 @@ public class SocialModGameTests {
             }
             direct.add(ConversationId.direct(from.getUUID(), to.getUUID()).key());
         }
+        SnapshotPerformanceProbe.measure(social, players);
         long millis = (System.nanoTime() - start) / 1_000_000;
         com.takumistudios.socialmod.SocialMod.LOGGER.info("[SocialMod] Carga: 200 jugadores, {} mensajes en {} ms", sent, millis);
         check(helper, sent == 1200, "mensajes aceptados: " + sent);

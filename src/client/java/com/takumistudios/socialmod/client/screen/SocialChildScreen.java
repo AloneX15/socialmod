@@ -75,6 +75,8 @@ public abstract class SocialChildScreen extends Screen {
         return (this.width - panelWidth) / 2;
     }
 
+    @Override public void extractBackground(GuiGraphicsExtractor graphics,int mx,int my,float delta) { if(!com.takumistudios.socialmod.client.theme.VisualManager.get().transparentWorld) super.extractBackground(graphics,mx,my,delta); }
+
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Ui.background(graphics, this.width, this.height);

@@ -132,7 +132,7 @@ preferencias. Los modpacks pueden traer valores por defecto sin pisar los tuyos.
 
 Silencios, **reportes con contexto**, historiales, inspección de jugadores, disolver grupos, **filtro de palabras** (lista, regex y
 datapacks), **anti-spam con silencio automático**, **registro de auditoría** y modo **spy opcional y visible** para todos.
-Con permisos de **LuckPerms**.
+Con la Permission API de Fabric y **LuckPerms opcional**. [Permisos y metadatos de límites](docs/commands-and-permissions.md#luckperms-permisos-y-límites).
 
 👉 [Moderación](docs/wiki/16-moderacion.md)
 
@@ -234,7 +234,7 @@ en Maven. Quedan pendientes, con su motivo, FTB Chunks y Cadmus (no existen para
 grupos), Velocity y el addon de Discord (proyectos aparte). Detalle en
 [Estado de la implementación](docs/implementation-status.md) e [Integraciones](docs/wiki/18-integraciones.md).
 
-> La 0.2.0 usa el **protocolo de red 2**: actualiza cliente y servidor a la vez (con versiones distintas el cliente queda en
+> SocialMod 0.6.0 usa el **protocolo de red 4**: actualiza cliente y servidor a la vez (con versiones distintas el cliente queda en
 > "solo chat", sin errores).
 
 ## Compilar desde el código
@@ -258,13 +258,15 @@ Issues y propuestas en el [repositorio](../../issues). Las vulnerabilidades se r
 
 Desde la versión 0.4.0, **FancyMenu** y **SpiffyHUD** son integraciones opcionales de cliente. El editor permite mover y redimensionar los bloques del panel, personalizar las filas y colocar componentes de HUD con datos reales de SocialMod. Sin estos mods se conserva la interfaz básica.
 
+Los ejemplos **Navidad gráfica** (seis botones PNG y ocho iconos originales) y **Dedsafío** mantienen visible el mundo, sin fondo global ni desenfoque.
+
 El botón **Editor visual** abre las herramientas avanzadas cuando FancyMenu está instalado. El diseño se distribuye mediante el modpack, con exportación a `config/socialmod/presets/socialmod-series.zip`. FancyMenu requiere Konkrete y Melody; SpiffyHUD añade la edición del HUD.
 
 Desde 0.5.0, **Perfiles de serie** permite guardar, duplicar y activar diseños locales. La exportación incluye solo los layouts seleccionados y sus recursos, con un manifiesto de autoría y dependencias. La importación revisa el ZIP y conserva un respaldo restaurable antes de activar el perfil.
 
-- [Guía navideña en español](docs/christmas-es.md).
-- [Christmas guide in English](docs/christmas-en.md).
-- [Template avanzado para el modpack](docs/examples/christmas/christmas-modpack.zip).
+- [Guía de Navidad gráfica y Dedsafío en español](docs/series-es.md).
+- [Series design guide in English](docs/series-en.md).
+- [Paquetes de los dos diseños por versión](docs/series-es.md#7-perfiles-exportación-y-zip).
 
 Pruebas opcionales: `./gradlew :26.3:runClientGameTest -PfancyMenu` (ambos editores) y `-PfancyMenu -PfancyOnly` (FancyMenu sin SpiffyHUD).
 
@@ -272,4 +274,4 @@ Creado por **TakumiStudios**.
 
 <sub>SocialMod · TakumiStudios · Licencia MIT</sub>
 
-Plantilla navideña con guías ilustradas: [Español](docs/christmas-es.md) | [English](docs/christmas-en.md).
+Plantilla navideña con guías ilustradas: [Español](docs/series-es.md) | [English](docs/series-en.md).

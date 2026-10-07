@@ -21,7 +21,7 @@ import java.util.UUID;
  */
 public final class Payloads {
     /** Se incrementa con cada cambio incompatible de los paquetes. */
-    public static final int PROTOCOL_VERSION = 3;
+    public static final int PROTOCOL_VERSION = 4;
 
     public static final int MAX_TEXT = 1024;
     public static final int MAX_ARG = 256;
@@ -308,7 +308,9 @@ public final class Payloads {
         /** Página de historial (más antiguos). */
         HISTORY,
         /** Un mensaje editado o borrado. */
-        UPDATE;
+        UPDATE,
+        /** Read failure: retain cached messages and allow an explicit retry. */
+        UNAVAILABLE;
 
         static MessagesMode byId(int id) {
             MessagesMode[] values = values();

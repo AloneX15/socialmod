@@ -580,7 +580,7 @@ public final class SocialCommands {
                                             SocialServer social = SocialServer.get();
                                             PlayerRecord record = social == null ? null : known(ctx.getSource(), social, str(ctx, "player"));
                                             if (record == null) return 0;
-                                            social.moderation().export(record.id, null);
+                                            social.moderation().exportForStaff(record.id, ctx.getSource());
                                             ctx.getSource().sendSuccess(() -> Lang.tr("socialmod.data.exported", "socialmod/exports/" + record.id + ".json.gz"), true);
                                             return 1;
                                         })))

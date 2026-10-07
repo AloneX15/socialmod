@@ -24,8 +24,9 @@ final class FancyIntegrationTests {
         String previousLanguage = context.computeOnClient(client -> client.getLanguageManager().getSelected());
         try {
         context.runOnClient(client -> { client.options.guiScale().set(1); de.keksuccino.fancymenu.util.rendering.RenderingUtils.resetGuiScale(); ClientCompat.setScreen(new SocialScreen(conversation)); });
-        await(context, context.computeOnClient(client -> FancyBridge.christmas(ClientCompat.currentScreen())));
+        await(context, context.computeOnClient(client -> FancyBridge.install(ClientCompat.currentScreen(),"christmas")));
         context.waitTicks(10);
+        RowEditorRegressionTests.run(context);
         for (String language : new String[]{"es_es","en_us"}) {
             SocialModClientGameTest.language(context,language);
             context.runOnClient(client -> ClientCompat.setScreen(new SocialScreen(conversation))); context.waitTicks(6);
@@ -98,13 +99,36 @@ final class FancyIntegrationTests {
             testExportResources();
         }));
         await(context,exported);
+        for(String style:com.takumistudios.socialmod.common.model.SeriesTemplates.IDS) {
+            context.runOnClient(client -> ClientCompat.setScreen(new SocialScreen(conversation)));
+            await(context,context.computeOnClient(client -> FancyBridge.install(ClientCompat.currentScreen(),style)));
+            if(style.equals("christmas"))ChristmasVisualTests.run(context,conversation);
+            for(String language:new String[]{"es_es","en_us"}) {
+                SocialModClientGameTest.language(context,language);
+                context.runOnClient(client -> ClientCompat.setScreen(new SocialScreen(conversation))); context.waitTicks(6);
+                context.runOnClient(client -> {
+                    var visual=LocalSeriesDesign.get();
+                    if(!visual.transparentWorld || !visual.seriesStyle.equals(style) || FancyBridge.background(ClientCompat.currentScreen())) throw new AssertionError("Series background obscures world");
+                    var theme=Ui.theme(); if(theme.textures().background().isPresent() || theme.colors().background()!=0 || (theme.colors().panel()>>>24)>=255) throw new AssertionError("Opaque series theme");
+                });
+                context.takeScreenshot("series_"+style+"_"+language+"_panel");
+                context.runOnClient(client -> ClientCompat.setScreen(null)); context.waitTicks(5);
+                context.takeScreenshot("series_"+style+"_"+language+"_hud");
+                if(FancyBridge.spiffy()) SpiffyIntegrationTests.assertRendered(context);
+            }
+            var pack=context.computeOnClient(client -> { ClientCompat.setScreen(new SocialScreen(conversation)); return FancyBridge.template(ClientCompat.currentScreen(),style); });
+            await(context,java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try { com.takumistudios.socialmod.common.model.SeriesPack.write(java.nio.file.Path.of("advanced-export",style+"-"+net.minecraft.SharedConstants.getCurrentVersion().id()+".zip"),pack); }
+                catch(java.io.IOException e) { throw new java.util.concurrent.CompletionException(e); }
+            }));
+        }
         SeriesProfilesTests.run(context);
         await(context,context.computeOnClient(client -> FancyBridge.reset()));
         context.runOnClient(client -> {
-            if (LocalSeriesDesign.get()!=null || RowTemplates.enabled("message")) throw new AssertionError("Local template reset failed");
+            if (LocalSeriesDesign.get()==null || !RowTemplates.enabled("message")) throw new AssertionError("Profile restoration did not preserve previous design");
         });
         } finally {
-        context.runOnClient(client -> { for(var layout:LayoutHandler.getAllLayouts()) if(layout.layoutFile!=null && layout.layoutFile.getName().startsWith("socialmod_christmas")) layout.setEnabled(false,false); ScreenCustomization.reloadFancyMenu(); LocalSeriesDesign.clear(); client.options.guiScale().set(previousScale); de.keksuccino.fancymenu.util.rendering.RenderingUtils.resetGuiScale(); ClientCompat.setScreen(null); });
+        context.runOnClient(client -> { for(var layout:LayoutHandler.getAllLayouts()) if(layout.layoutFile!=null && (layout.layoutFile.getName().startsWith("socialmod_christmas") || layout.layoutFile.getName().startsWith("socialmod_dedsafio"))) layout.setEnabled(false,false); ScreenCustomization.reloadFancyMenu(); LocalSeriesDesign.clear(); client.options.guiScale().set(previousScale); de.keksuccino.fancymenu.util.rendering.RenderingUtils.resetGuiScale(); ClientCompat.setScreen(null); });
         await(context,context.computeOnClient(client -> RowTemplates.save(previousRows)));
         await(context,context.computeOnClient(client -> previousVisual==null ? LocalSeriesDesign.reset() : LocalSeriesDesign.save(previousVisual)));
         SocialModClientGameTest.language(context,previousLanguage);
@@ -115,7 +139,7 @@ final class FancyIntegrationTests {
         try { future.join(); } catch(java.util.concurrent.CompletionException e) { throw new AssertionError("Async customization failed",e.getCause()); }
     }
     private static void testFreshPack(java.nio.file.Path exported) throws java.io.IOException {
-        var root=java.nio.file.Files.createTempDirectory("socialmod-clean-instance-");
+        var root=java.nio.file.Files.createTempDirectory("socialmod-christmas-instance-");
         try(var zip=new java.util.zip.ZipFile(exported.toFile())) {
             for(var entries=zip.entries();entries.hasMoreElements();) {
                 var entry=entries.nextElement(); var target=root.resolve(entry.getName()).normalize();
@@ -127,7 +151,7 @@ final class FancyIntegrationTests {
         var rows=com.takumistudios.socialmod.common.model.RowDesign.parse(java.nio.file.Files.readString(root.resolve("config/socialmod/integration/rows.json")));
         var visual=com.takumistudios.socialmod.common.model.VisualDesign.parse(java.nio.file.Files.readString(root.resolve("config/socialmod/integration/visual.json")));
         String layout=java.nio.file.Files.readString(root.resolve("config/fancymenu/customization/socialmod_christmas.txt"));
-        if (!rows.templates.get("message").enabled || !visual.font.equals("socialmod:christmas") || !layout.contains("identifier = socialmod_social") || !layout.contains("is_enabled = true")) throw new AssertionError("Fresh instance pack is incomplete");
+        if (!rows.templates.get("message").enabled || !visual.transparentWorld || !layout.contains("identifier = socialmod_social") || !layout.contains("is_enabled = true")) throw new AssertionError("Fresh instance pack is incomplete");
     }
     private static void testExportResources() {
         try {

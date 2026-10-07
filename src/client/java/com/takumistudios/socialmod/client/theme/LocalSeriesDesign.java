@@ -31,5 +31,10 @@ public final class LocalSeriesDesign {
             } catch (java.io.IOException e) { throw new CompletionException(e); }
         }, IO);
     }
+    public static void shutdown() {
+        IO.shutdown();
+        try { if(!IO.awaitTermination(30,TimeUnit.SECONDS)) SocialMod.LOGGER.error("Client design writes still pending at shutdown"); }
+        catch(InterruptedException e) { Thread.currentThread().interrupt(); }
+    }
     private LocalSeriesDesign() { }
 }

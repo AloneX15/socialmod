@@ -1,6 +1,6 @@
 # TEAM y aspecto de una serie
 
-Disponible desde SocialMod 0.3.0 (protocolo 3). Actualiza el mod del servidor y de los clientes juntos.
+Disponible desde SocialMod 0.3.0; SocialMod 0.6.0 usa protocolo 4. Actualiza el mod del servidor y de los clientes juntos.
 
 ## Elegir y crear un TEAM
 
@@ -115,7 +115,7 @@ Creado por **TakumiStudios**.
 
 El inspector agrupa Ventana, Colores, Textos, HUD, Nametag, Recursos y Elemento seleccionado. Plantilla abre el selector con Compacta, Lateral, Pantalla completa y Navidad: Refugio de invierno. Elegir textura muestra miniaturas de los sprites disponibles en los paquetes cargados.
 
-La plantilla navideña incluye texturas pixel art y fuente propia; las guías ilustradas están en [español](christmas-es.md) y [English](christmas-en.md).
+La plantilla navideña incluye texturas pixel art y fuente propia; las guías ilustradas están en [español](series-es.md) y [English](series-en.md).
 
 Arrastrar un fondo de panel mueve los controles y textos contenidos con el mismo desplazamiento. El movimiento se ajusta a pasos de cuatro píxeles; durante el arrastre aparece una cuadrícula. El redimensionado sigue siendo individual.
 

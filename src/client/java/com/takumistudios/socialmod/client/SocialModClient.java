@@ -44,6 +44,7 @@ public final class SocialModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientConfig.load();
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> { com.takumistudios.socialmod.client.theme.SeriesProfiles.shutdown(); com.takumistudios.socialmod.client.theme.RowTemplates.shutdown(); com.takumistudios.socialmod.client.theme.LocalSeriesDesign.shutdown(); });
         SocialKeys.register();
         com.takumistudios.socialmod.client.compat.fancy.FancyBridge.register();
         com.takumistudios.socialmod.client.theme.RowTemplates.load();
@@ -58,8 +59,7 @@ public final class SocialModClient implements ClientModInitializer {
         }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.SnapshotS2C.TYPE, (payload, context) ->
                 guarded("snapshot", () -> {
-                    ClientState.get().onSnapshot(payload.json());
-                    ClientCache.store(payload.json());
+                    ClientState.get().onSnapshotFrame(payload.json());
                     VisualManager.accept(ClientState.get().snapshot().visual);
                 }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.PresenceS2C.TYPE, (payload, context) ->

@@ -34,6 +34,7 @@ public final class PresenceService {
     private final Map<UUID, String> activities = new HashMap<>();
     /** Pendientes de enviar: destinatario → jugadores cuyo estado cambió. */
     private final Map<UUID, Set<UUID>> pending = new HashMap<>();
+    private final Set<UUID> openPanels = new LinkedHashSet<>();
     private int ticks;
 
     public PresenceService(SocialServer social) {
@@ -78,6 +79,7 @@ public final class PresenceService {
         if (record == null) {
             return false;
         }
+        if (!viewer.equals(target) && record.status == PresenceStatus.INVISIBLE) return false;
         if (record.blocked.contains(viewer)) {
             return false;
         }
@@ -116,12 +118,7 @@ public final class PresenceService {
         for (Group group : social.groups().groupsOf(target)) {
             result.addAll(group.members.keySet());
         }
-        for (ServerPlayer player : social.server().getPlayerList().getPlayers()) {
-            SocialServer.Session session = social.session(player.getUUID());
-            if (session != null && session.panelOpen) {
-                result.add(player.getUUID());
-            }
-        }
+        result.addAll(openPanels);
         result.removeIf(id -> !social.hasMod(id) || social.online(id) == null);
         return result;
     }
@@ -142,6 +139,7 @@ public final class PresenceService {
             return;
         }
         session.panelOpen = open;
+        if (open) openPanels.add(player.getUUID()); else openPanels.remove(player.getUUID());
         if (open) {
             Set<UUID> all = pending.computeIfAbsent(player.getUUID(), v -> new LinkedHashSet<>());
             for (ServerPlayer other : social.server().getPlayerList().getPlayers()) {
@@ -176,6 +174,7 @@ public final class PresenceService {
         afk.remove(id);
         activities.remove(id);
         pending.remove(id);
+        openPanels.remove(id);
         if (!ServerConfig.get().modules.presence) {
             return;
         }

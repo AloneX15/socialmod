@@ -17,8 +17,12 @@ public final class SeriesPack {
     private static final int MAX_FILE = 8 * 1024 * 1024, MAX_FILES = 2000;
     private static final Pattern LOCAL = Pattern.compile("\\[source:local\\]([^\\r\\n]*)");
     public record Metadata(int format, String name, String author, String version, String minecraft,
-                           List<String> requiredMods) {
+                           List<String> requiredMods, Map<String,String> modVersions) {
+        public Metadata(int format,String name,String author,String version,String minecraft,List<String> mods) { this(format,name,author,version,minecraft,mods,Map.of()); }
+        public Map<String,String> versionRequirements() { return modVersions == null ? Map.of() : modVersions; }
         public void validate() {
+            if (versionRequirements().size() > 8 || (requiredMods == null || !requiredMods.containsAll(versionRequirements().keySet())) || versionRequirements().values().stream().anyMatch(v -> !valid(v,128))) throw new IllegalArgumentException("Invalid dependency versions");
+            for (String predicate : versionRequirements().values()) try { net.fabricmc.loader.api.metadata.version.VersionPredicate.parse(predicate); } catch (net.fabricmc.loader.api.VersionParsingException e) { throw new IllegalArgumentException("Invalid dependency version",e); }
             if (format != 1 || !valid(name,80) || !valid(author,80) || !valid(version,32)
                 || !valid(minecraft,32) || requiredMods == null || requiredMods.size()>8
                 || requiredMods.stream().anyMatch(m -> !Set.of("socialmod","fabric-api","fancymenu","konkrete","melody","spiffyhud").contains(m)))
@@ -29,6 +33,12 @@ public final class SeriesPack {
     public static Path folder(Path root) { return root.resolve("config/socialmod/series"); }
     private static boolean valid(String s,int max) { return s!=null && !s.isBlank() && s.length()<=max && s.chars().noneMatch(Character::isISOControl); }
     public static boolean allowed(String path) {
+        if (path == null || path.chars().anyMatch(c -> Character.isISOControl(c) || "<>\"|?*".indexOf(c) >= 0)) return false;
+        for (String segment : path.split("/", -1)) {
+            if (segment.endsWith(".") || segment.endsWith(" ")) return false;
+            String device = segment.split("\\.", 2)[0].toUpperCase(Locale.ROOT);
+            if (Set.of("CON", "PRN", "AUX", "NUL").contains(device) || device.matches("(?:COM|LPT)[1-9]")) return false;
+        }
         if (path.contains("\\") || path.startsWith("/") || path.contains(":") || Arrays.stream(path.split("/",-1)).anyMatch(s -> s.isEmpty() || s.equals(".") || s.equals(".."))) return false;
         if (path.equals(ROWS) || path.equals(VISUAL)) return true;
         return (path.startsWith("config/fancymenu/customization/") && path.endsWith(".txt"))
@@ -46,6 +56,12 @@ public final class SeriesPack {
     public static Contents capture(Path root, String name,String author,String version,String minecraft,Collection<String> layouts) throws IOException {
         var files=new TreeMap<String,byte[]>();
         for(String path:List.of(ROWS,VISUAL)) if(Files.exists(safe(root,path))) files.put(path,readFile(safe(root,path)));
+        if(files.containsKey(VISUAL) && VisualDesign.parse(new String(files.get(VISUAL),java.nio.charset.StandardCharsets.UTF_8)).seriesStyle.equals("christmas")) {
+            for(String kind:List.of("buttons","icons")) for(String assetName:kind.equals("buttons")?List.of("red","green","wood","ice","gold","purple"):List.of("sword","gingerbread","crafting_gift","tree","creeper","santa","snowman","candy")) {
+                String path="config/fancymenu/assets/socialmod/christmas_graphic/"+kind+"/"+assetName+".png";
+                files.put(path,readFile(safe(root,path)));
+            }
+        }
         for(String path:layouts) {
             if(!allowed(path) || !path.startsWith("config/fancymenu/customization/")) throw new IOException("Invalid layout: "+path);
             files.put(path,readFile(safe(root,path)));
@@ -67,11 +83,14 @@ public final class SeriesPack {
     }
     public static Contents read(Path archive) throws IOException {
         if(Files.size(archive)>MAX_TOTAL) throw new IOException("Series ZIP exceeds size limit");
+        rejectSymbolicEntries(archive);
+        var seen = new HashSet<String>();
         var files=new TreeMap<String,byte[]>(); byte[] manifest=null; long total=0; int count=0;
         try(var zip=new ZipInputStream(Files.newInputStream(archive))) {
             for(ZipEntry entry;(entry=zip.getNextEntry())!=null;) {
                 if(++count>MAX_FILES+2) throw new IOException("Too many pack entries");
                 String path=entry.getName();
+                if (!seen.add(path.toLowerCase(Locale.ROOT))) throw new IOException("Duplicate pack entry: " + path);
                 if(entry.isDirectory()) { if(!allowed(path+"placeholder.txt")) throw new IOException("Invalid directory: "+path); continue; }
                 if(!path.equals(MANIFEST) && !path.equals("SOCIALMOD-SETUP.txt") && !allowed(path)) throw new IOException("Unsupported pack file: "+path);
                 byte[] data=zip.readNBytes(MAX_FILE+1); total+=data.length;
@@ -82,7 +101,9 @@ public final class SeriesPack {
         }
         if(manifest==null) throw new IOException("This ZIP has no series manifest; use the updated template");
         try {
-            var result=new Contents(GSON.fromJson(new String(manifest,java.nio.charset.StandardCharsets.UTF_8),Metadata.class),files);
+            String metadata = new String(manifest, java.nio.charset.StandardCharsets.UTF_8);
+            JsonBudget.checkDepth(metadata);
+            var result=new Contents(GSON.fromJson(metadata,Metadata.class),files);
             validate(result); return result;
         } catch(RuntimeException e) { throw new IOException("Invalid series pack: "+e.getMessage(),e); }
     }
@@ -90,6 +111,7 @@ public final class SeriesPack {
         try {
             if(contents.metadata()==null) throw new IllegalArgumentException("Missing metadata"); contents.metadata().validate();
             if(contents.files().size()>MAX_FILES) throw new IllegalArgumentException("Too many files");
+            validatePaths(contents.files().keySet());
             long total=0;
             for(var file:contents.files().entrySet()) {
                 if(!allowed(file.getKey()) || file.getValue()==null || file.getValue().length>MAX_FILE) throw new IllegalArgumentException("Invalid pack file: "+file.getKey());
@@ -128,8 +150,35 @@ public final class SeriesPack {
     private record Backup(Map<String,String> files,List<String> absent,String state) { }
     public static synchronized void install(Path root,Contents contents,String profile) throws IOException {
         validate(contents); var base=folder(root); Files.createDirectories(safe(root,"config/socialmod/series"));
-        Path stateFile=base.resolve("active.json"), backupFile=base.resolve("last-backup.json");
-        var previous=readState(root); var affected=new TreeSet<>(previous.files()); affected.addAll(contents.files().keySet()); affected.addAll(List.of(ROWS,VISUAL));
+        Path stateFile=safe(root,"config/socialmod/series/active.json"), backupFile=safe(root,"config/socialmod/series/last-backup.json");
+        var retired=new TreeSet<String>();
+        if(contents.files().containsKey(VISUAL)) {
+            String style=VisualDesign.parse(new String(contents.files().get(VISUAL),java.nio.charset.StandardCharsets.UTF_8)).seriesStyle;
+            if(Set.of("clean","christmas","dedsafio").contains(style)) {
+                for(String other:List.of("clean","christmas","dedsafio")) if(!other.equals(style)) for(String suffix:List.of(".txt","_hud.txt")) {
+                    String path="config/fancymenu/customization/socialmod_"+other+suffix;
+                    if(!contents.files().containsKey(path) && Files.exists(safe(root,path))) retired.add(path);
+                }
+            }
+        }
+        // A disabled built-in layout remains editable, so retain its local image family too.
+        for(String path:new ArrayList<>(retired)) {
+            var matcher=LOCAL.matcher(new String(readFile(safe(root,path)),java.nio.charset.StandardCharsets.UTF_8));
+            while(matcher.find()) {
+                String ref=matcher.group(1).strip().replace('\\','/');
+                if(allowed(ref)&&ref.contains("/assets/")&&!contents.files().containsKey(ref)&&Files.exists(safe(root,ref)))retired.add(ref);
+            }
+        }
+        if(retired.stream().anyMatch(path->path.startsWith("config/fancymenu/customization/socialmod_christmas"))) {
+            for(String kind:List.of("buttons","icons"))for(String assetName:kind.equals("buttons")?List.of("red","green","wood","ice","gold","purple"):List.of("sword","gingerbread","crafting_gift","tree","creeper","santa","snowman","candy")) {
+                String path="config/fancymenu/assets/socialmod/christmas_graphic/"+kind+"/"+assetName+".png";
+                if(!contents.files().containsKey(path)&&Files.exists(safe(root,path)))retired.add(path);
+            }
+        }
+        var owned=new TreeSet<>(contents.files().keySet()); owned.addAll(retired);
+        if(owned.size()>MAX_FILES) throw new IOException("Too many managed files");
+        validatePaths(owned);
+        var previous=readState(root); var affected=new TreeSet<>(previous.files()); affected.addAll(owned); affected.addAll(List.of(ROWS,VISUAL));
         var originals=new TreeMap<String,String>(); var absent=new ArrayList<String>(); long bytes=0;
         for(String path:affected) {
             Path target=safe(root,path); if(Files.exists(target)) { byte[] data=readFile(target); bytes+=data.length; originals.put(path,Base64.getEncoder().encodeToString(data)); } else absent.add(path);
@@ -138,7 +187,7 @@ public final class SeriesPack {
         byte[] state=Files.exists(stateFile)?Files.readAllBytes(stateFile):null;
         var backup=new Backup(originals,absent,state==null?null:Base64.getEncoder().encodeToString(state));
         var baseline=new TreeMap<String,String>();
-        for(String path:contents.files().keySet()) {
+        for(String path:owned) {
             if(previous.files().contains(path)) { if(previous.baseline().containsKey(path)) baseline.put(path,previous.baseline().get(path)); }
             else if(originals.containsKey(path)) baseline.put(path,originals.get(path));
         }
@@ -148,27 +197,38 @@ public final class SeriesPack {
             for(String path:affected) {
                 Path target=safe(root,path); byte[] data=contents.files().get(path);
                 if(data==null) {
-                    if(!path.equals(ROWS) && !path.equals(VISUAL) && previous.baseline().containsKey(path)) {
+                    if(retired.contains(path)) {
+                        byte[] original=Base64.getDecoder().decode(originals.get(path));
+                        if(path.startsWith("config/fancymenu/customization/"))original=new String(original,java.nio.charset.StandardCharsets.UTF_8).replaceAll("(?m)^(\\s*is_enabled\\s*=\\s*)true\\s*$","$1false").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        writeAtomic(target,original);
+                    } else if(!path.equals(ROWS) && !path.equals(VISUAL) && previous.baseline().containsKey(path)) {
                         byte[] original=Base64.getDecoder().decode(previous.baseline().get(path));
                         if(path.startsWith("config/fancymenu/customization/")) original=new String(original,java.nio.charset.StandardCharsets.UTF_8).replaceAll("(?m)^(\\s*is_enabled\\s*=\\s*)true\\s*$","$1false").getBytes(java.nio.charset.StandardCharsets.UTF_8);
                         writeAtomic(target,original);
                     } else Files.deleteIfExists(target);
                 } else writeAtomic(target,data);
             }
-            writeAtomic(stateFile,GSON.toJson(new State(profile,new ArrayList<>(contents.files().keySet()),baseline)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            writeAtomic(stateFile,GSON.toJson(new State(profile,new ArrayList<>(owned),baseline)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         } catch(IOException|RuntimeException e) { try { restore(root); } catch(IOException restoreError) { e.addSuppressed(restoreError); } throw e; }
     }
     public static synchronized void restore(Path root) throws IOException {
         Path file=safe(root,"config/socialmod/series/last-backup.json");
         if(!Files.isRegularFile(file) || Files.size(file)>MAX_TOTAL*4) throw new IOException("No valid backup available");
         try {
-            var backup=GSON.fromJson(Files.readString(file),Backup.class);
+            String backupJson = Files.readString(file); JsonBudget.checkDepth(backupJson);
+            var backup=GSON.fromJson(backupJson,Backup.class);
             if(backup==null || backup.files()==null || backup.absent()==null || backup.files().size()+backup.absent().size()>MAX_FILES*2) throw new IOException("Invalid backup");
             for(String path:backup.files().keySet()) { if(!allowed(path)) throw new IOException("Unsafe backup"); safe(root,path); }
             for(String path:backup.absent()) { if(!allowed(path)) throw new IOException("Unsafe backup"); safe(root,path); }
+            var paths = new ArrayList<>(backup.files().keySet()); paths.addAll(backup.absent());
+            validatePaths(paths);
             validateEncoded(backup.files());
             byte[] restoredState=backup.state()==null?null:Base64.getDecoder().decode(backup.state());
             if(restoredState!=null && restoredState.length>MAX_TOTAL*2) throw new IOException("Oversized backup state");
+            if (restoredState != null) {
+                String stateJson = new String(restoredState, java.nio.charset.StandardCharsets.UTF_8);
+                JsonBudget.checkDepth(stateJson); validateState(GSON.fromJson(stateJson, State.class));
+            }
             for(var entry:backup.files().entrySet()) writeAtomic(safe(root,entry.getKey()),Base64.getDecoder().decode(entry.getValue()));
             for(String path:backup.absent()) Files.deleteIfExists(safe(root,path));
             Path state=safe(root,"config/socialmod/series/active.json");
@@ -180,10 +240,59 @@ public final class SeriesPack {
         if(!Files.exists(p)) return new State("",List.of(),Map.of());
         try {
             if(Files.size(p)>MAX_TOTAL*2) throw new IOException("Invalid active profile");
-            State s=GSON.fromJson(Files.readString(p),State.class);
+            String stateJson = Files.readString(p); JsonBudget.checkDepth(stateJson);
+            State s=GSON.fromJson(stateJson,State.class);
             if(s==null || s.profile()==null || s.files()==null || s.baseline()==null || s.files().size()>MAX_FILES || s.baseline().size()>MAX_FILES || !s.files().containsAll(s.baseline().keySet()) || s.files().stream().anyMatch(f->!allowed(f))) throw new IOException("Invalid active profile");
-            validateEncoded(s.baseline()); return s;
+            validateState(s); return s;
         } catch(RuntimeException e) { throw new IOException("Invalid active profile",e); }
+    }
+    private static void validateState(State state) throws IOException {
+        if (state == null || state.profile() == null || state.files() == null || state.baseline() == null
+                || state.files().size() > MAX_FILES || state.baseline().size() > MAX_FILES
+                || !state.files().containsAll(state.baseline().keySet())) throw new IOException("Invalid active profile");
+        validatePaths(state.files()); validateEncoded(state.baseline());
+    }
+    private static void validatePaths(Collection<String> paths) throws IOException {
+        Set<String> canonical = new HashSet<>();
+        for (String path : paths) {
+            if (!allowed(path) || !canonical.add(path.toLowerCase(Locale.ROOT))) throw new IOException("Unsafe or colliding resource: " + path);
+        }
+        for (String path : canonical) {
+            for (int slash = path.indexOf('/'); slash >= 0; slash = path.indexOf('/', slash + 1)) {
+                if (canonical.contains(path.substring(0, slash))) throw new IOException("File/directory collision: " + path);
+            }
+        }
+    }
+    /** Inspect bounded central-directory headers: ZIP symlinks must never be accepted as assets. */
+    private static void rejectSymbolicEntries(Path archive) throws IOException {
+        try (var file = java.nio.channels.FileChannel.open(archive, StandardOpenOption.READ)) {
+            long length = file.size();
+            int tailSize = (int)Math.min(length, 65557);
+            var tail = java.nio.ByteBuffer.allocate(tailSize).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            file.position(length - tailSize); readFully(file, tail); tail.flip();
+            int end = -1;
+            for (int i = tailSize - 22; i >= 0; i--) {
+                if (tail.getInt(i) == 0x06054b50 && i + 22 + Short.toUnsignedInt(tail.getShort(i + 20)) == tailSize) { end = i; break; }
+            }
+            if (end < 0 || tail.getShort(end + 4) != 0 || tail.getShort(end + 6) != 0 || tail.getShort(end + 8) != tail.getShort(end + 10)) throw new IOException("Invalid or split ZIP");
+            int entries = Short.toUnsignedInt(tail.getShort(end + 10));
+            long size = Integer.toUnsignedLong(tail.getInt(end + 12)), offset = Integer.toUnsignedLong(tail.getInt(end + 16));
+            if (entries > MAX_FILES + 2 || offset + size > length - tailSize + end) throw new IOException("Invalid ZIP directory");
+            file.position(offset);
+            var header = java.nio.ByteBuffer.allocate(46).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            for (int i = 0; i < entries; i++) {
+                header.clear(); readFully(file, header); header.flip();
+                if (header.getInt(0) != 0x02014b50 || ((header.getInt(38) >>> 16) & 0xf000) == 0xa000) throw new IOException("Invalid or symbolic ZIP entry");
+                int extra = Short.toUnsignedInt(header.getShort(28)) + Short.toUnsignedInt(header.getShort(30)) + Short.toUnsignedInt(header.getShort(32));
+                long next = file.position() + extra;
+                if (next > offset + size) throw new IOException("Truncated ZIP directory");
+                file.position(next);
+            }
+            if (file.position() != offset + size) throw new IOException("Invalid ZIP directory size");
+        }
+    }
+    private static void readFully(java.nio.channels.FileChannel file, java.nio.ByteBuffer buffer) throws IOException {
+        while (buffer.hasRemaining()) if (file.read(buffer) < 0) throw new IOException("Truncated ZIP");
     }
     public static String active(Path root) throws IOException { return readState(root).profile(); }
     private static void validateEncoded(Map<String,String> files) throws IOException {
@@ -198,7 +307,7 @@ public final class SeriesPack {
     public static Path safe(Path root,String relative) throws IOException {
         Path base=root.toRealPath(), target=base.resolve(relative).normalize();
         if(!target.startsWith(base)) throw new IOException("Path escapes instance");
-        for(Path p=target;!p.equals(base);p=p.getParent()) if(Files.isSymbolicLink(p)) throw new IOException("Symbolic links are not supported: "+p);
+        for(Path p=target;!p.equals(base);p=p.getParent()) if(Files.isSymbolicLink(p) || (Files.exists(p) && !p.toRealPath().startsWith(base))) throw new IOException("Symbolic links or external junctions are not supported: "+p);
         return target;
     }
     private static void atomic(Path source,Path target) throws IOException { Files.move(source,target,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE); }

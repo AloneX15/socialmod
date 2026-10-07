@@ -14,20 +14,66 @@ import java.util.List;
 
 final class FancyBackend {
     static boolean gameScreenOpen;
+    static long hudTick;
     static void register() {
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client ->
-            gameScreenOpen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen() != null);
+            {
+                gameScreenOpen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen() != null;
+                hudTick++;
+                if (FancyBridge.spiffy()) try { SpiffyBackend.refreshIndex(); }
+                catch (RuntimeException | LinkageError e) { FancyBridge.disableSpiffy(e); }
+            });
         // The hub opens the full editor; the editing toolbar must not cover game controls.
         de.keksuccino.fancymenu.customization.overlay.CustomizationOverlay.registerOverlayVisibilityController(screen ->
             !(screen instanceof com.takumistudios.socialmod.client.screen.SocialScreen)
                 && !(screen instanceof com.takumistudios.socialmod.client.screen.SocialChildScreen));
         for (String name : List.of("SocialScreen", "TeamScreen", "TeamManagementScreen", "SettingsScreen", "ProfileScreen", "CreateGroupScreen", "GroupSettingsScreen", "InviteScreen", "QuickReplyScreen", "TagStyleScreen", "AdvancedCustomizationScreen", "RowTemplateScreen", "SeriesManagerScreen", "SeriesImportScreen"))
             UniversalScreenIdentifierRegistry.register("socialmod_" + name.replace("Screen", "").toLowerCase(java.util.Locale.ROOT), "com.takumistudios.socialmod.client.screen." + name);
-        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("spiffyhud")) SpiffyBackend.register();
+        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("spiffyhud")) {
+            try { SpiffyBackend.register(); }
+            catch (RuntimeException | LinkageError e) { FancyBridge.disableSpiffy(e); }
+        }
         for (String key : List.of("team", "conversation", "unread", "status")) PlaceholderRegistry.register(new SocialPlaceholder(key));
     }
     static void identify(AbstractWidget widget, String id) { ((UniqueWidget)(Object)widget).setWidgetIdentifierFancyMenu("socialmod_" + id); }
     static boolean hidden(AbstractWidget widget) { return ((de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget).isHiddenFancyMenu(); }
+    private static final java.util.Map<Object,com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture> skinTextures=new java.util.WeakHashMap<>();
+    private static final java.util.Map<AbstractWidget,de.keksuccino.fancymenu.customization.element.elements.button.vanillawidget.VanillaWidgetElement> skinWidgets=new java.util.WeakHashMap<>();
+    private static long skinTick=-1;
+    static com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture skinTexture(AbstractWidget widget,boolean icon) {
+        de.keksuccino.fancymenu.util.resource.RenderableResource resource;
+        if(!icon) {
+            var custom=(de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget;
+            resource=!widget.active?custom.getCustomBackgroundInactiveFancyMenu():widget.isHoveredOrFocused()?custom.getCustomBackgroundHoverFancyMenu():custom.getCustomBackgroundNormalFancyMenu();
+            if(resource==null)resource=custom.getCustomBackgroundNormalFancyMenu();
+        } else {
+            if(skinTick!=hudTick) {
+                skinTick=hudTick;skinWidgets.clear();
+                var layer=de.keksuccino.fancymenu.customization.layer.ScreenCustomizationLayerHandler.getLayerOfScreen(com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen());
+                if(layer!=null)for(var element:layer.vanillaWidgetElements)if(element.widgetMeta!=null)skinWidgets.put(element.widgetMeta.getWidget(),element);
+            }
+            var element=skinWidgets.get(widget);if(element==null)return null;
+            var source=element.getPropertySource();var supplier=!widget.active?source.iconTextureInactive:widget.isHoveredOrFocused()?source.iconTextureHover:source.iconTextureNormal;
+            resource=supplier==null?null:supplier.get();
+        }
+        if(resource==null||resource.getResourceLocation()==null||resource.getWidth()<1||resource.getHeight()<1||resource.getWidth()>4096||resource.getHeight()>4096||resource.getResourceLocation().equals(de.keksuccino.fancymenu.util.resource.RenderableResource.MISSING_TEXTURE_LOCATION))return null;
+        return cacheSkinTexture(resource);
+    }
+    private static final java.util.Map<String,de.keksuccino.fancymenu.util.resource.ResourceSupplier<de.keksuccino.fancymenu.util.resource.resources.texture.ITexture>> skinAssets=new java.util.HashMap<>();
+    static com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture skinAsset(String kind,String name) {
+        var design=com.takumistudios.socialmod.client.theme.LocalSeriesDesign.get();
+        if(design==null||!design.seriesStyle.equals("christmas"))return null;
+        var supplier=skinAssets.get(name);
+        if(supplier==null) { supplier=de.keksuccino.fancymenu.util.resource.ResourceSupplier.image("[source:local]"+com.takumistudios.socialmod.client.theme.ChristmasSkin.local(kind,name));skinAssets.put(name,supplier); }
+        var resource=supplier.get();
+        if(resource==null||resource.getResourceLocation()==null||resource.getWidth()<1||resource.getHeight()<1||resource.getWidth()>4096||resource.getHeight()>4096||resource.getResourceLocation().equals(de.keksuccino.fancymenu.util.resource.RenderableResource.MISSING_TEXTURE_LOCATION))return null;
+        return cacheSkinTexture(resource);
+    }
+    private static com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture cacheSkinTexture(de.keksuccino.fancymenu.util.resource.RenderableResource resource) {
+        var texture=skinTextures.get(resource);
+        if(texture==null) { texture=new com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture(resource.getResourceLocation(),resource.getWidth(),resource.getHeight());skinTextures.put(resource,texture); }
+        return texture;
+    }
     static boolean buttonBackground(AbstractWidget widget, net.minecraft.client.gui.GuiGraphicsExtractor graphics) {
         return !((de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget).renderCustomBackgroundFancyMenu(widget, graphics, widget.getX(), widget.getY(), widget.getWidth(), widget.getHeight());
     }
@@ -52,70 +98,71 @@ final class FancyBackend {
         LayoutHandler.openLayoutEditor(layout, target);
     }
     static void editHud() { SpiffyBackend.edit(); }
-    static void reload() { ScreenCustomization.reloadFancyMenu(); }
-    private static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { var thread = new Thread(r,"SocialMod-Fancy-IO"); thread.setDaemon(true); return thread; });
-    static java.util.concurrent.CompletableFuture<Void> christmas(Screen target) {
+    static void reload() { skinAssets.clear();skinTextures.clear();skinWidgets.clear();skinTick=-1;ScreenCustomization.reloadFancyMenu(); }
+    static com.takumistudios.socialmod.common.model.SeriesPack.Contents template(Screen target,String style) {
         var layout = Layout.buildForScreen(target);
-        var background = new de.keksuccino.fancymenu.customization.background.backgrounds.image.ImageMenuBackgroundBuilder().buildDefaultInstance();
-        background.textureSupplier.set(de.keksuccino.fancymenu.util.resource.ResourceSupplier.image("socialmod:textures/gui/sprites/christmas/background.png"));
-        background.showBackground.set(true); layout.menuBackgrounds.add(background);
+        // Deliberately no menuBackgrounds: the live world remains visible.
         for (String id : List.of("block_conversations","block_chat","block_players")) {
             var serialized = new de.keksuccino.fancymenu.customization.element.SerializedElement();
             serialized.putProperty("element_type","vanilla_button"); serialized.putProperty("instance_identifier","socialmod_"+id); serialized.putProperty("anchor_point","vanilla");
             layout.serializedVanillaButtonElements.add(serialized);
         }
-        String text = de.keksuccino.fancymenu.util.properties.PropertiesParser.serializeSetToFancyString(layout.serialize());
-        String hudText = FancyBridge.spiffy() ? SpiffyBackend.christmasLayout() : null;
-        var rows = com.takumistudios.socialmod.common.model.RowDesign.defaults();
-        for (var row : rows.templates.values()) { row.enabled=true; row.background=0xD0102923; row.selectedBackground=0xD0503B21; for(var part:row.parts) { part.font="socialmod:christmas"; part.color=part.field.equals("name") ? 0xFFFFD166 : 0xFFF8EBCB; } }
-        var saveRows = com.takumistudios.socialmod.client.theme.RowTemplates.save(rows);
-        var saveVisual = com.takumistudios.socialmod.client.theme.LocalSeriesDesign.save(com.takumistudios.socialmod.common.model.VisualPresets.christmas());
-        return java.util.concurrent.CompletableFuture.runAsync(() -> {
-            try {
-                var dir = LayoutHandler.LAYOUT_DIR.toPath(); java.nio.file.Files.createDirectories(dir);
-                var screenFile=dir.resolve("socialmod_christmas.txt"); var hudFile=dir.resolve("socialmod_christmas_hud.txt");
-                writeNewLayout(screenFile, text);
-                if (FancyBridge.spiffy()) writeNewLayout(hudFile, hudText);
-            } catch(java.io.IOException e) { com.takumistudios.socialmod.SocialMod.LOGGER.warn("Could not install Christmas layouts",e); throw new java.util.concurrent.CompletionException(e); }
-        },IO).thenCombine(saveRows,(a,b)->a).thenCombine(saveVisual,(a,b)->a).thenCompose(ignored -> {
-            var ready = new java.util.concurrent.CompletableFuture<Void>();
-            net.minecraft.client.Minecraft.getInstance().execute(() -> {
-                try {
-                    ScreenCustomization.setCustomizationForScreenEnabled(target,true);
-                    ScreenCustomization.reloadFancyMenu();
-                    for (var installed : LayoutHandler.getAllLayouts())
-                        if (installed.layoutFile != null && (installed.layoutFile.getName().equals("socialmod_christmas.txt") || installed.layoutFile.getName().equals("socialmod_christmas_hud.txt"))) installed.setEnabled(true,false);
-                    ready.complete(null);
-                } catch (RuntimeException | LinkageError e) { ready.completeExceptionally(e); }
-            });
-            return ready;
-        });
+        var files = new java.util.TreeMap<String,byte[]>();
+        if(style.equals("christmas")) {
+            for(var role:com.takumistudios.socialmod.client.theme.ChristmasSkin.Role.values())copySkinAsset(files,"buttons",role.asset);
+            for(String icon:com.takumistudios.socialmod.client.theme.ChristmasSkin.ICONS)copySkinAsset(files,"icons",icon);
+            for(var widget:net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(target))if(widget instanceof com.takumistudios.socialmod.client.screen.StyledButton button) {
+                var role=button.skinRole();
+                String icon=button.skinIcon();
+                var element=new de.keksuccino.fancymenu.customization.element.SerializedElement();
+                element.putProperty("element_type","vanilla_button");element.putProperty("instance_identifier",((de.keksuccino.fancymenu.util.rendering.ui.widget.UniqueWidget)(Object)widget).getWidgetIdentifierFancyMenu());element.putProperty("anchor_point","vanilla");
+                for(String key:List.of("backgroundnormal","backgroundhovered","background_texture_inactive"))element.putProperty(key,"[source:local]"+com.takumistudios.socialmod.client.theme.ChristmasSkin.local("buttons",role.asset));
+                for(String key:List.of("iconnormal","iconhovered","icon_texture_inactive"))element.putProperty(key,"[source:local]"+com.takumistudios.socialmod.client.theme.ChristmasSkin.local("icons",icon));
+                layout.serializedVanillaButtonElements.add(element);
+            }
+        }
+        files.put("config/fancymenu/customization/socialmod_"+style+".txt",(de.keksuccino.fancymenu.util.properties.PropertiesParser.serializeSetToFancyString(layout.serialize())+files.keySet().stream().filter(path->path.endsWith(".png")).map(path->"\n# SocialMod skin asset: [source:local]"+path).collect(java.util.stream.Collectors.joining())).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var mods = new java.util.ArrayList<>(List.of("socialmod","fabric-api","fancymenu","konkrete","melody"));
+        if (FancyBridge.spiffy()) {
+            files.put("config/fancymenu/customization/socialmod_"+style+"_hud.txt",SpiffyBackend.seriesLayout(style).getBytes(java.nio.charset.StandardCharsets.UTF_8)); mods.add("spiffyhud");
+        }
+        files.put(com.takumistudios.socialmod.common.model.SeriesPack.ROWS,com.takumistudios.socialmod.common.model.RowDesign.GSON.toJson(com.takumistudios.socialmod.common.model.SeriesTemplates.rows(style)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        files.put(com.takumistudios.socialmod.common.model.SeriesPack.VISUAL,com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(com.takumistudios.socialmod.common.model.SeriesTemplates.visual(style)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var metadata = new com.takumistudios.socialmod.common.model.SeriesPack.Metadata(1,style.equals("christmas")?"Christmas graphic":style.equals("clean")?"Social clean":"Dedsafio inspired","TakumiStudios","1.0",net.minecraft.SharedConstants.getCurrentVersion().id(),mods);
+        return com.takumistudios.socialmod.client.theme.SeriesPackFiles.withVersions(new com.takumistudios.socialmod.common.model.SeriesPack.Contents(metadata,files));
+    }
+    private static void copySkinAsset(java.util.Map<String,byte[]> files,String kind,String name) {
+        String asset="/assets/socialmod/textures/christmas_graphic/"+kind+"/"+name+".png";
+        try(var stream=FancyBackend.class.getResourceAsStream(asset)) {
+            if(stream==null)throw new java.io.IOException("Missing supplied artwork: "+asset);
+            files.put(com.takumistudios.socialmod.client.theme.ChristmasSkin.local(kind,name),stream.readAllBytes());
+        } catch(java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+    }
+    static java.util.concurrent.CompletableFuture<Void> install(Screen target,String style) {
+        ScreenCustomization.setCustomizationForScreenEnabled(target,true);
+        return com.takumistudios.socialmod.client.theme.SeriesProfiles.installTemplate(template(target,style));
     }
     static java.util.concurrent.CompletableFuture<Void> reset() {
-        for (var layout : LayoutHandler.getAllLayouts())
-            if (layout.layoutFile != null && (layout.layoutFile.getName().equals("socialmod_christmas.txt") || layout.layoutFile.getName().equals("socialmod_christmas_hud.txt"))) layout.setEnabled(false,false);
-        ScreenCustomization.reloadFancyMenu();
-        return com.takumistudios.socialmod.client.theme.LocalSeriesDesign.reset().thenCombine(
-            com.takumistudios.socialmod.client.theme.RowTemplates.save(com.takumistudios.socialmod.common.model.RowDesign.defaults()), (a,b) -> null);
+        return com.takumistudios.socialmod.client.theme.SeriesProfiles.restore();
     }
-    private static void writeNewLayout(java.nio.file.Path path, String content) throws java.io.IOException {
-        if (java.nio.file.Files.exists(path)) return; // Preserve creator edits when reapplying the template.
-        var tmp = path.resolveSibling(path.getFileName() + ".tmp");
-        java.nio.file.Files.writeString(tmp, content);
-        java.nio.file.Files.move(tmp, path, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
-    }
+
     static final class SocialPlaceholder extends Placeholder {
         private final String key;
+        private int cachedVersion = -1;
+        private String cachedConversation, replacement = "";
         SocialPlaceholder(String key) { super("socialmod_" + key); this.key = key; }
         @Override public String getReplacementFor(DeserializedPlaceholderString ignored) {
             var state = ClientState.get();
             if (!state.connected()) return "";
-            return switch (key) {
+            if (cachedVersion == state.version() && java.util.Objects.equals(cachedConversation, state.activeConversation())) return replacement;
+            cachedVersion = state.version(); cachedConversation = state.activeConversation();
+            replacement = switch (key) {
                 case "unread" -> Integer.toString(state.totalUnread());
                 case "status" -> state.snapshot().self.status;
                 case "conversation" -> state.activeConversation() == null ? "" : state.titleOf(state.activeConversation());
                 default -> { yield state.snapshot().teams.stream().filter(t -> t.id.equals(state.snapshot().self.teamId)).map(t -> t.name).findFirst().orElse(""); }
             };
+            return replacement;
         }
         @Override public boolean canRunAsync() { return false; }
         @Override public List<String> getValueNames() { return null; }

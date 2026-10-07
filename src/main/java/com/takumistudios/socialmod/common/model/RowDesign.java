@@ -39,6 +39,7 @@ public final class RowDesign {
     }
     public static RowDesign parse(String json) {
         if (json == null || json.length() > 65536) throw new IllegalArgumentException("Row design size");
+        JsonBudget.checkDepth(json);
         var design = GSON.fromJson(json, RowDesign.class);
         if (design == null) throw new IllegalArgumentException("Empty row design");
         design.validate(); return design;

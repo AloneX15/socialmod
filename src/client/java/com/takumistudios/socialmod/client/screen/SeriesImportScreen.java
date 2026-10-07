@@ -39,8 +39,8 @@ public final class SeriesImportScreen extends SocialChildScreen {
         Ui.title(g,font,title,width/2,10);
         var m=pack.metadata(); int x=10;
         line(g,m.name()+" · "+m.author()+" · "+m.version()+" · MC "+m.minecraft(),x,32);
-        line(g,Component.translatable("socialmod.series.requires",String.join(", ",m.requiredMods())).getString(),x,46);
-        line(g,Component.translatable(missing.isEmpty()?"socialmod.series.ready":"socialmod.series.missing",String.join(", ",missing)).getString(),x,60);
+        line(g,Component.translatable("socialmod.series.requires",m.requiredMods().stream().map(id -> id+" "+m.versionRequirements().getOrDefault(id,"?")).collect(java.util.stream.Collectors.joining(", "))).getString(),x,46);
+        line(g,Component.translatable(missing.isEmpty() && !m.versionRequirements().keySet().containsAll(m.requiredMods())?"socialmod.series.unversioned":missing.isEmpty()?"socialmod.series.ready":"socialmod.series.missing",String.join(", ",missing)).getString(),x,60);
         for(int i=offset;i<Math.min(files.size(),offset+5);i++) line(g,files.get(i),x,78+(i-offset)*12);
         line(g,Component.translatable("socialmod.series.backup_hint").getString(),x,height-88);
         line(g,status,x,height-18);

@@ -165,7 +165,7 @@ public final class ServerNet {
                     social.groups().invite(player, party.id, a);
                 }
             }
-            case PANEL_OPEN -> social.presence().setPanelOpen(player, true);
+            case PANEL_OPEN -> { social.presence().setPanelOpen(player, true); social.snapshots().resend(player); }
             case PANEL_CLOSE -> social.presence().setPanelOpen(player, false);
             case REPORT_MESSAGE -> {
                 try {

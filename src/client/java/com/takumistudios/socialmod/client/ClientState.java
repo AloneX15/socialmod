@@ -23,11 +23,14 @@ public final class ClientState {
     private static final Gson GSON = new Gson();
     private static final ClientState INSTANCE = new ClientState();
     private static final int MAX_CACHED_MESSAGES = 300;
+    private static final int MAX_CACHED_CONVERSATIONS = 128;
 
     private Payloads.@Nullable HelloS2C hello;
+    private final com.takumistudios.socialmod.common.net.SnapshotSync.Receiver sync=new com.takumistudios.socialmod.common.net.SnapshotSync.Receiver();
+    private long lastResync;
     private SnapshotDto snapshot = new SnapshotDto();
     private final Map<UUID, Payloads.PresenceEntry> presence = new HashMap<>();
-    private final Map<String, ConversationCache> conversations = new LinkedHashMap<>();
+    private final Map<String, ConversationCache> conversations = new LinkedHashMap<>(32, .75f, true);
     /** Últimas conversaciones con mensajes recibidos (para Tab en Quick-Reply). */
     private final List<String> replyTargets = new ArrayList<>();
     private @Nullable String activeConversation;
@@ -64,7 +67,7 @@ public final class ClientState {
     }
 
     public void reset() {
-        hello = null;
+        hello = null; sync.reset(); lastResync=0;
         snapshot = new SnapshotDto();
         presence.clear();
         conversations.clear();
@@ -90,6 +93,20 @@ public final class ClientState {
         return hello;
     }
 
+    public void onSnapshotFrame(String json) {
+        try {
+            String complete=sync.accept(json);
+            if(complete!=null) { onSnapshot(complete); ClientCache.store(complete); }
+        } catch(RuntimeException e) {
+            SocialMod.warnOnce("snapshot_sync","Snapshot incomplete; requesting a fresh baseline",e);
+            long now=System.currentTimeMillis();
+            if(now-lastResync>5000) {
+                lastResync=now; ClientNet.action(com.takumistudios.socialmod.common.net.SocialAction.PANEL_OPEN,"");
+                var client=net.minecraft.client.Minecraft.getInstance();
+                if(client.player!=null) client.player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("socialmod.sync.retry"));
+            }
+        }
+    }
     public void onSnapshot(String json) {
         try {
             SnapshotDto parsed = GSON.fromJson(json, SnapshotDto.class);
@@ -165,7 +182,15 @@ public final class ClientState {
     // ---------- Conversaciones ----------
 
     public ConversationCache conversation(String id) {
-        return conversations.computeIfAbsent(id, k -> new ConversationCache());
+        ConversationCache result = conversations.computeIfAbsent(id, k -> new ConversationCache());
+        if (conversations.size() > MAX_CACHED_CONVERSATIONS) {
+            var iterator = conversations.keySet().iterator();
+            while (conversations.size() > MAX_CACHED_CONVERSATIONS && iterator.hasNext()) {
+                String oldest = iterator.next();
+                if (!oldest.equals(activeConversation) && !oldest.equals(id)) iterator.remove();
+            }
+        }
+        return result;
     }
 
     public @Nullable ConversationCache existing(String id) {
@@ -198,6 +223,7 @@ public final class ClientState {
                     touchConversation(payload.conversation(), cache.title, message);
                 }
             }
+            case UNAVAILABLE -> { cache.requested=false; }
             case HISTORY -> {
                 cache.requested = true;
                 cache.hasMore = payload.hasMore();

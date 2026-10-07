@@ -79,7 +79,7 @@ public final class ClientCache {
         }
         current = root().resolve(hash(key)).resolve("snapshot.json");
         try {
-            return Files.exists(current) ? Optional.of(Files.readString(current, StandardCharsets.UTF_8)) : Optional.empty();
+            return Files.exists(current) && Files.size(current)<=com.takumistudios.socialmod.common.net.SnapshotSync.MAX_STATE ? Optional.of(Files.readString(current, StandardCharsets.UTF_8)) : Optional.empty();
         } catch (IOException e) {
             SocialMod.LOGGER.debug("[SocialMod] Caché no legible: {}", e.getMessage());
             return Optional.empty();

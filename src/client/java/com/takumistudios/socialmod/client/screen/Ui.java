@@ -64,10 +64,12 @@ public final class Ui {
         }
         graphics.fill(x1, y1, x2, y2, theme.colors().panel());
         graphics.outline(x1, y1, x2 - x1, y2 - y1, theme.colors().border());
+        if(com.takumistudios.socialmod.client.theme.ChristmasSkin.enabled())com.takumistudios.socialmod.client.theme.ChristmasSkin.frame(graphics,x1,y1,x2-x1,y2-y1);
     }
 
     /** Fondo de pantalla completa del panel: textura del tema o color. */
     public static void background(GuiGraphicsExtractor graphics, int width, int height) {
+        if (VisualManager.get().transparentWorld) return;
         var currentScreen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen();
         if (currentScreen != null && com.takumistudios.socialmod.client.compat.fancy.FancyBridge.background(currentScreen)) return;
         Theme theme = theme();
@@ -93,6 +95,9 @@ public final class Ui {
     public static final int ROW = 12;
 
     public static void title(GuiGraphicsExtractor graphics, Font font, Component text, int centerX, int y) {
+        if(com.takumistudios.socialmod.client.theme.ChristmasSkin.enabled()) {
+            int half=font.width(text)/2;com.takumistudios.socialmod.client.theme.ChristmasSkin.icon(graphics,"santa",centerX-half-21,y-3,16);
+        }
         VisualText.centeredText(graphics, font, text.copy().withStyle(style -> style.withFont(new net.minecraft.network.chat.FontDescription.Resource(net.minecraft.resources.Identifier.parse(VisualManager.get().font)))), centerX, y, VisualManager.get().titleColor);
     }
 

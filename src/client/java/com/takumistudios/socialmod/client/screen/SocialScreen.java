@@ -58,6 +58,7 @@ public class SocialScreen extends Screen {
     private static int gap() { return Math.max(2, VisualManager.get().padding); }
     private static final int ROW = 11;
     private static final int INPUT_HEIGHT = 18;
+    private static int mainButtonHeight() { return VisualManager.get().seriesStyle.equals("christmas")?32:20; }
     /** Mensajes enviados (para recorrerlos con las flechas). Compartido con Quick-Reply. */
     static final List<String> SENT_HISTORY = new ArrayList<>();
 
@@ -157,6 +158,7 @@ public class SocialScreen extends Screen {
         }
         frameLeft = leftEdge; frameTop = top; frameRight = rightEdge; frameBottom = bottom;
         int available = rightEdge - leftEdge;
+        if (visual.seriesStyle.equals("dedsafio")) top += 18;
 
         Theme theme = Ui.theme();
         Theme.Column convCol = theme.column("conversations").orElse(Theme.DEFAULT.columns().get(0));
@@ -208,11 +210,11 @@ public class SocialScreen extends Screen {
             playersW = rightEdge - playersX;
         }
 
-        top += 24 + inset;
+        top += mainButtonHeight() + 4 + inset;
         addRenderableWidget(Ui.button(Component.translatable("socialmod.team.title"), b -> openChild(new TeamScreen(this)))
-                .bounds(leftEdge, top - 24 - inset, Math.min(100, available / 3), 20).build());
+                .bounds(leftEdge, top - mainButtonHeight() - 4 - inset, Math.min(VisualManager.get().seriesStyle.equals("christmas")?140:100, available / 3), mainButtonHeight()).build());
         if (ClientState.get().snapshot().visualAdmin) addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.title"), b -> openChild(com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() ? new AdvancedCustomizationScreen(this) : new VisualEditorScreen(this)))
-                .bounds(leftEdge + Math.min(100, available / 3) + 4, top - 24 - inset, Math.min(100, available / 3), 20).build());
+                .bounds(leftEdge + Math.min(VisualManager.get().seriesStyle.equals("christmas")?140:100, available / 3) + 4, top - mainButtonHeight() - 4 - inset, Math.min(VisualManager.get().seriesStyle.equals("christmas")?140:100, available / 3), mainButtonHeight()).build());
 
         // Columna de conversaciones: búsqueda arriba, botones abajo
         if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
@@ -229,9 +231,9 @@ public class SocialScreen extends Screen {
             addRenderableWidget(search);
             int buttonW = (convW - 6 - gap()) / 2;
             addRenderableWidget(Ui.button(Component.translatable("socialmod.panel.new_group"),
-                    b -> openChild(new CreateGroupScreen(this))).bounds(convX + 3, bottom - 22, buttonW, 20).build());
+                    b -> openChild(new CreateGroupScreen(this))).bounds(convX + 3, bottom - mainButtonHeight() - 2, buttonW, mainButtonHeight()).build());
             addRenderableWidget(Ui.button(Component.translatable("socialmod.panel.settings"),
-                    b -> openChild(new SettingsScreen(this))).bounds(convX + 3 + buttonW + gap(), bottom - 22, buttonW, 20).build());
+                    b -> openChild(new SettingsScreen(this))).bounds(convX + 3 + buttonW + gap(), bottom - mainButtonHeight() - 2, buttonW, mainButtonHeight()).build());
         } else {
             search = null;
         }
@@ -278,14 +280,14 @@ public class SocialScreen extends Screen {
             if (group != null) {
                 int buttonW = (playersW - 6 - gap()) / 2;
                 Button invite = Ui.button(Component.translatable("socialmod.panel.invite"),
-                        b -> openChild(new InviteScreen(this, group.id, group.party))).bounds(playersX + 3, bottom - 22, buttonW, 20).build();
+                        b -> openChild(new InviteScreen(this, group.id, group.party))).bounds(playersX + 3, bottom - mainButtonHeight() - 2, buttonW, mainButtonHeight()).build();
                 invite.active = group.myPermissions.contains("invite");
                 addRenderableWidget(invite);
                 addRenderableWidget(Ui.button(Component.translatable(group.party ? "socialmod.panel.party_settings" : "socialmod.panel.group_settings"),
-                        b -> openChild(new GroupSettingsScreen(this, group.id))).bounds(playersX + 3 + buttonW + gap(), bottom - 22, buttonW, 20).build());
+                        b -> openChild(new GroupSettingsScreen(this, group.id))).bounds(playersX + 3 + buttonW + gap(), bottom - mainButtonHeight() - 2, buttonW, mainButtonHeight()).build());
             } else {
                 addRenderableWidget(Ui.button(Component.translatable("socialmod.panel.new_party"),
-                        b -> ClientNet.action(SocialAction.PARTY_CREATE, "")).bounds(playersX + 3, bottom - 22, playersW - 6, 20).build());
+                        b -> ClientNet.action(SocialAction.PARTY_CREATE, "")).bounds(playersX + 3, bottom - mainButtonHeight() - 2, playersW - 6, mainButtonHeight()).build());
             }
         }
         lastVersion = -1;
@@ -659,7 +661,7 @@ public class SocialScreen extends Screen {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        if (VisualManager.get().mode.equals("full")) super.extractBackground(graphics, mouseX, mouseY, partialTick);
+        if (!VisualManager.get().transparentWorld && VisualManager.get().mode.equals("full")) super.extractBackground(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
@@ -667,6 +669,17 @@ public class SocialScreen extends Screen {
         Theme theme = Ui.theme();
         if (VisualManager.get().mode.equals("full")) Ui.background(graphics, this.width, this.height);
         else Ui.panel(graphics, frameLeft - 3, frameTop - 3, frameRight + 3, frameBottom + 3);
+        if (VisualManager.get().seriesStyle.equals("dedsafio")) {
+            for(int inset=0;inset<3;inset++) graphics.outline(frameLeft-4+inset,frameTop-4+inset,frameRight-frameLeft+8-2*inset,frameBottom-frameTop+8-2*inset,0xFFD1D5DC);
+            int badgeX=(frameLeft+frameRight)/2-8, badgeY=Math.max(1,frameTop-22);
+            graphics.fill(badgeX,badgeY,badgeX+16,frameTop,0xE0151820);
+            graphics.outline(badgeX,badgeY,16,frameTop-badgeY,0xFFD1D5DC);
+            for(int i=0;i<5;i++) { graphics.fill(badgeX+3+i,badgeY+5+i,badgeX+4+i,badgeY+7+i,0xFFB52635); graphics.fill(badgeX+12-i,badgeY+5+i,badgeX+13-i,badgeY+7+i,0xFFB52635); }
+            for(int x=frameLeft;x<frameRight;x+=48) graphics.fill(x,frameTop-3,Math.min(x+16,frameRight),frameTop,0xFFB52635);
+            var team=ClientState.get().snapshot().teams.stream().filter(t -> t.id.equals(ClientState.get().snapshot().self.teamId)).findFirst();
+            String label=team.map(t -> t.name).orElse(title.getString());
+            VisualText.centeredText(graphics,font,Component.literal(Ui.trim(font,label,frameRight-frameLeft-12)),(frameLeft+frameRight)/2,frameTop+4,Ui.title());
+        }
         if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
         if (convW > 0) {
             Ui.panel(graphics, convX, top, convX + convW, bottom);
@@ -710,7 +723,7 @@ public class SocialScreen extends Screen {
         int x = convX + 3;
         int w = convW - 6;
         int viewTop = top + 20;
-        int viewBottom = bottom - 25;
+        int viewBottom = bottom - mainButtonHeight() - 5;
         left.begin(convX, viewTop, convW, viewBottom - viewTop);
         graphics.enableScissor(convX, viewTop, convX + convW, viewBottom);
         int y = 0;
@@ -954,6 +967,9 @@ public class SocialScreen extends Screen {
             }
         }
         y += ROW;
+        if (group != null && VisualManager.get().seriesStyle.equals("dedsafio")) {
+            VisualText.text(graphics,font,Ui.trim(font,Component.translatable("socialmod.panel.motd",group.motd.isEmpty()?Component.translatable("socialmod.panel.no_motd").getString():group.motd).getString(),w),x,y,theme.colors().muted()); y+=ROW;
+        }
         if (group != null && !group.pinned.isEmpty()) {
             VisualText.text(graphics, font, Ui.trim(font, Component.translatable("socialmod.panel.pinned", group.pinned).getString(), w), x, y, theme.colors().unread());
             y += ROW;
@@ -1245,7 +1261,7 @@ public class SocialScreen extends Screen {
         int x = playersX + 3;
         int w = playersW - 6;
         int viewTop = top + 3;
-        int viewBottom = bottom - 25;
+        int viewBottom = bottom - mainButtonHeight() - 5;
         right.begin(playersX, viewTop, playersW, viewBottom - viewTop);
         graphics.enableScissor(playersX, viewTop, playersX + playersW, viewBottom);
         int y = 0;

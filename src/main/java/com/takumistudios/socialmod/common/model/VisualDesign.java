@@ -27,6 +27,8 @@ public final class VisualDesign {
     public float hudX = .98f, hudY = .02f, partyX = .02f, partyY = .3f, toastX = .98f, toastY = .02f;
     public int hudScale = 100;
     public String decoration = "none";
+    public String seriesStyle = "";
+    public boolean transparentWorld;
     public int panelInset = 0;
     public String inputTexture = "", inputFocusTexture = "", buttonSelectedTexture = "";
     public Map<String, Rect> components = new LinkedHashMap<>();
@@ -39,6 +41,7 @@ public final class VisualDesign {
     }
     public static VisualDesign parse(String json) {
         if (json == null || json.length() > 65536) throw new IllegalArgumentException("Visual size");
+        JsonBudget.checkDepth(json);
         VisualDesign result = GSON.fromJson(json, VisualDesign.class);
         if (result == null) throw new IllegalArgumentException("Empty visual design");
         result.validate(); return result;
@@ -47,6 +50,7 @@ public final class VisualDesign {
     public void validate() {
         if (GSON.toJson(this).length() > 65536) throw new IllegalArgumentException("Visual size");
         if (!java.util.List.of("none", "christmas").contains(decoration)) throw new IllegalArgumentException("Decoration");
+        if (seriesStyle == null || !java.util.List.of("", "clean", "christmas", "dedsafio").contains(seriesStyle)) throw new IllegalArgumentException("Series style");
         if (version != 1 || !java.util.List.of("compact", "sidebar", "full").contains(mode)
                 || sidebarWidthPercent < 25 || sidebarWidthPercent > 75 || widthPercent < 35 || widthPercent > 100 || heightPercent < 45 || heightPercent > 100
                 || panelInset < 0 || panelInset > 24 || borderWidth < 0 || borderWidth > 8 || padding < 0 || padding > 24 || hudScale < 50 || hudScale > 200

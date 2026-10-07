@@ -94,7 +94,7 @@ public final class SocialMod implements ModInitializer {
                 warnOnce("placeholders", "No se pudo activar la integración con Text Placeholder API", e);
             }
         }
-        LOGGER.info("SocialMod inicializado (protocolo {})", Payloads.PROTOCOL_VERSION);
+        LOGGER.info("SocialMod {} cargado. Creado por TakumiStudios.", FabricLoader.getInstance().getModContainer(MOD_ID).map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse("unknown"));
     }
 
     /** Registra un aviso una sola vez por clave (sin llenar el log). */

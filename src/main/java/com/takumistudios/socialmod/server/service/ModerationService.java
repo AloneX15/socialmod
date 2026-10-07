@@ -34,6 +34,8 @@ import java.util.UUID;
  */
 public final class ModerationService {
     private final SocialServer social;
+    private final com.takumistudios.socialmod.server.security.RateLimiter exports = new com.takumistudios.socialmod.server.security.RateLimiter(1.0 / 60, 1);
+    private final com.takumistudios.socialmod.server.security.RateLimiter reports = new com.takumistudios.socialmod.server.security.RateLimiter(1.0 / 5, 3);
     private final Set<UUID> spies = new HashSet<>();
 
     public ModerationService(SocialServer social) {
@@ -112,7 +114,9 @@ public final class ModerationService {
         if (conversation == null || !social.chat().canRead(reporter.getUUID(), conversation)) {
             return;
         }
+        if (!reports.tryAcquire(reporter.getUUID())) return;
         social.storage().withConversation(conversation.key(), loaded -> {
+            if (reporter.hasDisconnected() || !social.chat().canRead(reporter.getUUID(), conversation)) return;
             ChatMessage message = loaded.find(messageId);
             if (message == null || message.sender.equals(reporter.getUUID())) {
                 social.notifier().feedback(reporter, false, "socialmod.report.invalid");
@@ -170,6 +174,7 @@ public final class ModerationService {
 
     public void listReports(CommandSourceStack source, int limit) {
         social.storage().readDocuments(SocialStorage.REPORTS, limit, reports -> {
+            if (!PermissionBridge.has(source, PermissionBridge.MOD_REPORTS, net.minecraft.server.permissions.PermissionLevel.GAMEMASTERS)) return;
             source.sendSuccess(() -> Lang.tr("socialmod.mod.reports_header", reports.size()).withStyle(ChatFormatting.GOLD), false);
             for (JsonObject report : reports) {
                 String line = string(report, "time") + "  " + string(report, "reporter") + " → " + string(report, "reported")
@@ -198,6 +203,7 @@ public final class ModerationService {
     public void history(CommandSourceStack source, ConversationId conversation, int count) {
         social.storage().audit("HISTORY " + source.getTextName() + " " + conversation.key());
         social.storage().withConversation(conversation.key(), loaded -> {
+            if (!PermissionBridge.has(source, PermissionBridge.MOD_HISTORY, net.minecraft.server.permissions.PermissionLevel.GAMEMASTERS)) return;
             List<ChatMessage> page = loaded.page(0, count);
             source.sendSuccess(() -> Component.literal("— " + conversation.key() + " (" + page.size() + ") —").withStyle(ChatFormatting.GOLD), false);
             for (ChatMessage message : page) {
@@ -236,6 +242,19 @@ public final class ModerationService {
 
     /** Exporta los datos de un jugador a {@code <mundo>/socialmod/exports/<uuid>.json.gz} (incluidos sus mensajes). */
     public void export(UUID playerId, @Nullable ServerPlayer requester) {
+        if (requester != null && (!canExport(playerId, requester) || !exports.tryAcquire(requester.getUUID()))) return;
+        exportAuthorized(playerId, requester, () -> requester == null || (!requester.hasDisconnected() && canExport(playerId, requester)));
+    }
+
+    public void exportForStaff(UUID playerId, CommandSourceStack source) {
+        var level = net.minecraft.server.permissions.PermissionLevel.GAMEMASTERS;
+        if (!PermissionBridge.has(source, PermissionBridge.MOD_INSPECT, level)) return;
+        if (source.getEntity() instanceof ServerPlayer player && !exports.tryAcquire(player.getUUID())) return;
+        exportAuthorized(playerId, null, () -> PermissionBridge.has(source, PermissionBridge.MOD_INSPECT, level)
+                && (!(source.getEntity() instanceof ServerPlayer player) || !player.hasDisconnected()));
+    }
+
+    private void exportAuthorized(UUID playerId, @Nullable ServerPlayer requester, java.util.function.BooleanSupplier authorized) {
         PlayerRecord record = social.storage().player(playerId);
         if (record == null) {
             return;
@@ -271,6 +290,7 @@ public final class ModerationService {
             return false;
         }, () -> {
             // Cuando se han recorrido todas las conversaciones (también las del disco, por lotes)
+            if (!authorized.getAsBoolean()) return;
             social.storage().writeDocument(SocialStorage.EXPORTS, playerId.toString(), root);
             social.storage().audit("DATA_EXPORT " + record.name);
             if (requester != null) {
@@ -278,6 +298,13 @@ public final class ModerationService {
             }
         });
     }
+
+    private boolean canExport(UUID target, ServerPlayer requester) {
+        return ServerConfig.get().moderation.allowDataExport && (target.equals(requester.getUUID())
+                ? PermissionBridge.allows(requester, PermissionBridge.DATA_EXPORT)
+                : PermissionBridge.isStaff(requester, PermissionBridge.MOD_INSPECT));
+    }
+    public void forget(UUID player) { exports.forget(player); reports.forget(player); spies.remove(player); }
 
     /** Borra los datos sociales de un jugador: perfil, relaciones, grupos y el texto de sus mensajes. */
     public void delete(UUID playerId, String actor) {

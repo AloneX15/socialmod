@@ -32,7 +32,7 @@ import java.util.function.Predicate;
 
 /**
  * Datos en memoria + escritura asíncrona (PLAN 4.2). El hilo principal modifica los datos y los marca como sucios;
- * cada {@code flushIntervalSeconds} se serializan (copia) en el hilo principal y se escriben en un hilo propio.
+ * cada {@code flushIntervalSeconds} se preparan copias por lotes en el hilo principal y se escriben en un hilo propio.
  * Las conversaciones se cargan bajo demanda en el hilo de E/S y la acción continúa en el hilo principal:
  * el servidor nunca espera al disco.
  */
@@ -54,11 +54,31 @@ public final class SocialStorage {
     private final Map<String, Group> groups = new LinkedHashMap<>();
     private final LinkedHashMap<String, Conversation> conversations = new LinkedHashMap<>(64, 0.75f, true);
     private final Map<String, List<Consumer<Conversation>>> loading = new HashMap<>();
+    private final Map<String,List<Runnable>> loadFailures=new HashMap<>();
     private final Set<String> dirtyConversations = new HashSet<>();
     private boolean playersDirty;
     private boolean groupsDirty;
     private int ticks;
+    private static final int PREPARE_PER_TICK = 16;
+    private static final class IndexPreparation {
+        final String bucket; final List<?> records; final com.google.gson.JsonArray json=new com.google.gson.JsonArray(); int offset;
+        IndexPreparation(String bucket,List<?> records) { this.bucket=bucket; this.records=records; }
+    }
+    private final java.util.ArrayDeque<IndexPreparation> preparations=new java.util.ArrayDeque<>();
+    private boolean preparing(String bucket) { return preparations.stream().anyMatch(p -> p.bucket.equals(bucket)); }
+    private void prepare(int budget) {
+        while(!preparations.isEmpty() && budget>0) {
+            var task=preparations.peek();
+            while(task.offset<task.records.size() && budget-->0) task.json.add(GSON.toJsonTree(task.records.get(task.offset++)));
+            if(task.offset==task.records.size()) { preparations.remove(); writeSnapshot(task.bucket,task.bucket,task.json); }
+        }
+    }
     private volatile boolean closed;
+    private final ThreadLocal<Boolean> ioWorker = ThreadLocal.withInitial(() -> false);
+    private record Document(String bucket, String key) { }
+    // One immutable snapshot and at most one queued writer per document.
+    private final Map<Document, JsonElement> pendingWrites = new LinkedHashMap<>();
+    private final Set<Document> scheduledWrites = new HashSet<>();
 
     public SocialStorage(StorageBackend backend, Executor mainThread) {
         this(backend, mainThread, Executors.newSingleThreadExecutor(runnable -> {
@@ -170,12 +190,14 @@ public final class SocialStorage {
     // ---------- Conversaciones ----------
 
     /** Ejecuta {@code action} en el hilo principal con la conversación (cargándola si hace falta). */
-    public void withConversation(String key, Consumer<Conversation> action) {
+    public void withConversation(String key, Consumer<Conversation> action) { withConversation(key,action,null); }
+    public void withConversation(String key, Consumer<Conversation> action, @Nullable Runnable onFailure) {
         Conversation cached = conversations.get(key);
         if (cached != null) {
             action.accept(cached);
             return;
         }
+        if(onFailure!=null)loadFailures.computeIfAbsent(key,k->new ArrayList<>()).add(onFailure);
         List<Consumer<Conversation>> waiting = loading.get(key);
         if (waiting != null) {
             waiting.add(action);
@@ -188,19 +210,27 @@ public final class SocialStorage {
         runIo(() -> {
             Conversation loaded;
             try {
-                JsonElement json = backend.read(CONVERSATIONS, file);
+                JsonElement json;
+                synchronized (pendingWrites) { json = pendingWrites.get(new Document(CONVERSATIONS, file)); }
+                if (json == null) json = backend.read(CONVERSATIONS, file);
                 loaded = json == null ? null : GSON.fromJson(json, Conversation.class);
             } catch (IOException | RuntimeException e) {
                 SocialMod.LOGGER.warn("[SocialMod] No se pudo leer la conversación {}: {}", key, e.getMessage());
-                loaded = null;
+                mainThread.execute(() -> failLoad(key));
+                return; // A failed read is not an absent history; never create writable empty data.
             }
             Conversation result = loaded == null ? new Conversation(key) : loaded.normalize();
             result.id = key;
             mainThread.execute(() -> finishLoad(key, result));
-        }, () -> mainThread.execute(() -> finishLoad(key, new Conversation(key))));
+        }, () -> mainThread.execute(() -> failLoad(key)));
     }
 
+    private void failLoad(String key) {
+        loading.remove(key);var callbacks=loadFailures.remove(key);
+        if(callbacks!=null)for(var callback:callbacks)try { callback.run(); } catch(RuntimeException e) { SocialMod.warnOnce("conversation_failure","Could not report unavailable conversation",e); }
+    }
     private void finishLoad(String key, Conversation loaded) {
+        loadFailures.remove(key);
         Conversation conversation = conversations.computeIfAbsent(key, k -> loaded);
         if (applyRetention(conversation)) {
             dirtyConversations.add(key);
@@ -252,6 +282,7 @@ public final class SocialStorage {
         conversations.remove(key);
         dirtyConversations.remove(key);
         String file = key.replace(':', '_');
+        synchronized (pendingWrites) { pendingWrites.remove(new Document(CONVERSATIONS, file)); }
         runIo(() -> {
             try {
                 backend.delete(CONVERSATIONS, file);
@@ -299,7 +330,7 @@ public final class SocialStorage {
     private static final int SWEEP_BATCH = 16;
 
     private void sweep(List<String> files, int from, Set<String> skip, Predicate<Conversation> editor, @Nullable Runnable onDone) {
-        int to = Math.min(files.size(), from + SWEEP_BATCH);
+        int to = closed && ioWorker.get() ? files.size() : Math.min(files.size(), from + SWEEP_BATCH);
         for (int i = from; i < to; i++) {
             String file = files.get(i);
             if (skip.contains(file)) {
@@ -328,13 +359,55 @@ public final class SocialStorage {
     // ---------- Otros documentos ----------
 
     public void writeDocument(String bucket, String key, JsonElement data) {
+        if (closed) throw new IllegalStateException("Storage is closed");
+        writeSnapshot(bucket, key, data.deepCopy());
+    }
+
+    /** Takes ownership of an already detached JSON tree created by flush(). */
+    private void writeSnapshot(String bucket, String key, JsonElement data) {
+        if (closed) throw new IllegalStateException("Storage is closed");
+        Document document = new Document(bucket, key);
+        synchronized (pendingWrites) { pendingWrites.put(document, data); }
+        scheduleWrite(document);
+    }
+
+    private void scheduleWrite(Document document) {
+        synchronized (pendingWrites) {
+            if (!pendingWrites.containsKey(document) || !scheduledWrites.add(document)) return;
+        }
         runIo(() -> {
+            boolean released = false;
             try {
-                backend.write(bucket, key, data);
-            } catch (IOException e) {
-                SocialMod.LOGGER.warn("[SocialMod] No se pudo escribir {}/{}: {}", bucket, key, e.getMessage());
+                for (int attempt = 0; attempt < 3; attempt++) {
+                    JsonElement snapshot;
+                    synchronized (pendingWrites) {
+                        snapshot = pendingWrites.get(document);
+                        if (snapshot == null) { scheduledWrites.remove(document); released = true; return; }
+                    }
+                    try {
+                        backend.write(document.bucket(), document.key(), snapshot);
+                        synchronized (pendingWrites) {
+                            if (pendingWrites.get(document) == snapshot) {
+                                pendingWrites.remove(document);
+                                scheduledWrites.remove(document);
+                                released = true; return;
+                            }
+                        }
+                    } catch (IOException | RuntimeException e) {
+                        SocialMod.warnOnce("storage_write_" + document.bucket(),
+                                "Could not persist " + document.bucket() + "; retaining changes for retry", e);
+                    }
+                }
+            } finally {
+                if (!released) synchronized (pendingWrites) { scheduledWrites.remove(document); }
             }
-        }, null);
+        }, () -> { synchronized (pendingWrites) { scheduledWrites.remove(document); } });
+    }
+
+    private void retryWrites() {
+        List<Document> documents;
+        synchronized (pendingWrites) { documents = new ArrayList<>(pendingWrites.keySet()); }
+        documents.forEach(this::scheduleWrite);
     }
 
     /** Lee varios documentos en el hilo de E/S y entrega el resultado en el hilo principal. */
@@ -382,34 +455,37 @@ public final class SocialStorage {
 
     /** Llamar cada tick del servidor: agrupa las escrituras. */
     public void tick() {
+        prepare(PREPARE_PER_TICK);
         if (++ticks >= ServerConfig.get().storage.flushIntervalSeconds * 20) {
             ticks = 0;
             flush();
         }
     }
 
-    /** Serializa en el hilo principal lo que haya cambiado y lo escribe en el hilo de E/S. */
+    /** Programa la preparaci�n por lotes de �ndices y guarda conversaciones en el hilo de E/S. */
     public void flush() {
-        if (playersDirty) {
+        if (closed) return;
+        retryWrites();
+        if (playersDirty && !preparing(PLAYERS)) {
             playersDirty = false;
-            JsonElement json = GSON.toJsonTree(new ArrayList<>(players.values()));
-            writeDocument(PLAYERS, PLAYERS, json);
+            preparations.add(new IndexPreparation(PLAYERS,new ArrayList<>(players.values())));
         }
-        if (groupsDirty) {
+        if (groupsDirty && !preparing(GROUPS)) {
             groupsDirty = false;
             List<Group> persistent = groups.values().stream().filter(g -> !g.party).toList();
-            writeDocument(GROUPS, GROUPS, GSON.toJsonTree(persistent));
+            preparations.add(new IndexPreparation(GROUPS,persistent));
         }
         if (!dirtyConversations.isEmpty()) {
             for (String key : dirtyConversations) {
                 Conversation conversation = conversations.get(key);
                 if (conversation != null) {
-                    writeDocument(CONVERSATIONS, key.replace(':', '_'), GSON.toJsonTree(conversation));
+                    writeSnapshot(CONVERSATIONS, key.replace(':', '_'), GSON.toJsonTree(conversation));
                 }
             }
             dirtyConversations.clear();
             evictIfNeeded();
         }
+        prepare(PREPARE_PER_TICK);
     }
 
     /** Guarda todo y espera a que termine (al parar el servidor). */
@@ -417,30 +493,66 @@ public final class SocialStorage {
         if (closed) {
             return;
         }
+        prepare(Integer.MAX_VALUE);
         flush();
+        prepare(Integer.MAX_VALUE);
         closed = true;
+        // The backend closes on its own executor, after all previously queued operations.
+        // A timeout or interruption of the caller must never close an in-use JDBC connection.
+        io.execute(() -> {
+            // No producer can mutate these snapshots after closed=true. Drain retained failures
+            // and revisions that arrived while an earlier writer was completing its last attempt.
+            List<Document> remaining;
+            synchronized (pendingWrites) { remaining = new ArrayList<>(pendingWrites.keySet()); }
+            for (Document document : remaining) {
+                JsonElement snapshot;
+                synchronized (pendingWrites) { snapshot = pendingWrites.get(document); }
+                for (int attempt = 0; snapshot != null && attempt < 3; attempt++) {
+                    try {
+                        backend.write(document.bucket(), document.key(), snapshot);
+                        synchronized (pendingWrites) { pendingWrites.remove(document); }
+                        break;
+                    } catch (IOException | RuntimeException e) {
+                        SocialMod.warnOnce("storage_final_write", "Final storage write failed", e);
+                    }
+                }
+            }
+            synchronized (pendingWrites) {
+                if (!pendingWrites.isEmpty()) SocialMod.LOGGER.error(
+                        "[SocialMod] {} documents remain unsaved after retries", pendingWrites.size());
+            }
+            backend.close();
+        });
         io.shutdown();
         try {
             if (!io.awaitTermination(30, TimeUnit.SECONDS)) {
-                SocialMod.LOGGER.warn("[SocialMod] El guardado tardó más de 30 s; puede faltar algún cambio");
+                SocialMod.LOGGER.warn("[SocialMod] Storage still draining; backend will close after pending operations");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        backend.close();
     }
 
     private void runIo(Runnable task, Runnable onRejected) {
-        if (closed || io.isShutdown()) {
-            // Tras cerrar (o durante el apagado) se ejecuta en el mismo hilo para no perder datos
-            try {
-                task.run();
-            } catch (RuntimeException e) {
+        Runnable guarded = () -> {
+            boolean wasWorker = ioWorker.get();
+            ioWorker.set(true);
+            try { task.run(); }
+            catch (RuntimeException e) {
                 SocialMod.LOGGER.warn("[SocialMod] Error de E/S", e);
                 if (onRejected != null) onRejected.run();
-            }
+            } finally { ioWorker.set(wasWorker); }
+        };
+        if (closed || io.isShutdown()) {
+            // Sweep continuations already running on the worker drain before backend.close().
+            if (ioWorker.get()) guarded.run();
+            else if (onRejected != null) onRejected.run();
             return;
         }
-        io.execute(task);
+        try { io.execute(guarded); }
+        catch (java.util.concurrent.RejectedExecutionException e) {
+            SocialMod.LOGGER.warn("[SocialMod] Storage operation rejected during shutdown", e);
+            if (onRejected != null) onRejected.run();
+        }
     }
 }

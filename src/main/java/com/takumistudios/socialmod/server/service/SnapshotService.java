@@ -21,11 +21,19 @@ import java.util.UUID;
 
 /**
  * Estado social completo para los clientes con el mod. Los envíos se agrupan: varias modificaciones en el mismo tick
- * producen un solo paquete por jugador al final del tick.
+ * producen una actualizaci?n por jugador; sus fragmentos se drenan con presupuesto por tick.
  */
 public final class SnapshotService {
+    private static final int MAX_RECIPIENTS_PER_TICK = 20;
+    private static final Set<String> TEAM_MANAGEMENT = Set.of("invite", "kick", "manage_roles", "edit_info");
     private final SocialServer social;
+    private final java.util.Map<UUID,java.util.ArrayDeque<String>> outgoing=new java.util.LinkedHashMap<>();
     private final Set<UUID> pending = new LinkedHashSet<>();
+    private final java.util.Map<UUID, com.google.gson.JsonObject> lastSent = new java.util.HashMap<>();
+
+    private final java.util.Map<UUID,Long> revisions=new java.util.HashMap<>();
+    private final Set<UUID> oversized=new java.util.HashSet<>();
+    public void resend(ServerPlayer player) { lastSent.remove(player.getUUID()); send(player); }
 
     public SnapshotService(SocialServer social) {
         this.social = social;
@@ -43,28 +51,74 @@ public final class SnapshotService {
     }
 
     public void tick() {
-        if (pending.isEmpty()) {
-            return;
+        drainNetwork();
+        if (pending.isEmpty()) return;
+        var iterator = pending.iterator();
+        int processed = 0;
+        var batch = new java.util.ArrayList<UUID>(MAX_RECIPIENTS_PER_TICK);
+        while (iterator.hasNext() && processed++ < MAX_RECIPIENTS_PER_TICK) {
+            batch.add(iterator.next()); iterator.remove();
         }
-        Set<UUID> batch = new LinkedHashSet<>(pending);
-        pending.clear();
+        var teams = teamViews();
         for (UUID id : batch) {
             ServerPlayer player = social.online(id);
-            if (player != null) {
-                sendNow(player);
-            }
+            if (player != null) sendNow(player, teams);
         }
     }
 
-    public void sendNow(ServerPlayer player) {
+    public void sendNow(ServerPlayer player) { sendNow(player, teamViews()); }
+
+    private void sendNow(ServerPlayer player, java.util.List<SnapshotDto.TeamView> teams) {
         if (!social.hasMod(player.getUUID())) {
             return;
         }
-        String json = SocialStorage.gson().toJson(build(player));
-        social.send(player, new Payloads.SnapshotS2C(json));
+        if(outgoing.containsKey(player.getUUID())) { pending.add(player.getUUID()); return; }
+        var current=SocialStorage.gson().toJsonTree(build(player,teams)).getAsJsonObject();
+        var previous=lastSent.get(player.getUUID());
+        var patch=com.takumistudios.socialmod.common.net.SnapshotSync.delta(previous,current);
+        if(patch.isEmpty()) return;
+        long revision=revisions.getOrDefault(player.getUUID(),0L)+1;
+        try {
+            if(current.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>com.takumistudios.socialmod.common.net.SnapshotSync.MAX_STATE) throw new IllegalArgumentException("State exceeds 8 MiB");
+            var frames=com.takumistudios.socialmod.common.net.SnapshotSync.frames(revision,previous==null,patch);
+            outgoing.put(player.getUUID(),new java.util.ArrayDeque<>(frames));
+            lastSent.put(player.getUUID(),current); revisions.put(player.getUUID(),revision); oversized.remove(player.getUUID());
+        } catch(IllegalArgumentException e) {
+            if(oversized.add(player.getUUID())) player.sendSystemMessage(com.takumistudios.socialmod.server.Lang.tr(player,"socialmod.sync.oversized"));
+            com.takumistudios.socialmod.SocialMod.warnOnce("snapshot_size","Social state exceeds the synchronization budget",e);
+        }
     }
 
-    public SnapshotDto build(ServerPlayer player) {
+    private void drainNetwork() {
+        int budget=32;
+        for(UUID id:java.util.List.copyOf(outgoing.keySet())) {
+            if(budget<=0)break;
+            var frames=outgoing.remove(id);var player=social.online(id);
+            if(player==null || !social.hasMod(id))continue;
+            int sent=0;
+            while(!frames.isEmpty() && sent++<4 && budget-->0) social.sendModded(player,new Payloads.SnapshotS2C(frames.removeFirst()));
+            if(!frames.isEmpty())outgoing.put(id,frames); // rotate rather than starving later recipients
+        }
+    }
+
+    public void forget(UUID player) {
+        pending.remove(player); outgoing.remove(player);
+        lastSent.remove(player); revisions.remove(player); oversized.remove(player);
+    }
+
+    public SnapshotDto build(ServerPlayer player) { return build(player, teamViews()); }
+
+    private java.util.List<SnapshotDto.TeamView> teamViews() {
+        var result = new java.util.ArrayList<SnapshotDto.TeamView>();
+        for (Group team : social.teams().all()) {
+            SnapshotDto.TeamView view = new SnapshotDto.TeamView();
+            view.id = team.id; view.name = team.name; view.color = team.color; view.icon = team.icon;
+            view.archived = team.archived; view.members = team.members.size(); result.add(view);
+        }
+        return result;
+    }
+
+    private SnapshotDto build(ServerPlayer player, java.util.List<SnapshotDto.TeamView> teams) {
         UUID self = player.getUUID();
         PlayerRecord record = social.record(player);
         SnapshotDto dto = new SnapshotDto();
@@ -74,12 +128,7 @@ public final class SnapshotService {
         dto.maxTeams = ServerConfig.get().maxTeams;
         dto.visual = social.visuals().design();
         dto.self.teamId = record.teamId; dto.self.teamChosen = record.teamChosen;
-        for (Group team : social.teams().all()) {
-            if (team.archived && !dto.teamAdmin) continue;
-            SnapshotDto.TeamView view = new SnapshotDto.TeamView();
-            view.id = team.id; view.name = team.name; view.color = team.color; view.icon = team.icon;
-            view.archived = team.archived; view.members = team.members.size(); dto.teams.add(view);
-        }
+        for (var team : teams) if (!team.archived || dto.teamAdmin) dto.teams.add(team);
         dto.self.uuid = self.toString();
         dto.self.name = record.name;
         dto.self.status = record.status.id();
@@ -128,7 +177,7 @@ public final class SnapshotService {
             view.party = group.party;
             view.myRole = group.archived ? "member" : group.roleOf(self).id();
             for (GroupPermission permission : permissions.get(group.archived ? com.takumistudios.socialmod.common.model.Role.MEMBER : group.roleOf(self))) {
-                if (!group.archived && (!group.team || !java.util.Set.of("invite", "kick", "manage_roles", "edit_info").contains(permission.id()))) view.myPermissions.add(permission.id());
+                if (!group.archived && (!group.team || !TEAM_MANAGEMENT.contains(permission.id()))) view.myPermissions.add(permission.id());
             }
             group.members.forEach((id, role) -> {
                 SnapshotDto.Member member = new SnapshotDto.Member();
@@ -184,7 +233,7 @@ public final class SnapshotService {
             view.unread = record.unread.getOrDefault(key, 0);
             Conversation cached = social.storage().cachedConversation(key);
             ChatMessage last = cached == null ? null : cached.last();
-            if (last != null && !last.deleted) {
+            if (last != null && !last.deleted && !record.blocked.contains(last.sender)) {
                 view.preview = last.senderName + ": " + MessageFormatter.preview(last.text, social.chat().toView(last).attachments(), 40);
                 view.lastTime = last.time;
             }

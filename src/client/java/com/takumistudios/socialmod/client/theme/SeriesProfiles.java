@@ -12,12 +12,23 @@ import java.util.concurrent.*;
 
 /** Serialized disk operations; cached snapshots returned to the client thread. */
 public final class SeriesProfiles {
-    private static final ExecutorService IO=Executors.newSingleThreadExecutor(r->{var t=new Thread(r,"SocialMod-Series-Profiles-IO");t.setDaemon(true);return t;});
+    private static volatile boolean stopping;
+    private static volatile Thread worker;
+    private static final ExecutorService IO=Executors.newSingleThreadExecutor(r->{var t=new Thread(r,"SocialMod-Series-Profiles-IO");t.setDaemon(true);worker=t;return t;});
     public record Profile(Path file,SeriesPack.Metadata metadata,List<String> layouts) { }
     public record Catalog(List<Profile> profiles,List<String> layouts,List<Path> imports,String active) { }
     public static Path root() { return Minecraft.getInstance().gameDirectory.toPath().toAbsolutePath().normalize(); }
     private interface Work<T> { T run() throws Exception; }
-    private static <T> CompletableFuture<T> io(Work<T> work) { return CompletableFuture.supplyAsync(()->{try{return work.run();}catch(Exception e){throw new CompletionException(e);}},IO); }
+    private static <T> CompletableFuture<T> io(Work<T> work) {
+        java.util.function.Supplier<T> task=()->{try{return work.run();}catch(Exception e){throw new CompletionException(e);}};
+        if(IO.isShutdown() && Thread.currentThread()==worker) { try { return CompletableFuture.completedFuture(task.get()); } catch(RuntimeException e) { return CompletableFuture.failedFuture(e); } }
+        try { return CompletableFuture.supplyAsync(task,IO); } catch(RejectedExecutionException e) {
+            // Shutdown may race the admission check above; accepted operations still
+            // finish their dependent disk steps on this worker.
+            if(Thread.currentThread()==worker) { try { return CompletableFuture.completedFuture(task.get()); } catch(RuntimeException failure) { return CompletableFuture.failedFuture(failure); } }
+            return CompletableFuture.failedFuture(e);
+        }
+    }
     public static CompletableFuture<Catalog> catalog() {
         Path root=root(); return io(()->{
             Path profiles=SeriesPack.safe(root,"config/socialmod/series/profiles"),imports=SeriesPack.safe(root,"config/socialmod/presets");
@@ -37,20 +48,27 @@ public final class SeriesProfiles {
         Path root=root(); String mc=net.minecraft.SharedConstants.getCurrentVersion().id(); var layouts=List.copyOf(selection);
         return io(()->{
             Path path=previous==null?SeriesPack.safe(root,"config/socialmod/series/profiles/"+UUID.randomUUID()+".zip"):previous.file();
-            var pack=SeriesPack.capture(root,name,author,version,mc,layouts); SeriesPack.write(path,pack); return path;
+            var pack=SeriesPackFiles.withVersions(SeriesPack.capture(root,name,author,version,mc,layouts)); SeriesPack.write(path,pack); return path;
         });
     }
     public static CompletableFuture<Path> duplicate(Profile profile,String name) {
         Path root=root(); return io(()->{
             var pack=SeriesPack.read(profile.file()); var m=pack.metadata();
-            var copy=new SeriesPack.Contents(new SeriesPack.Metadata(1,name,m.author(),m.version(),m.minecraft(),m.requiredMods()),pack.files());
+            var copy=new SeriesPack.Contents(new SeriesPack.Metadata(1,name,m.author(),m.version(),m.minecraft(),m.requiredMods(),m.versionRequirements()),pack.files());
             Path path=SeriesPack.safe(root,"config/socialmod/series/profiles/"+UUID.randomUUID()+".zip"); SeriesPack.write(path,copy); return path;
         });
     }
     public static CompletableFuture<SeriesPack.Contents> inspect(Path zip) { return io(()->SeriesPack.read(zip)); }
     public static List<String> missing(SeriesPack.Contents pack) {
         var missing=new ArrayList<String>();
-        for(String id:pack.metadata().requiredMods()) if(!FabricLoader.getInstance().isModLoaded(id)) missing.add(id);
+        for(String id:pack.metadata().requiredMods()) {
+            var mod=FabricLoader.getInstance().getModContainer(id);
+            if(mod.isEmpty()) { missing.add(id); continue; }
+            String range=pack.metadata().versionRequirements().get(id);
+            if(range!=null) try {
+                if(!net.fabricmc.loader.api.metadata.version.VersionPredicate.parse(range).test(mod.get().getMetadata().getVersion())) missing.add(id+" "+range+" ("+mod.get().getMetadata().getVersion().getFriendlyString()+")");
+            } catch(net.fabricmc.loader.api.VersionParsingException e) { missing.add(id+" "+range); }
+        }
         if(!pack.metadata().minecraft().equals(net.minecraft.SharedConstants.getCurrentVersion().id())) missing.add("Minecraft "+pack.metadata().minecraft());
         try { if(pack.files().containsKey(SeriesPack.ROWS)) RowTemplates.validateResources(RowDesign.parse(new String(pack.files().get(SeriesPack.ROWS),java.nio.charset.StandardCharsets.UTF_8))); }
         catch(RuntimeException e) { missing.add(e.getMessage()); }
@@ -62,17 +80,19 @@ public final class SeriesProfiles {
     public static CompletableFuture<Path> importPack(SeriesPack.Contents pack) {
         var missing=missing(pack); if(!missing.isEmpty()) return CompletableFuture.failedFuture(new IllegalArgumentException(String.join(", ",missing)));
         Path root=root();
-        return io(()->{Path file=SeriesPack.safe(root,"config/socialmod/series/profiles/"+UUID.randomUUID()+".zip"); SeriesPack.write(file,pack);return file;})
-            .thenCompose(file->activate(pack,file.getFileName().toString()).thenApply(v->file));
+        return io(()->{
+            Path file=SeriesPack.safe(root,"config/socialmod/series/profiles/"+UUID.randomUUID()+".zip");
+            SeriesPack.write(file,pack); SeriesPack.install(root,pack,file.getFileName().toString()); return file;
+        }).thenCompose(file->reload().thenApply(v->file));
     }
     private static CompletableFuture<Void> activate(SeriesPack.Contents pack,String id) {
         Path root=root();
-            var ready=new CompletableFuture<Void>(); Minecraft.getInstance().execute(()->{
-                try {
-                    var missing=missing(pack); if(!missing.isEmpty()) throw new IllegalArgumentException(String.join(", ",missing));
-                    io(()->{SeriesPack.install(root,pack,id);return null;}).thenCompose(v->reload()).whenComplete((v,e)->{if(e==null)ready.complete(null);else ready.completeExceptionally(e);});
-                } catch(RuntimeException e) { ready.completeExceptionally(e); }
-            }); return ready;
+        // Resource lookups are read-only. Keep the disk transaction on the single worker,
+        // so shutdown can drain it without waiting for a client-thread continuation.
+        return io(()->{
+            var missing=missing(pack);if(!missing.isEmpty())throw new IllegalArgumentException(String.join(", ",missing));
+            SeriesPack.install(root,pack,id);return null;
+        }).thenCompose(v->reload());
     }
     public static CompletableFuture<Void> restore() { Path root=root(); return io(()->{SeriesPack.restore(root);return null;}).thenCompose(v->reload()); }
     private static CompletableFuture<Void> reload() {
@@ -80,6 +100,7 @@ public final class SeriesProfiles {
             Path rows=SeriesPack.safe(root,SeriesPack.ROWS),visual=SeriesPack.safe(root,SeriesPack.VISUAL);
             return new Object[]{Files.exists(rows)?RowDesign.parse(Files.readString(rows)):RowDesign.defaults(),Files.exists(visual)?VisualDesign.parse(Files.readString(visual)):null};
         }).thenCompose(values->{
+            if(stopping) return CompletableFuture.completedFuture(null);
             var ready=new CompletableFuture<Void>(); Minecraft.getInstance().execute(()->{
                 try { RowTemplates.activate((RowDesign)values[0]); LocalSeriesDesign.activate((VisualDesign)values[1]); FancyBridge.reload(); ready.complete(null); }
                 catch(RuntimeException e) { ready.completeExceptionally(e); }
@@ -89,6 +110,12 @@ public final class SeriesProfiles {
     public static CompletableFuture<Path> export(String name,String author,String version,Collection<String> selection) {
         Path root=root(); String mc=net.minecraft.SharedConstants.getCurrentVersion().id(); var layouts=List.copyOf(selection);
         return io(()->SeriesPackFiles.export(root,name,author,version,mc,layouts));
+    }
+    public static CompletableFuture<Void> installTemplate(SeriesPack.Contents pack) { return importPack(pack).thenApply(file -> null); }
+    public static void shutdown() {
+        stopping=true; IO.shutdown();
+        try { if (!IO.awaitTermination(30,TimeUnit.SECONDS)) com.takumistudios.socialmod.SocialMod.LOGGER.error("Series profile operations still pending at client shutdown"); }
+        catch(InterruptedException e) { Thread.currentThread().interrupt(); }
     }
     private SeriesProfiles() { }
 }

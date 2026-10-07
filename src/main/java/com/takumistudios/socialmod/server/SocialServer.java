@@ -217,6 +217,8 @@ public final class SocialServer {
 
     /** Handshake: el cliente anunció su protocolo. Si no coincide, sigue en modo "solo chat". */
     public void onHello(ServerPlayer player, int protocol) {
+        // Repeated handshakes cannot reset panel subscriptions or rebuild a valid session.
+        if (sessions.containsKey(player.getUUID())) return;
         if (protocol != Payloads.PROTOCOL_VERSION) {
             SocialMod.LOGGER.info("[SocialMod] {} usa el protocolo {} (servidor: {}): modo solo chat", player.getGameProfile().name(),
                     protocol, Payloads.PROTOCOL_VERSION);
@@ -256,9 +258,11 @@ public final class SocialServer {
         sessions.remove(id);
         packetLimiter.forget(id);
         chat.forget(id);
+        moderation.forget(id);
         presence.onLeave(player);
         groups.onLeave(player);
         party.forget(id);
+        snapshots.forget(id);
         PermissionBridge.invalidate(id);
     }
 

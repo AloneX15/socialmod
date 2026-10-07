@@ -1,3 +1,5 @@
+> Recursos históricos conservados para personalizaciones existentes. Los ejemplos actuales están en [la guía de diseños](../../series-es.md).
+
 # Recursos gráficos de Navidad
 
 El marco y el fondo se generaron con la herramienta integrada ImageGen. Los PNG se incluyen sin edición posterior; los metadatos nine-slice determinan su escala lógica. Los sprites pequeños y la fuente tienen código fuente editable en `tools/GenerateChristmasAssets.java`.

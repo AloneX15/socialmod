@@ -45,6 +45,7 @@ public final class ToastHud {
     /** Tras recibir daño, los toasts esperan este tiempo (modo combate). */
     private static final long COMBAT_MILLIS = 5_000;
 
+    private static final int MAX_PENDING = 128;
     private static final List<Active> ACTIVE = new ArrayList<>();
     private static final List<ToastData> DEFERRED = new ArrayList<>();
     private static long lastCombat;
@@ -90,6 +91,7 @@ public final class ToastHud {
             return;
         }
         if (config.toasts.smartDnd && busy()) {
+            if (DEFERRED.size() == MAX_PENDING) DEFERRED.removeFirst();
             DEFERRED.add(data);
             return;
         }
@@ -116,6 +118,7 @@ public final class ToastHud {
         ACTIVE.add(new Active(data, now));
         // Prioridad: menciones e invitaciones arriba; a igual prioridad, el más reciente primero
         ACTIVE.sort(Comparator.<Active>comparingInt(a -> -a.data.kind().priority()).thenComparingLong(a -> -a.receivedAt));
+        while (ACTIVE.size() > MAX_PENDING) ACTIVE.removeLast();
         sound(data.kind());
         narrate(data, 1);
     }

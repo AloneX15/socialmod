@@ -14,12 +14,12 @@ public final class VisualTemplateScreen extends SocialChildScreen {
     @Override protected boolean rebuildOnChange() { return false; }
     @Override protected void init() {
         int w = Math.min(240, width - 16), x = (width - w) / 2;
-        String[] names = {"compact", "sidebar", "full", "christmas"};
+        String[] names = {"compact", "sidebar", "full", "christmas", "dedsafio"};
         for (int i = 0; i < names.length; i++) {
             String name = names[i];
             addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.template." + name), b -> {
-                VisualDesign design = name.equals("christmas") ? VisualPresets.christmas() : new VisualDesign();
-                if (!name.equals("christmas")) design.mode = name;
+                VisualDesign design = com.takumistudios.socialmod.common.model.SeriesTemplates.IDS.contains(name) ? com.takumistudios.socialmod.common.model.SeriesTemplates.visual(name) : new VisualDesign();
+                if (!com.takumistudios.socialmod.common.model.SeriesTemplates.IDS.contains(name)) design.mode = name;
                 select.accept(design); onClose();
             }).bounds(x, 34 + i * 25, w, 20).build());
         }
