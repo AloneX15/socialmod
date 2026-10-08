@@ -14,11 +14,12 @@ public final class FancyBridge {
         catch (RuntimeException | LinkageError e) { disable(e); }
     }
     public static boolean installed() { return available && !failed; }
-    public static boolean available() { return installed() && !com.takumistudios.socialmod.client.theme.AppearanceMode.original(); }
+    public static boolean available() { return installed() && !com.takumistudios.socialmod.client.theme.AppearanceMode.original() && !com.takumistudios.socialmod.client.screen.SocialComponents.embedded(); }
     public static boolean spiffyInstalled() { return installed() && !spiffyFailed && FabricLoader.getInstance().isModLoaded("spiffyhud"); }
     public static void appearanceChanged() { if (installed()) try { FancyBackend.applyAppearance(); } catch (RuntimeException | LinkageError e) { disable(e); } }
     public static boolean spiffy() { return available() && !spiffyFailed && FabricLoader.getInstance().isModLoaded("spiffyhud"); }
     public static void identify(AbstractWidget widget, String id) {
+        identifiers.put(widget,id);
         if (installed()) try { FancyBackend.identify(widget, id); } catch (RuntimeException | LinkageError e) { disable(e); }
     }
     public static boolean hidden(AbstractWidget widget) {
@@ -41,6 +42,8 @@ public final class FancyBridge {
         if (!available()) return false;
         try { return FancyBackend.customLabel(widget); } catch(RuntimeException | LinkageError e) { disable(e); return false; }
     }
+    private static final java.util.Map<AbstractWidget,String> identifiers=new java.util.WeakHashMap<>();
+    public static String identifier(AbstractWidget widget) { return identifiers.getOrDefault(widget,""); }
     public static net.minecraft.network.chat.Component label(AbstractWidget widget) {
         if (available()) try { return FancyBackend.label(widget); } catch (RuntimeException | LinkageError e) { disable(e); }
         return widget.getMessage();

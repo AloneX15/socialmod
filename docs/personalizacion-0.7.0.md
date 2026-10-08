@@ -1,5 +1,8 @@
 # Personalización de SocialMod 0.7.0
 
+> Desde 0.8.0 puedes añadir el estandarte y controles de otras pantallas al panel principal desde FancyMenu.
+> Consulta [el catálogo de elementos](personalizacion-0.8.0.md).
+
 Actualiza cliente y servidor juntos: esta versión utiliza el protocolo 5. FancyMenu y SpiffyHUD son opcionales.
 
 ## Estandarte del TEAM

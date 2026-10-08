@@ -1,5 +1,17 @@
 # Registro de errores y soluciones (v0.2.0)
 
+## Catálogo FancyMenu 0.8.0: foco e interacción de elementos
+
+- **Síntoma:** un campo añadido al layout no recibía escritura desde el panel principal.
+- **Causa:** `AbstractElement` no es enfocable por defecto y su `isMouseOver` devuelve falso. Además, los controles
+  registrados al inicializar la capa pueden desaparecer cuando la pantalla rehace sus widgets.
+- **Solución:** un adaptador de entrada nativo mantiene foco, narración y límites del elemento; se comprueba su
+  registro mediante la API de pantallas de Fabric y se utiliza el hitbox del elemento. Los formularios reutilizan
+  los controles nativos y transforman sus coordenadas sin modificar permanentemente su distribución.
+- **Prueba:** guardar y recargar un layout real, hacer clic y escribir mediante la pantalla principal, verificar
+  el borrador compartido y restaurar/reactivar estilos.
+
+
 ## Personalización 0.7.0: escala del estandarte
 
 - **Síntoma:** la vista previa permanecía pequeña al ampliar el control.

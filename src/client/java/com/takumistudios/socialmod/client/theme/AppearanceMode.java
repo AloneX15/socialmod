@@ -29,11 +29,12 @@ public final class AppearanceMode {
         boolean now = original();
         com.takumistudios.socialmod.client.compat.fancy.FancyBridge.appearanceChanged();
         if (now != previous) {
+            com.takumistudios.socialmod.client.screen.SocialComponents.clear();
             previous = now; RowTemplates.appearanceChanged();
             var screen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen();
             if (screen instanceof com.takumistudios.socialmod.client.screen.SocialScreen || screen instanceof com.takumistudios.socialmod.client.screen.SocialChildScreen) screen.init(screen.width, screen.height);
         }
     }
-    public static void disconnect() { server = ""; previous = false; com.takumistudios.socialmod.client.compat.fancy.FancyBridge.appearanceChanged(); }
+    public static void disconnect() { com.takumistudios.socialmod.client.screen.SocialComponents.clear(); server = ""; previous = false; com.takumistudios.socialmod.client.compat.fancy.FancyBridge.appearanceChanged(); }
     private AppearanceMode() { }
 }

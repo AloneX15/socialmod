@@ -13,6 +13,7 @@ import org.jspecify.annotations.Nullable;
  */
 public abstract class SocialChildScreen extends Screen {
     protected final @Nullable Screen parent;
+    public @Nullable Screen componentParent() { return parent; }
     private int lastVersion = -1;
     private net.minecraft.client.gui.components.AbstractWidget content;
 

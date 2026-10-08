@@ -19,6 +19,7 @@ public final class ClientCompat {
     }
 
     public static void setScreen(@Nullable Screen screen) {
+        if (screen != null) screen = com.takumistudios.socialmod.client.screen.SocialComponents.owner(screen);
         Minecraft minecraft = Minecraft.getInstance();
         //? if >=26.2 {
         minecraft.gui.setScreen(screen);

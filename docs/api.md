@@ -101,6 +101,11 @@ El modo original global se guarda por separado en `config/socialmod/visual-mode.
 social y exige `admin.visuals`. La elección personal se guarda por servidor en `client.json`.
 La base global prevalece sobre la elección personal. Ambos modos conservan los diseños guardados.
 
+Desde 0.8.0 el catálogo de FancyMenu añade elementos `socialmod_banner_view`, `socialmod_data`, `socialmod_control`
+y `socialmod_module_<módulo>`, acciones `socialmod_open_module` / `socialmod_form_control` y placeholders
+`socialmod_data_<dato>`. Sus contextos y formularios se guardan en los layouts. Consulte
+[la guía de elementos](personalizacion-0.8.0.md); las firmas de la API pública y el protocolo 5 se mantienen.
+
 FancyMenu identifica los controles mediante `socialmod_button_<clave de traducción>` y las entradas mediante
 identificadores explícitos. Por ejemplo: `socialmod_button_socialmod.panel.new_group`,
 `socialmod_button_socialmod.search.button`, `socialmod_input_socialmod.panel.search`,

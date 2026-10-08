@@ -17,18 +17,19 @@ final class FancyBackend {
     static long hudTick;
     static void register() {
         ScreenCustomization.addScreenBlacklistRule(id -> id.startsWith("com.takumistudios.socialmod.client.screen.")
-            && (com.takumistudios.socialmod.client.theme.AppearanceMode.original() || id.endsWith("AdvancedCustomizationScreen") || id.endsWith("VisualEditorScreen") || id.endsWith("AppearanceScreen")));
+            && (com.takumistudios.socialmod.client.theme.AppearanceMode.original() || com.takumistudios.socialmod.client.screen.SocialComponents.embedded()));
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client ->
             {
                 gameScreenOpen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen() != null;
                 hudTick++;
+                try { com.takumistudios.socialmod.client.screen.SocialComponents.subscriptions(hudTick); }
+                catch (RuntimeException e) { com.takumistudios.socialmod.SocialMod.LOGGER.warn("SocialMod component subscription failed",e); }
                 if (FancyBridge.spiffy()) try { SpiffyBackend.refreshIndex(); }
                 catch (RuntimeException | LinkageError e) { FancyBridge.disableSpiffy(e); }
             });
-        // The hub opens the full editor; the editing toolbar must not cover game controls.
         de.keksuccino.fancymenu.customization.overlay.CustomizationOverlay.registerOverlayVisibilityController(screen ->
-            !(screen instanceof com.takumistudios.socialmod.client.screen.SocialScreen)
-                && !(screen instanceof com.takumistudios.socialmod.client.screen.SocialChildScreen));
+            !com.takumistudios.socialmod.client.screen.SocialComponents.supported(screen) || !com.takumistudios.socialmod.client.theme.AppearanceMode.original());
+        SocialElements.register();
         for (String name : List.of("SocialScreen", "TeamScreen", "TeamManagementScreen", "SettingsScreen", "ProfileScreen", "CreateGroupScreen", "GroupSettingsScreen", "InviteScreen", "QuickReplyScreen", "TagStyleScreen", "BannerEditorScreen", "PlayerSearchScreen", "RowTemplateScreen"))
             UniversalScreenIdentifierRegistry.register("socialmod_" + name.replace("Screen", "").toLowerCase(java.util.Locale.ROOT), "com.takumistudios.socialmod.client.screen." + name);
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("spiffyhud")) {

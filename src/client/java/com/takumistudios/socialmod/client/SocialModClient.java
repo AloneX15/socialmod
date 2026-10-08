@@ -60,6 +60,7 @@ public final class SocialModClient implements ClientModInitializer {
         }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.PlayerSearchS2C.TYPE, (payload, context) -> guarded("player_search", () -> {
             if (ClientCompat.currentScreen() instanceof com.takumistudios.socialmod.client.screen.PlayerSearchScreen screen) screen.accept(payload.result());
+            com.takumistudios.socialmod.client.screen.SocialComponents.searchResult(payload.result());
         }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.SnapshotS2C.TYPE, (payload, context) ->
                 guarded("snapshot", () -> {

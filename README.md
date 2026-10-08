@@ -234,7 +234,7 @@ en Maven. Quedan pendientes, con su motivo, FTB Chunks y Cadmus (no existen para
 grupos), Velocity y el addon de Discord (proyectos aparte). Detalle en
 [Estado de la implementación](docs/implementation-status.md) e [Integraciones](docs/wiki/18-integraciones.md).
 
-> SocialMod 0.7.0 usa el **protocolo de red 5**: actualiza cliente y servidor a la vez (con versiones distintas el cliente queda en
+> SocialMod 0.8.0 usa el **protocolo de red 5**: actualiza cliente y servidor a la vez (con versiones distintas el cliente queda en
 > "solo chat", sin errores).
 
 ## Compilar desde el código
@@ -270,7 +270,8 @@ Los TEAM tienen un estandarte de Minecraft independiente del icono del tag. Fanc
 y convertir los controles en botones pequeños con imágenes. El botón de búsqueda universal encuentra jugadores
 conectados y desconectados conocidos y abre mensajes directos.
 
-- [Guía de personalización actual](docs/personalizacion-0.7.0.md).
+- [Catálogo de elementos y personalización actual](docs/personalizacion-0.8.0.md).
+- [Guía de estandartes y modos originales de 0.7.0](docs/personalizacion-0.7.0.md).
 - Los documentos y ZIP de Navidad/Dedsafío de 0.6.0 se conservan como ejemplos históricos.
 Pruebas opcionales: `./gradlew :26.3:runClientGameTest -PfancyMenu` (ambos editores) y `-PfancyMenu -PfancyOnly` (FancyMenu sin SpiffyHUD).
 

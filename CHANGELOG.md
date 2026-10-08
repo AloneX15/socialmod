@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Add FancyMenu catalog elements for live TEAM banners, contextual text, native modules and independent form controls on SocialMod screens.
+- Share native controls, permission checks, confirmations and drafts across modules; isolate named forms and discard drafts when their destination changes.
+- Add configurable FancyMenu actions and contextual placeholders. Save contexts, destinations and form bindings in FancyMenu layouts.
+- Let FancyMenu control its toolbar; original-interface mode disables added elements without deleting layouts. Preserve protocol 5 and public API signatures.
+- Add real layout save/reload and input-routing client regression tests. Document the catalog and banner placement in `docs/personalizacion-0.8.0.md`.
+
 ## 0.7.0
 
 - TEAM banners with Minecraft dye colors and up to six ordered patterns, independent of tag icons. Leaders and administrators can edit them; old teams receive a white banner.

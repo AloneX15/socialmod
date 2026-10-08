@@ -24,6 +24,7 @@ final class FancyIntegrationTests {
         String previousLanguage = context.computeOnClient(client -> client.getLanguageManager().getSelected());
         try {
         context.runOnClient(client -> { client.options.guiScale().set(1); de.keksuccino.fancymenu.util.rendering.RenderingUtils.resetGuiScale(); ClientCompat.setScreen(new SocialScreen(conversation)); });
+        SocialCatalogTests.run(context, conversation);
         compactControls(context, conversation);
         await(context, context.computeOnClient(client -> FancyBridge.install(ClientCompat.currentScreen(),"christmas")));
         context.runOnClient(client -> VisualManager.preview(com.takumistudios.socialmod.common.model.SeriesTemplates.visual("christmas")));

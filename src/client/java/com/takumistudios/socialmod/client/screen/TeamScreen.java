@@ -18,6 +18,8 @@ public class TeamScreen extends SocialChildScreen {
     private int page;
     private boolean management;
     private String selected = "";
+    public String selectedTeam() { return selected; }
+    public void componentSelect(String id) { selected = id; }
     private EditBox name, player;
     private String nameDraft = "", playerDraft = "";
     private int color = 0x55FF55;
@@ -38,6 +40,7 @@ public class TeamScreen extends SocialChildScreen {
         for (var team : state.teams.stream().skip((long) page * rows).limit(rows).toList()) {
             var button = Ui.button(Component.literal((selected.equals(team.id) ? "\u2713 " : "") + (team.archived ? "[A] " : "") + team.name + " (" + team.members + ")").withColor(team.color), b -> {
                 selected = team.id;
+                SocialComponents.selected(this,team.id);
                 color = team.color; icon = team.icon;
                 banner = team.banner.copy();
                 if (management) nameDraft = team.name;

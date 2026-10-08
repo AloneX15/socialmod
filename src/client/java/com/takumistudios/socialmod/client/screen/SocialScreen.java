@@ -121,6 +121,13 @@ public class SocialScreen extends Screen {
     public @Nullable String selectedConversation() {
         return selected;
     }
+    public int[] componentRegion(String kind) {
+        return switch (kind) {
+            case "conversations" -> new int[]{convX, top, Math.max(1, convW), bottom - top};
+            case "players" -> new int[]{playersX, top, Math.max(1, playersW), bottom - top};
+            default -> new int[]{chatX, top, Math.max(1, chatW), bottom - top};
+        };
+    }
 
     // =====================================================================
     // Disposición y widgets
@@ -128,11 +135,11 @@ public class SocialScreen extends Screen {
 
     @Override
     protected void init() {
-        if (!panelOpened) {
+        if (!panelOpened && !SocialComponents.embedded()) {
             panelOpened = true;
             ClientNet.action(SocialAction.PANEL_OPEN, "");
         }
-        if (selected != null) {
+        if (selected != null && !SocialComponents.embedded()) {
             ClientState.get().setActiveConversation(selected);
             ClientState.ConversationCache cache = ClientState.get().conversation(selected);
             if (!cache.requested) {
@@ -399,6 +406,7 @@ public class SocialScreen extends Screen {
             return;
         }
         selected = conversation;
+        SocialComponents.selected(this,java.util.Objects.toString(conversation,""));
         selectedMessage = -1;
         editing = -1;
         chatScroll = 0;
@@ -638,6 +646,7 @@ public class SocialScreen extends Screen {
 
     @Override
     public void removed() {
+        if (SocialComponents.embedded()) return;
         ClientState.get().setActiveConversation(null);
         // Al abrir una pantalla hija (perfil, ajustes...) el panel sigue "abierto" para la presencia
         if (!openingChild) {
