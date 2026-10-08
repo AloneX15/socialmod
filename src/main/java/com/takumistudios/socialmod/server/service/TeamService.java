@@ -42,11 +42,16 @@ public final class TeamService {
         GroupIcon icon = GroupIcon.byId(parts.length > 0 ? parts[0] : "shield");
         Integer color = GroupService.parseColor(parts.length > 1 ? parts[1] : "#55FF55");
         if (icon == null || color == null) return fail(player, "invalid");
+        com.takumistudios.socialmod.common.model.TeamBanner banner;
+        try { banner = parts.length == 3 ? com.takumistudios.socialmod.common.model.TeamBanner.parse(parts[2]) : new com.takumistudios.socialmod.common.model.TeamBanner(); validateBanner(banner); }
+        catch (RuntimeException e) { return fail(player, "invalid"); }
+        if (parts.length > 3) return fail(player, "invalid");
         Group team = new Group();
         do { team.id = "t" + UUID.randomUUID().toString().replace("-", "").substring(0, 12); team.tag = team.id.substring(0, 5).toUpperCase(java.util.Locale.ROOT); }
         while (social.groups().all().containsKey(team.id) || social.groups().all().values().stream().anyMatch(g -> g.tag.equalsIgnoreCase(team.tag)));
         team.team = true; team.name = name; team.tag = team.id.substring(0, 5).toUpperCase(java.util.Locale.ROOT);
         team.icon = icon.id(); team.color = color; team.created = System.currentTimeMillis(); team.normalize();
+        team.banner = banner;
         social.groups().all().put(team.id, team);
         if (!admin || mayChoose(record)) { assign(record, team); team.members.put(record.id, Role.LEADER); }
         changed("CREATE " + record.name + " " + team.id);
@@ -115,6 +120,18 @@ public final class TeamService {
     }
     private boolean fail(ServerPlayer player, String reason) {
         social.notifier().feedback(player, false, "socialmod.team." + reason); return false;
+    }
+    private void validateBanner(com.takumistudios.socialmod.common.model.TeamBanner banner) {
+        banner.validate();
+        var registry = social.server().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BANNER_PATTERN);
+        for (var layer : banner.layers) if (registry.getOptional(net.minecraft.resources.Identifier.parse(layer.pattern())).isEmpty()) throw new IllegalArgumentException("Unknown pattern");
+    }
+    public boolean banner(ServerPlayer player, String id, String json) {
+        Group team = find(id);
+        if (team == null || team.archived || !(PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN) || player.getUUID().equals(team.leader()))) return fail(player, "locked");
+        try { var value = com.takumistudios.socialmod.common.model.TeamBanner.parse(json); validateBanner(value); team.banner = value; }
+        catch (RuntimeException e) { return fail(player, "invalid"); }
+        changed("BANNER " + player.getGameProfile().name() + " " + team.id); return true;
     }
     private void changed(String event) {
         social.storage().markPlayersDirty(); social.storage().markGroupsDirty(); social.storage().audit("TEAM_" + event);

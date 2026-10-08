@@ -13,9 +13,12 @@ public final class SnapshotDto {
     public List<TeamView> teams = new ArrayList<>();
     public boolean teamAdmin;
     public boolean visualAdmin;
+    public boolean originalInterface;
     public int maxTeams;
     public com.takumistudios.socialmod.common.model.VisualDesign visual = new com.takumistudios.socialmod.common.model.VisualDesign();
     public static final class TeamView {
+        public com.takumistudios.socialmod.common.model.TeamBanner banner = new com.takumistudios.socialmod.common.model.TeamBanner();
+        public String leader = "";
         public String id, name, icon;
         public int color, members;
         public boolean archived;

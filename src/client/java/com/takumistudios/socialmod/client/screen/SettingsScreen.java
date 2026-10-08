@@ -201,7 +201,9 @@ public class SettingsScreen extends SocialChildScreen {
         }
 
         addRenderableWidget(Ui.button(CommonComponents.GUI_DONE, b -> onClose())
-                .bounds(this.width / 2 - 50, this.height - 28, 100, 20).build());
+                .bounds(this.width / 2 + 2, this.height - 28, 98, 20).build());
+        if (connected) addRenderableWidget(Ui.button(Component.translatable("socialmod.appearance.title"), b -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new AppearanceScreen(this)))
+                .bounds(this.width / 2 - 100, this.height - 28, 98, 20).build());
     }
 
     private static int next(int[] values, int current) {

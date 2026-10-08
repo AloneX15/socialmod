@@ -1,5 +1,15 @@
 # Registro de errores y soluciones (v0.2.0)
 
+## Personalización 0.7.0: escala del estandarte
+
+- **Síntoma:** la vista previa permanecía pequeña al ampliar el control.
+- **Causa:** el renderizador GUI de estandartes de Minecraft utiliza una escala interna fija.
+- **Solución:** dibujar las caras de las texturas nativas y sus capas teñidas dentro del tamaño del widget,
+  conservando la proporción 1:2. Los identificadores y colores se almacenan en caché.
+- **Comprobación:** capturas del editor y del selector del tag en las pruebas de cliente; tamaños configurables
+  sin cambiar el estandarte guardado.
+
+
 Errores encontrados al corregir `SOCIALMOD_ERRORES.md`, completar las fases pendientes y añadir la compatibilidad con
 Xaero's World Map / Minimap. Cada entrada indica el síntoma, la causa y cómo se solucionó.
 

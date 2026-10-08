@@ -44,7 +44,7 @@ public final class SocialModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientConfig.load();
-        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> { com.takumistudios.socialmod.client.theme.SeriesProfiles.shutdown(); com.takumistudios.socialmod.client.theme.RowTemplates.shutdown(); com.takumistudios.socialmod.client.theme.LocalSeriesDesign.shutdown(); });
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> { ClientConfig.shutdown(); com.takumistudios.socialmod.client.theme.SeriesProfiles.shutdown(); com.takumistudios.socialmod.client.theme.RowTemplates.shutdown(); com.takumistudios.socialmod.client.theme.LocalSeriesDesign.shutdown(); });
         SocialKeys.register();
         com.takumistudios.socialmod.client.compat.fancy.FancyBridge.register();
         com.takumistudios.socialmod.client.theme.RowTemplates.load();
@@ -53,14 +53,19 @@ public final class SocialModClient implements ClientModInitializer {
 
         ClientPlayNetworking.registerGlobalReceiver(Payloads.HelloS2C.TYPE, (payload, context) -> guarded("hello", () -> {
             ClientState.get().onHello(payload);
+            if (ClientState.get().connected()) ClientNet.action(com.takumistudios.socialmod.common.net.SocialAction.VISUAL_PERSONAL_ORIGINAL, String.valueOf(com.takumistudios.socialmod.client.theme.AppearanceMode.personal()));
             if (payload.protocol() != Payloads.PROTOCOL_VERSION) {
                 SocialMod.LOGGER.warn("[SocialMod] Protocolo del servidor {} (cliente {}): modo solo chat", payload.protocol(), Payloads.PROTOCOL_VERSION);
             }
+        }));
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.PlayerSearchS2C.TYPE, (payload, context) -> guarded("player_search", () -> {
+            if (ClientCompat.currentScreen() instanceof com.takumistudios.socialmod.client.screen.PlayerSearchScreen screen) screen.accept(payload.result());
         }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.SnapshotS2C.TYPE, (payload, context) ->
                 guarded("snapshot", () -> {
                     ClientState.get().onSnapshotFrame(payload.json());
                     VisualManager.accept(ClientState.get().snapshot().visual);
+                    com.takumistudios.socialmod.client.theme.AppearanceMode.refresh();
                 }));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.PresenceS2C.TYPE, (payload, context) ->
                 guarded("presence", () -> ClientState.get().onPresence(payload.entries())));
@@ -78,6 +83,7 @@ public final class SocialModClient implements ClientModInitializer {
                 guarded("notify", () -> ToastHud.push(new ToastData(payload.kind(), payload.source(), payload.title(), payload.body(), payload.conversation()))));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            com.takumistudios.socialmod.client.theme.AppearanceMode.join(client);
             ClientState.get().reset();
             PartyClient.reset();
             ToastHud.clear();
@@ -95,6 +101,7 @@ public final class SocialModClient implements ClientModInitializer {
             PartyClient.reset();
             ToastHud.clear();
             VisualManager.reset();
+            com.takumistudios.socialmod.client.theme.AppearanceMode.disconnect();
             ClientCache.flush();
         });
 

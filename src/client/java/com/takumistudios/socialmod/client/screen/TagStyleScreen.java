@@ -49,6 +49,13 @@ public class TagStyleScreen extends SocialChildScreen {
     private EditBox hex;
     private boolean updatingHex;
     private int dragging; // 0 nada, 1 cuadro, 2 tono
+    private com.takumistudios.socialmod.common.model.TeamBanner banner;
+    private java.util.function.Consumer<com.takumistudios.socialmod.common.model.TeamBanner> bannerResult;
+    public TagStyleScreen(@Nullable Screen parent, String tag, int rgb, String icon, String role, Result result,
+            com.takumistudios.socialmod.common.model.TeamBanner banner, java.util.function.Consumer<com.takumistudios.socialmod.common.model.TeamBanner> bannerResult) {
+        this(parent, tag, rgb, icon, role, result); this.banner = banner.copy(); this.bannerResult = bannerResult;
+    }
+    @Override protected int panelLeft(int panelWidth) { return super.panelLeft(panelWidth + (banner == null ? 0 : 76)); }
 
     public TagStyleScreen(@Nullable Screen parent, String tag, int rgb, String icon, String role, Result result) {
         super(parent, Component.translatable("socialmod.tag_style.title"));
@@ -88,8 +95,16 @@ public class TagStyleScreen extends SocialChildScreen {
         });
         addRenderableWidget(hex);
         int buttonsY = iconsY() + 2 * ICON_CELL + 32;
+        if (banner != null) {
+            addRenderableWidget(new BannerFrameWidget(left + WIDTH + 4, top, 68, 136, Component.translatable("socialmod.banner.title"), "tag_banner_container", false));
+            addRenderableWidget(new BannerWidget(left + WIDTH + 8, top + 4, 60, 120, banner, "tag_banner_preview"));
+            addRenderableWidget(new BannerFrameWidget(left + WIDTH + 4, top + 124, 68, 12, Component.literal(tag), "tag_banner_name", true));
+            addRenderableWidget(Ui.button(Component.translatable("socialmod.banner.title"), b -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new BannerEditorScreen(this, banner, value -> { banner = value; })))
+                .bounds(left + WIDTH + 4, top + 140, 68, 20).build());
+        }
         addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.save"), b -> {
             result.apply(rgb(), icon);
+            if (bannerResult != null) bannerResult.accept(banner.copy());
             onClose();
         }).bounds(left, buttonsY, WIDTH / 2 - 2, 20).build());
         addRenderableWidget(Ui.button(Component.translatable("gui.cancel"), b -> onClose())

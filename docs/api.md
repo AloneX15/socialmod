@@ -84,5 +84,25 @@ En CI, la release lo publica si existe la variable `vars.MAVEN_URL` (con los sec
 ## Versionado
 
 La API sigue versionado semántico junto con el mod. La 0.2.0 no cambia ninguna firma pública de la 0.1.0.
-El **protocolo de red** sí cambió (versión 2): cliente y servidor deben tener la 0.2.0; con versiones distintas el
-cliente pasa a modo "solo chat" sin errores.
+El **protocolo de red actual es 5**, desde SocialMod 0.7.0. Cliente y servidor deben actualizarse juntos;
+con versiones incompatibles el cliente pasa a modo «solo chat». Las firmas públicas de `GroupInfo` y
+`SocialModClientAPI` se mantienen.
+
+## Personalización y búsqueda (0.7.0)
+
+Los estandartes de TEAM se sincronizan como color base y hasta seis capas de patrones de Minecraft.
+No cambian el icono del tag. Su edición exige ser líder del TEAM o tener `admin.teams`.
+
+La búsqueda del panel consulta identidades de jugadores conectados y desconectados conocidos por SocialMod,
+con páginas de 20 y presencia filtrada para el solicitante. Abrir un resultado reutiliza `openPrivateChat(UUID)`;
+no envía mensajes ni modifica las comprobaciones de permisos, privacidad o bloqueos.
+
+El modo original global se guarda por separado en `config/socialmod/visual-mode.json`, se sincroniza en el estado
+social y exige `admin.visuals`. La elección personal se guarda por servidor en `client.json`.
+La base global prevalece sobre la elección personal. Ambos modos conservan los diseños guardados.
+
+FancyMenu identifica los controles mediante `socialmod_button_<clave de traducción>` y las entradas mediante
+identificadores explícitos. Por ejemplo: `socialmod_button_socialmod.panel.new_group`,
+`socialmod_button_socialmod.search.button`, `socialmod_input_socialmod.panel.search`,
+`socialmod_team_banner_<id>`, `socialmod_tag_banner_preview` y `socialmod_banner_preview`, `socialmod_banner_container`, `socialmod_tag_banner_container` y `socialmod_tag_banner_name`.
+Los cambios de tamaño, posición, texto e imagen conservan las acciones del control.

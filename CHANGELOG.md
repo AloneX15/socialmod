@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- TEAM banners with Minecraft dye colors and up to six ordered patterns, independent of tag icons. Leaders and administrators can edit them; old teams receive a white banner.
+- Universal paginated player search and direct chat opening, including known offline identities without revealing hidden presence.
+- Personal original-interface preference per server and administrator original mode for everyone, preserving saved styles. Basic settings work with or without optional editors.
+- FancyMenu supports compact icon buttons, a search button, and decoration around dynamic banners. Remove the built-in advanced design installer, series profile screens and previous-design restore entry point; use FancyMenu profiles instead.
+- Network protocol 5; public API signatures unchanged. Atomic asynchronous client configuration writes.
+
+
 ## 0.6.0
 
 - Navidad gráfica con los seis botones PNG y ocho iconos originales proporcionados: sustituye al ejemplo Social limpio, conserva Dedsafío y mantiene visible el mundo. Imágenes editables por variante o control, estados de botón, accesibilidad, respaldos y exportación completa.

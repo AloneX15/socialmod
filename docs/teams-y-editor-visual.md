@@ -1,6 +1,6 @@
 # TEAM y aspecto de una serie
 
-Disponible desde SocialMod 0.3.0; SocialMod 0.6.0 usa protocolo 4. Actualiza el mod del servidor y de los clientes juntos.
+Disponible desde SocialMod 0.3.0; SocialMod 0.7.0 usa protocolo 5. Actualiza el mod del servidor y de los clientes juntos.
 
 ## Elegir y crear un TEAM
 
@@ -128,3 +128,7 @@ La selección TEAM muestra el equipo actual; las confirmaciones indican acción,
 Con FancyMenu instalado, Editor visual abre Personalización avanzada. Los ajustes básicos siguen accesibles desde esa ventana. Los layouts, las filas y la apariencia local se distribuyen con el modpack del cliente; Publicar en el editor básico sigue publicando solamente el preset básico del servidor. Mientras exista una apariencia local avanzada, esta tiene prioridad sobre el preset básico, excepto durante una vista previa del editor. Restablecer template local devuelve la apariencia al servidor.
 
 Los bloques de conversaciones, chat y jugadores son controles identificables por FancyMenu. Sus límites finales se utilizan para dibujar e interactuar. SpiffyHUD incorpora los componentes de estado, party, pings y avisos; cada componente visible sustituye el HUD nativo equivalente. Las guías de Navidad describen los identificadores y placeholders disponibles, con capturas reales en ambos idiomas.
+
+## Estandartes, búsqueda y apariencia original (0.7.0)
+
+Consulta [la guía actual](personalizacion-0.7.0.md). Los estandartes se editan durante la creación y después por el líder o administradores. El icono del tag se conserva. Los perfiles avanzados se gestionan en FancyMenu; los ajustes básicos siguen siendo independientes.

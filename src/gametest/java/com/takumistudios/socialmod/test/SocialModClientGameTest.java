@@ -284,6 +284,7 @@ public class SocialModClientGameTest implements FabricClientGameTest {
             context.waitTicks(10);
             context.takeScreenshot("socialmod_ping");
 
+            BannerSearchAppearanceTests.run(context, world, groupKey[0]);
             if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("fancymenu")) FancyIntegrationTests.run(context, groupKey[0]);
 
             // Xaero (solo con -Pxaero): waypoint real en el minimapa

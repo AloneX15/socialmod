@@ -16,6 +16,8 @@ final class FancyBackend {
     static boolean gameScreenOpen;
     static long hudTick;
     static void register() {
+        ScreenCustomization.addScreenBlacklistRule(id -> id.startsWith("com.takumistudios.socialmod.client.screen.")
+            && (com.takumistudios.socialmod.client.theme.AppearanceMode.original() || id.endsWith("AdvancedCustomizationScreen") || id.endsWith("VisualEditorScreen") || id.endsWith("AppearanceScreen")));
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client ->
             {
                 gameScreenOpen = com.takumistudios.socialmod.client.compat.ClientCompat.currentScreen() != null;
@@ -27,7 +29,7 @@ final class FancyBackend {
         de.keksuccino.fancymenu.customization.overlay.CustomizationOverlay.registerOverlayVisibilityController(screen ->
             !(screen instanceof com.takumistudios.socialmod.client.screen.SocialScreen)
                 && !(screen instanceof com.takumistudios.socialmod.client.screen.SocialChildScreen));
-        for (String name : List.of("SocialScreen", "TeamScreen", "TeamManagementScreen", "SettingsScreen", "ProfileScreen", "CreateGroupScreen", "GroupSettingsScreen", "InviteScreen", "QuickReplyScreen", "TagStyleScreen", "AdvancedCustomizationScreen", "RowTemplateScreen", "SeriesManagerScreen", "SeriesImportScreen"))
+        for (String name : List.of("SocialScreen", "TeamScreen", "TeamManagementScreen", "SettingsScreen", "ProfileScreen", "CreateGroupScreen", "GroupSettingsScreen", "InviteScreen", "QuickReplyScreen", "TagStyleScreen", "BannerEditorScreen", "PlayerSearchScreen", "RowTemplateScreen"))
             UniversalScreenIdentifierRegistry.register("socialmod_" + name.replace("Screen", "").toLowerCase(java.util.Locale.ROOT), "com.takumistudios.socialmod.client.screen." + name);
         if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("spiffyhud")) {
             try { SpiffyBackend.register(); }
@@ -36,6 +38,7 @@ final class FancyBackend {
         for (String key : List.of("team", "conversation", "unread", "status")) PlaceholderRegistry.register(new SocialPlaceholder(key));
     }
     static void identify(AbstractWidget widget, String id) { ((UniqueWidget)(Object)widget).setWidgetIdentifierFancyMenu("socialmod_" + id); }
+    static void applyAppearance() { skinWidgets.clear(); skinTick = -1; }
     static boolean hidden(AbstractWidget widget) { return ((de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget).isHiddenFancyMenu(); }
     private static final java.util.Map<Object,com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture> skinTextures=new java.util.WeakHashMap<>();
     private static final java.util.Map<AbstractWidget,de.keksuccino.fancymenu.customization.element.elements.button.vanillawidget.VanillaWidgetElement> skinWidgets=new java.util.WeakHashMap<>();
@@ -80,6 +83,12 @@ final class FancyBackend {
     static boolean customLabel(AbstractWidget widget) {
         var custom=(de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget;
         return custom.getCustomLabelFancyMenu()!=null || custom.getHoverLabelFancyMenu()!=null;
+    }
+    static net.minecraft.network.chat.Component label(AbstractWidget widget) {
+        var custom = (de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget;
+        var label = widget.isHoveredOrFocused() ? custom.getHoverLabelFancyMenu() : null;
+        if (label == null) label = custom.getCustomLabelFancyMenu();
+        return label == null ? widget.getMessage() : label;
     }
     static float labelScale(AbstractWidget widget) { return ((de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget).resolveLabelScaleFancyMenu(); }
     static boolean labelShadow(AbstractWidget widget) { return ((de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget).isLabelShadowFancyMenu(); }

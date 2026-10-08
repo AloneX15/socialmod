@@ -15,17 +15,24 @@ import java.util.concurrent.Executors;
 public final class VisualService {
     private final SocialServer social;
     private VisualDesign design = new VisualDesign();
+    private boolean originalInterface;
+    private final java.util.Set<java.util.UUID> personalOriginal = new java.util.HashSet<>();
+    public boolean originalInterface() { return originalInterface; }
     private final Path file = FabricLoader.getInstance().getConfigDir().resolve("socialmod/visual.json");
     private final ExecutorService io = Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "SocialMod-Visual-IO"); t.setDaemon(true); return t; });
     public VisualService(SocialServer social) { this.social = social; reload(); }
     private static final java.util.UUID PACK_ID = java.util.UUID.nameUUIDFromBytes("socialmod:series".getBytes(StandardCharsets.UTF_8));
     public VisualDesign design() { return design; }
     public void sendPack(net.minecraft.server.level.ServerPlayer player) {
-        if (!design.resourcePackUrl.isEmpty()) player.connection.send(new net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket(
+        if (!originalInterface && !personalOriginal.contains(player.getUUID()) && !design.resourcePackUrl.isEmpty()) player.connection.send(new net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket(
                 PACK_ID, design.resourcePackUrl, design.resourcePackSha1, true,
                 java.util.Optional.of(net.minecraft.network.chat.Component.translatable("socialmod.visual.pack_required"))));
     }
     public void reload() {
+        try {
+            Path mode = file.resolveSibling("visual-mode.json");
+            if (Files.exists(mode)) originalInterface = com.google.gson.JsonParser.parseString(Files.readString(mode)).getAsJsonObject().get("original").getAsBoolean();
+        } catch (Exception e) { SocialMod.LOGGER.warn("Invalid visual mode; retaining previous mode", e); }
         try { if (Files.exists(file)) design = VisualDesign.parse(Files.readString(file)); }
         catch (Exception e) {
             SocialMod.LOGGER.warn("No se pudo cargar el preset visual; se conserva el anterior", e);
@@ -53,7 +60,12 @@ public final class VisualService {
     private static final class Upload {
         String id; int total, next; long expires; final StringBuilder json = new StringBuilder();
     }
-    public void forget(java.util.UUID player) { uploads.remove(player); }
+    public void forget(java.util.UUID player) { uploads.remove(player); personalOriginal.remove(player); }
+    public void setPersonalOriginal(net.minecraft.server.level.ServerPlayer player, boolean original) {
+        if (original) personalOriginal.add(player.getUUID()); else personalOriginal.remove(player.getUUID());
+        player.connection.send(new net.minecraft.network.protocol.common.ClientboundResourcePackPopPacket(java.util.Optional.of(PACK_ID)));
+        sendPack(player);
+    }
     /** Bounded ordered chunks keep each C2S packet below Minecraft's 32767-byte limit. */
     public void receive(net.minecraft.server.level.ServerPlayer player, String header, String chunk) {
         String[] parts = header.split("/", -1); if (parts.length != 3 || chunk.length() > 4096) return;
@@ -106,6 +118,24 @@ public final class VisualService {
         for (var player : social.server().getPlayerList().getPlayers()) social.snapshots().send(player);
     }
     public void persistConfig() { com.takumistudios.socialmod.server.config.ServerConfig.persist(io); }
+    public void setOriginalInterface(boolean original, String actor) {
+        io.execute(() -> {
+            try {
+                Path mode = file.resolveSibling("visual-mode.json"), tmp = mode.resolveSibling("visual-mode.json.tmp");
+                Files.createDirectories(mode.getParent());
+                Files.writeString(tmp, "{\"original\":" + original + "}", StandardCharsets.UTF_8);
+                Files.move(tmp, mode, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                social.server().execute(() -> {
+                    originalInterface = original;
+                    social.storage().audit("VISUAL_ORIGINAL " + original + " " + actor);
+                    for (var player : social.server().getPlayerList().getPlayers()) {
+                        player.connection.send(new net.minecraft.network.protocol.common.ClientboundResourcePackPopPacket(java.util.Optional.of(PACK_ID)));
+                        sendPack(player); social.snapshots().send(player);
+                    }
+                });
+            } catch (Exception e) { SocialMod.LOGGER.error("Could not persist visual mode", e); }
+        });
+    }
     public void close() {
         io.shutdown();
         try { if (!io.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS)) SocialMod.LOGGER.warn("Guardado visual pendiente al cerrar"); }

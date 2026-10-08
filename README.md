@@ -234,7 +234,7 @@ en Maven. Quedan pendientes, con su motivo, FTB Chunks y Cadmus (no existen para
 grupos), Velocity y el addon de Discord (proyectos aparte). Detalle en
 [Estado de la implementación](docs/implementation-status.md) e [Integraciones](docs/wiki/18-integraciones.md).
 
-> SocialMod 0.6.0 usa el **protocolo de red 4**: actualiza cliente y servidor a la vez (con versiones distintas el cliente queda en
+> SocialMod 0.7.0 usa el **protocolo de red 5**: actualiza cliente y servidor a la vez (con versiones distintas el cliente queda en
 > "solo chat", sin errores).
 
 ## Compilar desde el código
@@ -260,14 +260,18 @@ Desde la versión 0.4.0, **FancyMenu** y **SpiffyHUD** son integraciones opciona
 
 Los ejemplos **Navidad gráfica** (seis botones PNG y ocho iconos originales) y **Dedsafío** mantienen visible el mundo, sin fondo global ni desenfoque.
 
-El botón **Editor visual** abre las herramientas avanzadas cuando FancyMenu está instalado. El diseño se distribuye mediante el modpack, con exportación a `config/socialmod/presets/socialmod-series.zip`. FancyMenu requiere Konkrete y Melody; SpiffyHUD añade la edición del HUD.
+El botón **Editor visual** abre las herramientas avanzadas cuando FancyMenu está instalado. El diseño se distribuye mediante el modpack, mediante los perfiles de FancyMenu. FancyMenu requiere Konkrete y Melody; SpiffyHUD añade la edición del HUD.
 
-Desde 0.5.0, **Perfiles de serie** permite guardar, duplicar y activar diseños locales. La exportación incluye solo los layouts seleccionados y sus recursos, con un manifiesto de autoría y dependencias. La importación revisa el ZIP y conserva un respaldo restaurable antes de activar el perfil.
+Desde 0.7.0 los perfiles se gestionan directamente en FancyMenu. SocialMod conserva los ajustes visuales básicos,
+la edición de filas y los accesos a los editores opcionales. Cada jugador puede usar la interfaz original desde
+**Ajustes → Apariencia**; el administrador puede activarla para todos sin borrar los diseños.
 
-- [Guía de Navidad gráfica y Dedsafío en español](docs/series-es.md).
-- [Series design guide in English](docs/series-en.md).
-- [Paquetes de los dos diseños por versión](docs/series-es.md#7-perfiles-exportación-y-zip).
+Los TEAM tienen un estandarte de Minecraft independiente del icono del tag. FancyMenu permite decorar su entorno
+y convertir los controles en botones pequeños con imágenes. El botón de búsqueda universal encuentra jugadores
+conectados y desconectados conocidos y abre mensajes directos.
 
+- [Guía de personalización actual](docs/personalizacion-0.7.0.md).
+- Los documentos y ZIP de Navidad/Dedsafío de 0.6.0 se conservan como ejemplos históricos.
 Pruebas opcionales: `./gradlew :26.3:runClientGameTest -PfancyMenu` (ambos editores) y `-PfancyMenu -PfancyOnly` (FancyMenu sin SpiffyHUD).
 
 Creado por **TakumiStudios**.

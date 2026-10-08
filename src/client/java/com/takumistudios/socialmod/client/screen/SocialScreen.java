@@ -211,10 +211,13 @@ public class SocialScreen extends Screen {
         }
 
         top += mainButtonHeight() + 4 + inset;
+        int headerButtonWidth = Math.max(20, Math.min(VisualManager.get().seriesStyle.equals("christmas") ? 140 : 100, (available - 8) / 3));
         addRenderableWidget(Ui.button(Component.translatable("socialmod.team.title"), b -> openChild(new TeamScreen(this)))
-                .bounds(leftEdge, top - mainButtonHeight() - 4 - inset, Math.min(VisualManager.get().seriesStyle.equals("christmas")?140:100, available / 3), mainButtonHeight()).build());
-        if (ClientState.get().snapshot().visualAdmin) addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.title"), b -> openChild(com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() ? new AdvancedCustomizationScreen(this) : new VisualEditorScreen(this)))
-                .bounds(leftEdge + Math.min(VisualManager.get().seriesStyle.equals("christmas")?140:100, available / 3) + 4, top - mainButtonHeight() - 4 - inset, Math.min(VisualManager.get().seriesStyle.equals("christmas")?140:100, available / 3), mainButtonHeight()).build());
+                .bounds(leftEdge, top - mainButtonHeight() - 4 - inset, headerButtonWidth, mainButtonHeight()).build());
+        if (ClientState.get().snapshot().visualAdmin) addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.title"), b -> openChild(com.takumistudios.socialmod.client.compat.fancy.FancyBridge.installed() ? new AdvancedCustomizationScreen(this) : new VisualEditorScreen(this)))
+                .bounds(leftEdge + headerButtonWidth + 4, top - mainButtonHeight() - 4 - inset, headerButtonWidth, mainButtonHeight()).build());
+        addRenderableWidget(Ui.button(Component.translatable("socialmod.search.button"), b -> openChild(new PlayerSearchScreen(this)))
+            .tooltip(Tooltip.create(Component.translatable("socialmod.search.title"))).bounds(rightEdge - headerButtonWidth, top - mainButtonHeight() - 4 - inset, headerButtonWidth, mainButtonHeight()).build());
 
         // Columna de conversaciones: búsqueda arriba, botones abajo
         if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {

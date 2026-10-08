@@ -38,7 +38,8 @@ public final class VisualManager {
     }
     public static VisualDesign.Rect drawnRect(Drawn value) { return value == null ? null : get().components.get(value.id()); }
     public static int panelInset(int fallbackHeight) { int height = drawing == null ? fallbackHeight : drawing.height; return Math.min(get().panelInset, height < 220 ? 12 : 24); }
-    public static VisualDesign get() { if (preview != null) return preview; var local = LocalSeriesDesign.get(); return local == null || !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available() ? active : local; }
+    private static final VisualDesign ORIGINAL = new VisualDesign();
+    public static VisualDesign get() { if (AppearanceMode.original()) return ORIGINAL; if (preview != null) return preview; return active; }
     public static void accept(VisualDesign design) {
         try { design.validate(); active = design.copy(); theme = null; }
         catch (RuntimeException e) { SocialMod.LOGGER.warn("Preset visual inválido; se conserva el anterior", e); }

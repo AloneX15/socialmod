@@ -23,6 +23,23 @@ import java.util.List;
  * Los jugadores falsos comparten nombre, así que todo se resuelve por UUID.
  */
 public class SocialModGameTests {
+    @GameTest
+    public void teamBannerChecksLeaderPermissionsAndRegistry(GameTestHelper helper) {
+        var social = social(helper); var leader = player(helper); var stranger = player(helper);
+        check(helper, social.teams().create(leader, "Banner " + System.nanoTime(), "shield;#55FF55"), "TEAM creation failed");
+        var team = social.teams().of(leader.getUUID());
+        String valid = "{\"base\":15,\"layers\":[{\"pattern\":\"minecraft:stripe_center\",\"color\":14}]}";
+        check(helper, social.teams().banner(leader, team.id, valid), "leader cannot edit banner");
+        check(helper, !social.teams().banner(stranger, team.id, "{}"), "stranger edited banner");
+        check(helper, !social.teams().banner(leader, team.id, "{\"layers\":[{\"pattern\":\"minecraft:missing\",\"color\":0}]}"), "unknown pattern accepted");
+        check(helper, team.banner.base == 15 && team.banner.layers.size() == 1, "rejected operation modified banner");
+        var view = social.snapshots().build(leader).teams.stream().filter(t -> t.id.equals(team.id)).findFirst().orElseThrow();
+        check(helper, view.banner.base == 15 && view.leader.equals(leader.getUUID().toString()), "banner not synchronized");
+        boolean previous = social.visuals().originalInterface();
+        com.takumistudios.socialmod.server.net.ActionTestProbe.dispatch(social, stranger, new com.takumistudios.socialmod.common.net.Payloads.ActionC2S(com.takumistudios.socialmod.common.net.SocialAction.VISUAL_ORIGINAL, String.valueOf(!previous), ""));
+        check(helper, previous == social.visuals().originalInterface(), "stranger changed global appearance");
+        social.teams().archive(team.id, "test cleanup"); helper.succeed();
+    }
     private static SocialServer social(GameTestHelper helper) {
         SocialServer social = SocialServer.get();
         if (social == null) {

@@ -22,6 +22,7 @@ public final class Group {
     public int color = 0x55FF55;
     /** Icono de la lista de {@code assets/socialmod/textures/gui/icons/}. */
     public String icon = "shield";
+    public com.takumistudios.socialmod.common.model.TeamBanner banner = new com.takumistudios.socialmod.common.model.TeamBanner();
     public String description = "";
     public String motd = "";
     public String pinned = "";
@@ -107,6 +108,8 @@ public final class Group {
     }
 
     public Group normalize() {
+        if (banner == null) banner = new com.takumistudios.socialmod.common.model.TeamBanner();
+        try { banner.validate(); } catch (IllegalArgumentException e) { banner = new com.takumistudios.socialmod.common.model.TeamBanner(); }
         if (archiveRoles == null) archiveRoles = new LinkedHashMap<>();
         if (archiveReaders == null) archiveReaders = new LinkedHashSet<>();
         if (name == null) name = "";

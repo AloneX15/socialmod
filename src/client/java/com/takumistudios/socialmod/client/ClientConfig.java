@@ -11,7 +11,6 @@ import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,6 +24,8 @@ import java.util.Map;
 public final class ClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static ClientConfig instance = new ClientConfig();
+    private static final java.util.concurrent.ExecutorService IO = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { var thread = new Thread(r, "SocialMod-Client-Config-IO"); thread.setDaemon(true); return thread; });
+    public java.util.Set<String> originalServers = new java.util.HashSet<>();
 
     public enum Corner {
         TOP_RIGHT, TOP_LEFT, BOTTOM_RIGHT, BOTTOM_LEFT;
@@ -190,17 +191,24 @@ public final class ClientConfig {
 
     public static void save() {
         Path path = directory().resolve("client.json");
-        try {
+        String snapshot = GSON.toJson(instance);
+        IO.execute(() -> { try {
             Files.createDirectories(path.getParent());
-            try (Writer writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
-                GSON.toJson(instance, writer);
-            }
+            Path tmp = path.resolveSibling("client.json.tmp");
+            Files.writeString(tmp, snapshot, StandardCharsets.UTF_8);
+            Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             SocialMod.LOGGER.warn("[SocialMod] No se pudo guardar {}: {}", path, e.getMessage());
-        }
+        } });
+    }
+    public static void shutdown() {
+        IO.shutdown();
+        try { if (!IO.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS)) SocialMod.LOGGER.warn("Client configuration writes pending at shutdown"); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); SocialMod.LOGGER.warn("Client configuration shutdown interrupted", e); }
     }
 
     private ClientConfig sanitize() {
+        if (originalServers == null) originalServers = new java.util.HashSet<>();
         if (toasts == null) toasts = new Toasts();
         if (sounds == null) sounds = new Sounds();
         if (hud == null) hud = new Hud();

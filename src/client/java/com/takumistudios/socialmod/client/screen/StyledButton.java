@@ -18,7 +18,9 @@ public final class StyledButton extends Button {
     private final ChristmasSkin.Role skinRole;
     private final String skinIcon;
     private long pressedUntil;
-    private StyledButton(int x, int y, int w, int h, Component text, OnPress press) { super(x, y, w, h, text, press, DEFAULT_NARRATION);skinRole=ChristmasSkin.role(text);skinIcon=ChristmasSkin.icon(text,skinRole); }
+    private final Component actionLabel;
+    private StyledButton(int x, int y, int w, int h, Component text, OnPress press) { super(x, y, w, h, text, press, DEFAULT_NARRATION); actionLabel = text.copy(); skinRole=ChristmasSkin.role(text);skinIcon=ChristmasSkin.icon(text,skinRole); }
+    @Override protected net.minecraft.network.chat.MutableComponent createNarrationMessage() { return actionLabel.copy(); }
     public ChristmasSkin.Role skinRole() { return skinRole; }
     public String skinIcon() { return skinIcon; }
     @Override public void onPress(net.minecraft.client.input.InputWithModifiers input) { pressedUntil=net.minecraft.util.Util.getMillis()+140;super.onPress(input); }
@@ -28,13 +30,18 @@ public final class StyledButton extends Button {
         String texture = selected && !design.buttonSelectedTexture.isEmpty() ? design.buttonSelectedTexture : !active ? design.buttonDisabledTexture : isHoveredOrFocused() ? design.buttonHoverTexture : design.buttonTexture;
         if (rect != null && !rect.texture.isEmpty()) texture = rect.texture;
         if (contrast) texture = "";
-        boolean christmas=ChristmasSkin.enabled() && texture.isEmpty();
-        boolean externalBackground = !christmas && !contrast && com.takumistudios.socialmod.client.compat.fancy.FancyBridge.buttonBackground(this, graphics);
+        boolean externalBackground = !contrast && com.takumistudios.socialmod.client.compat.fancy.FancyBridge.buttonBackground(this, graphics);
+        boolean christmas=ChristmasSkin.enabled() && texture.isEmpty() && !externalBackground;
         if(christmas)ChristmasSkin.button(graphics,this,skinRole,selected,net.minecraft.util.Util.getMillis()<pressedUntil);
         else if (!externalBackground && !texture.isEmpty()) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.parse(texture), getX(), getY(), getWidth(), getHeight());
         else if (!externalBackground) graphics.fill(getX(), getY(), getRight(), getBottom(), contrast ? (selected ? 0xFF303030 : 0xFF000000) : !active ? design.buttonDisabledColor : isHoveredOrFocused() ? design.buttonHoverColor : design.buttonColor);
         for (int i = 0; !christmas && !externalBackground && texture.isEmpty() && i < (contrast ? 1 : design.borderWidth); i++) graphics.outline(getX() + i, getY() + i, Math.max(1, getWidth() - i * 2), Math.max(1, getHeight() - i * 2), Ui.theme().colors().border());
-        var label = getMessage().copy();
+        var label = com.takumistudios.socialmod.client.compat.fancy.FancyBridge.label(this).copy();
+        var externalIcon = com.takumistudios.socialmod.client.compat.fancy.FancyBridge.skinTexture(this, true);
+        if (externalIcon != null) {
+            int size = Math.max(1, Math.min(getWidth() - 4, getHeight() - 4));
+            graphics.blit(RenderPipelines.GUI_TEXTURED, externalIcon.id(), getX() + (getWidth() - size) / 2, getY() + (getHeight() - size) / 2, 0, 0, size, size, externalIcon.width(), externalIcon.height(), externalIcon.width(), externalIcon.height());
+        }
         if(design.seriesStyle.equals("dedsafio") && !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.customLabel(this) && getMessage().getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents translated) {
             String icon=switch(translated.getKey()) { case "socialmod.team.title" -> "⚑ "; case "socialmod.visual.title" -> "✦ "; case "socialmod.panel.settings" -> "☷ "; case "socialmod.panel.new_group" -> "+ "; default -> ""; };
             if(!icon.isEmpty())label=Component.literal(icon).append(label);
@@ -77,6 +84,6 @@ public final class StyledButton extends Button {
         public Builder size(int w, int h) { this.w = w; this.h = h; return this; }
         public Builder width(int w) { this.w = w; return this; }
         public Builder tooltip(Tooltip tooltip) { this.tooltip = tooltip; return this; }
-        public Button build() { var button = new StyledButton(x, y, w, h, text, press); button.setTooltip(tooltip==null && ChristmasSkin.enabled()?Tooltip.create(text):tooltip); button.selected = selected; com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identify(button, "button_" + (text.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tr ? tr.getKey() : "dynamic_" + java.util.UUID.nameUUIDFromBytes(text.getString().getBytes(java.nio.charset.StandardCharsets.UTF_8)))); return button; }
+        public Button build() { var button = new StyledButton(x, y, w, h, text, press); button.setTooltip(tooltip == null ? Tooltip.create(text) : tooltip); button.selected = selected; com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identify(button, "button_" + (text.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents tr ? tr.getKey() : "dynamic_" + java.util.UUID.nameUUIDFromBytes(text.getString().getBytes(java.nio.charset.StandardCharsets.UTF_8)))); return button; }
     }
 }

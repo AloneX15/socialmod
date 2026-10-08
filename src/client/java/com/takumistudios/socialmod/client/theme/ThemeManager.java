@@ -24,7 +24,7 @@ public final class ThemeManager implements ResourceManagerReloadListener {
 
     /** Tema activo (con el modo de alto contraste aplicado si está activado). */
     public static Theme get() {
-        Theme theme = VisualManager.theme(current);
+        Theme theme = AppearanceMode.original() ? Theme.DEFAULT : VisualManager.theme(current);
         if (ClientConfig.get().accessibility.highContrast) {
             // Alto contraste: colores sólidos y sin texturas, que pueden restar legibilidad
             return new Theme(theme.layout(), theme.columns(), Theme.Colors.HIGH_CONTRAST, theme.toast(), Theme.Textures.NONE);

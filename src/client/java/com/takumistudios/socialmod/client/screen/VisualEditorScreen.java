@@ -111,11 +111,12 @@ public final class VisualEditorScreen extends SocialChildScreen {
         addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.redo"), b -> history(redo, undo)).bounds(sidebar / 2, height - 56, sidebar / 2 - 4, 20).build());
         addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.screen"), b -> cycleScreen()).bounds(canvasX, 6, 88, 20).build());
         addRenderableWidget(Ui.button(Component.literal(canvasW + "×" + canvasH), b -> { resolution = (resolution + 1) % 3; refresh(); }).bounds(canvasX + 92, 6, 88, 20).build());
-        String[] labels = {"preset", "reset", "import", "export", "publish", "rollback", "back"};
+        String[] labels = {"reset", "import", "export", "publish", "appearance", "back"};
         for (int i = 0; i < labels.length; i++) {
             String label = labels[i]; int bw = Math.max(30, (width - 8) / labels.length);
             addRenderableWidget(Ui.button(Component.translatable("socialmod.visual." + label), b -> {
                 switch (label) {
+                    case "appearance" -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new AppearanceScreen(this));
                     case "preset" -> com.takumistudios.socialmod.client.compat.ClientCompat.setScreen(new VisualTemplateScreen(this, preset -> { checkpoint(); draft = preset; selected = ""; page = category = 0; refresh(); }));
                     case "reset" -> { checkpoint(); if (selected.isEmpty()) draft = new VisualDesign(); else draft.components.remove(selected); refresh(); }
                     case "import", "export" -> files(label);

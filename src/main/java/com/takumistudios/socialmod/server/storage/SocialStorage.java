@@ -462,7 +462,7 @@ public final class SocialStorage {
         }
     }
 
-    /** Programa la preparación por lotes de índices y guarda conversaciones en el hilo de E/S. */
+    /** Schedules index preparation and conversation persistence on the IO worker. */
     public void flush() {
         if (closed) return;
         retryWrites();

@@ -24,7 +24,9 @@ final class FancyIntegrationTests {
         String previousLanguage = context.computeOnClient(client -> client.getLanguageManager().getSelected());
         try {
         context.runOnClient(client -> { client.options.guiScale().set(1); de.keksuccino.fancymenu.util.rendering.RenderingUtils.resetGuiScale(); ClientCompat.setScreen(new SocialScreen(conversation)); });
+        compactControls(context, conversation);
         await(context, context.computeOnClient(client -> FancyBridge.install(ClientCompat.currentScreen(),"christmas")));
+        context.runOnClient(client -> VisualManager.preview(com.takumistudios.socialmod.common.model.SeriesTemplates.visual("christmas")));
         context.waitTicks(10);
         RowEditorRegressionTests.run(context);
         for (String language : new String[]{"es_es","en_us"}) {
@@ -102,6 +104,7 @@ final class FancyIntegrationTests {
         for(String style:com.takumistudios.socialmod.common.model.SeriesTemplates.IDS) {
             context.runOnClient(client -> ClientCompat.setScreen(new SocialScreen(conversation)));
             await(context,context.computeOnClient(client -> FancyBridge.install(ClientCompat.currentScreen(),style)));
+            context.runOnClient(client -> VisualManager.preview(com.takumistudios.socialmod.common.model.SeriesTemplates.visual(style)));
             if(style.equals("christmas"))ChristmasVisualTests.run(context,conversation);
             for(String language:new String[]{"es_es","en_us"}) {
                 SocialModClientGameTest.language(context,language);
@@ -122,7 +125,6 @@ final class FancyIntegrationTests {
                 catch(java.io.IOException e) { throw new java.util.concurrent.CompletionException(e); }
             }));
         }
-        SeriesProfilesTests.run(context);
         await(context,context.computeOnClient(client -> FancyBridge.reset()));
         context.runOnClient(client -> {
             if (LocalSeriesDesign.get()==null || !RowTemplates.enabled("message")) throw new AssertionError("Profile restoration did not preserve previous design");
@@ -131,12 +133,55 @@ final class FancyIntegrationTests {
         context.runOnClient(client -> { for(var layout:LayoutHandler.getAllLayouts()) if(layout.layoutFile!=null && (layout.layoutFile.getName().startsWith("socialmod_christmas") || layout.layoutFile.getName().startsWith("socialmod_dedsafio"))) layout.setEnabled(false,false); ScreenCustomization.reloadFancyMenu(); LocalSeriesDesign.clear(); client.options.guiScale().set(previousScale); de.keksuccino.fancymenu.util.rendering.RenderingUtils.resetGuiScale(); ClientCompat.setScreen(null); });
         await(context,context.computeOnClient(client -> RowTemplates.save(previousRows)));
         await(context,context.computeOnClient(client -> previousVisual==null ? LocalSeriesDesign.reset() : LocalSeriesDesign.save(previousVisual)));
+        context.runOnClient(client -> { VisualManager.preview(null); VisualManager.accept(com.takumistudios.socialmod.client.ClientState.get().snapshot().visual); });
         SocialModClientGameTest.language(context,previousLanguage);
         }
     }
     private static void await(ClientGameTestContext context, java.util.concurrent.CompletableFuture<?> future) {
         context.waitFor(client -> future.isDone(),200);
         try { future.join(); } catch(java.util.concurrent.CompletionException e) { throw new AssertionError("Async customization failed",e.getCause()); }
+    }
+    private static void compactControls(ClientGameTestContext context, String conversation) {
+        context.setScreen(() -> new SocialScreen(conversation));
+        context.runOnClient(client -> FancyBridge.edit(ClientCompat.currentScreen())); context.waitTicks(5);
+        context.runOnClient(client -> de.keksuccino.fancymenu.customization.layout.editor.LayoutEditorScreen.getCurrentInstance().closeEditor()); context.waitTicks(5);
+        context.runOnClient(client -> {
+            var screen = ClientCompat.currentScreen(); var layer = ScreenCustomizationLayerHandler.getLayerOfScreen(screen);
+            var group = layer.vanillaWidgetElements.stream().filter(e -> "socialmod_button_socialmod.panel.new_group".equals(e.getInstanceIdentifier())).findFirst().orElseThrow();
+            group.anchorPoint = ElementAnchorPoints.TOP_LEFT; group.posOffsetX = 20; group.posOffsetY = 45; group.baseWidth = group.baseHeight = 22; group.updateWidgetPosition(); group.updateWidgetSize();
+            var source = group.getPropertySource(); source.label = ""; source.hoverLabel = ""; group.updateWidgetLabels();
+            try {
+                var path = client.gameDirectory.toPath().resolve("config/fancymenu/assets/socialmod-test-icon.png"); java.nio.file.Files.createDirectories(path.getParent());
+                try (var input = FancyIntegrationTests.class.getResourceAsStream("/assets/socialmod/textures/christmas_graphic/icons/crafting_gift.png")) { java.nio.file.Files.write(path, input.readAllBytes()); }
+                source.iconTextureNormal = de.keksuccino.fancymenu.util.resource.ResourceSupplier.image("[source:local]config/fancymenu/assets/socialmod-test-icon.png");
+                source.iconTextureHover = source.iconTextureNormal;
+            } catch (java.io.IOException e) { throw new AssertionError(e); }
+            var search = layer.vanillaWidgetElements.stream().filter(e -> "socialmod_input_socialmod.panel.search".equals(e.getInstanceIdentifier())).findFirst().orElseThrow(); search.setHidden(true); search.updateWidgetVisibility();
+            var find = layer.vanillaWidgetElements.stream().filter(e -> "socialmod_button_socialmod.search.button".equals(e.getInstanceIdentifier())).findFirst().orElseThrow();
+            find.anchorPoint = ElementAnchorPoints.TOP_LEFT; find.posOffsetX = 46; find.posOffsetY = 45; find.baseWidth = find.baseHeight = 22; find.updateWidgetPosition(); find.updateWidgetSize();
+        }); context.waitTicks(10); context.takeScreenshot("banner_07_fancy_compact_buttons");
+        context.runOnClient(client -> {
+            var screen = ClientCompat.currentScreen();
+            boolean clicked = screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(25, 50, new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
+            if (!clicked || !(ClientCompat.currentScreen() instanceof CreateGroupScreen)) throw new AssertionError("Compact icon button lost action: handled=" + clicked + " screen=" + ClientCompat.currentScreen().getClass().getSimpleName() + " controls=" + net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).stream().filter(w -> w.isMouseOver(25,50)).map(w -> ((de.keksuccino.fancymenu.util.rendering.ui.widget.UniqueWidget)(Object)w).getWidgetIdentifierFancyMenu() + ":" + w.getX() + "," + w.getY() + "," + w.getWidth() + "," + w.visible + "," + w.active + "," + FancyBridge.hidden(w)).toList());
+        });
+        context.setScreen(() -> new SocialScreen(conversation)); context.waitTicks(4);
+        context.runOnClient(client -> {
+            var screen = ClientCompat.currentScreen();
+            var layer = ScreenCustomizationLayerHandler.getLayerOfScreen(screen);
+            var find = layer.vanillaWidgetElements.stream().filter(e -> "socialmod_button_socialmod.search.button".equals(e.getInstanceIdentifier())).findFirst().orElseThrow();
+            find.anchorPoint = ElementAnchorPoints.TOP_LEFT; find.posOffsetX = 46; find.posOffsetY = 45; find.baseWidth = find.baseHeight = 22; find.updateWidgetPosition(); find.updateWidgetSize();
+            boolean clicked = screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(51, 50, new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
+            if (!clicked || !(ClientCompat.currentScreen() instanceof PlayerSearchScreen)) throw new AssertionError("Icon search did not open universal search: " + ClientCompat.currentScreen().getClass().getSimpleName());
+        });
+        context.setScreen(() -> new SocialScreen(conversation));
+        context.runOnClient(client -> {
+            com.takumistudios.socialmod.client.theme.AppearanceMode.setPersonal(true);
+            if (ScreenCustomization.isCustomizationEnabledForScreen(ClientCompat.currentScreen())) throw new AssertionError("FancyMenu still active in original mode");
+            var group = net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(ClientCompat.currentScreen()).stream().filter(w -> w.getMessage().getString().contains(net.minecraft.network.chat.Component.translatable("socialmod.panel.new_group").getString())).findFirst().orElseThrow();
+            if (group.getWidth() == 22) throw new AssertionError("Original mode retained compact FancyMenu bounds");
+            com.takumistudios.socialmod.client.theme.AppearanceMode.setPersonal(false);
+        }); context.waitTicks(4);
     }
     private static void testFreshPack(java.nio.file.Path exported) throws java.io.IOException {
         var root=java.nio.file.Files.createTempDirectory("socialmod-christmas-instance-");

@@ -75,7 +75,8 @@ public final class RowTemplates {
             catch (Exception e) { SocialMod.LOGGER.warn("Could not save row templates",e); throw new CompletionException(e); }
         }, IO);
     }
-    public static boolean enabled(String kind) { var row = active.templates.get(kind); return row != null && row.enabled; }
+    public static boolean enabled(String kind) { var row = active.templates.get(kind); return !AppearanceMode.original() && row != null && row.enabled; }
+    public static void appearanceChanged() { revision++; TEXT.clear(); ROW_TEXT.clear(); }
     public static int height(String kind, int width, Data data) { return height(active.templates.get(kind), width, data); }
     public static int height(RowDesign.Template row, int width, Data data) {
         if (row == null) return 12;

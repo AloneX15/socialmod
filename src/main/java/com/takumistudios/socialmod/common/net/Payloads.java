@@ -21,7 +21,7 @@ import java.util.UUID;
  */
 public final class Payloads {
     /** Se incrementa con cada cambio incompatible de los paquetes. */
-    public static final int PROTOCOL_VERSION = 4;
+    public static final int PROTOCOL_VERSION = 5;
 
     public static final int MAX_TEXT = 1024;
     public static final int MAX_ARG = 256;
@@ -154,10 +154,10 @@ public final class Payloads {
                 (p, buf) -> {
                     buf.writeVarInt(p.action == null ? -1 : p.action.ordinal());
                     buf.writeUtf(p.a, MAX_ARG);
-                    buf.writeUtf(p.b, p.action == SocialAction.VISUAL_PUBLISH ? 4096 : MAX_ARG);
+                    buf.writeUtf(p.b, actionLimit(p.action));
                 },
                 buf -> { SocialAction action = SocialAction.byOrdinal(buf.readVarInt());
-                    return new ActionC2S(action, buf.readUtf(MAX_ARG), buf.readUtf(action == SocialAction.VISUAL_PUBLISH ? 4096 : MAX_ARG)); });
+                    return new ActionC2S(action, buf.readUtf(MAX_ARG), buf.readUtf(actionLimit(action))); });
 
         @Override
         public Type<ActionC2S> type() {
@@ -529,7 +529,32 @@ public final class Payloads {
         }
     }
 
+    private static int actionLimit(SocialAction action) { return action == SocialAction.VISUAL_PUBLISH ? 4096 : action == SocialAction.TEAM_BANNER || action == SocialAction.TEAM_CREATE ? 1100 : MAX_ARG; }
+    public record PlayerSearchC2S(int request, String query, int page) implements CustomPacketPayload {
+        public static final Type<PlayerSearchC2S> TYPE = id("player_search");
+        public static final StreamCodec<RegistryFriendlyByteBuf, PlayerSearchC2S> CODEC = StreamCodec.ofMember(
+            (p, b) -> { b.writeVarInt(p.request); b.writeUtf(p.query, 32); b.writeVarInt(p.page); },
+            b -> new PlayerSearchC2S(b.readVarInt(), b.readUtf(32), b.readVarInt()));
+        @Override public Type<PlayerSearchC2S> type() { return TYPE; }
+    }
+    public record PlayerSearchS2C(com.takumistudios.socialmod.common.model.PlayerSearch.Result result) implements CustomPacketPayload {
+        public static final Type<PlayerSearchS2C> TYPE = id("player_search_result");
+        public static final StreamCodec<RegistryFriendlyByteBuf, PlayerSearchS2C> CODEC = StreamCodec.ofMember(
+            (p, b) -> {
+                b.writeVarInt(p.result.request()); b.writeVarInt(p.result.page()); b.writeBoolean(p.result.more()); b.writeVarInt(p.result.entries().size());
+                for (var e : p.result.entries()) { b.writeUUID(e.id()); b.writeUtf(e.name(), MAX_NAME); b.writeUtf(e.status(), 16); }
+            }, b -> {
+                int request = b.readVarInt(), page = b.readVarInt(); boolean more = b.readBoolean(); int count = b.readVarInt();
+                if (count < 0 || count > 20) throw new IllegalArgumentException("Search results size");
+                var entries = new ArrayList<com.takumistudios.socialmod.common.model.PlayerSearch.Entry>(count);
+                for (int i = 0; i < count; i++) entries.add(new com.takumistudios.socialmod.common.model.PlayerSearch.Entry(b.readUUID(), b.readUtf(MAX_NAME), b.readUtf(16)));
+                return new PlayerSearchS2C(new com.takumistudios.socialmod.common.model.PlayerSearch.Result(request, page, more, List.copyOf(entries)));
+            });
+        @Override public Type<PlayerSearchS2C> type() { return TYPE; }
+    }
     public static void register() {
+        PayloadTypeRegistry.serverboundPlay().register(PlayerSearchC2S.TYPE, PlayerSearchC2S.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(PlayerSearchS2C.TYPE, PlayerSearchS2C.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(PartyS2C.TYPE, PartyS2C.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(PingS2C.TYPE, PingS2C.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(PingC2S.TYPE, PingC2S.CODEC);

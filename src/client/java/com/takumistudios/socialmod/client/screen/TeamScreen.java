@@ -22,27 +22,32 @@ public class TeamScreen extends SocialChildScreen {
     private String nameDraft = "", playerDraft = "";
     private int color = 0x55FF55;
     private String icon = "shield";
+    private com.takumistudios.socialmod.common.model.TeamBanner banner = new com.takumistudios.socialmod.common.model.TeamBanner();
     public TeamScreen(Screen parent) { this(parent, false); }
     protected TeamScreen(Screen parent, boolean management) { super(parent, Component.translatable(management ? "socialmod.team.manage" : "socialmod.team.title")); this.management = management; }
     @Override protected void saveDrafts() { if (name != null) nameDraft = name.getValue(); if (player != null) playerDraft = player.getValue(); }
     @Override protected void init() {
+        super.init();
         var state = ClientState.get().snapshot();
         int w = Math.min(320, width - 16), x = (width - w) / 2;
         management = management && state.teamAdmin;
         if (state.teamAdmin && !management) addRenderableWidget(Ui.button(Component.translatable("socialmod.team.manage"), b -> { saveDrafts(); ClientCompat.setScreen(new TeamManagementScreen(this)); }).bounds(x + w - 72, 4, 72, 20).build());
-        int rows = Math.max(1, (height - (management ? 164 : 142)) / 22);
+        int rows = Math.max(1, (height - (management ? 188 : 166)) / 36);
         page = Math.min(page, Math.max(0, (state.teams.size() - 1) / rows));
         int y = 42;
         for (var team : state.teams.stream().skip((long) page * rows).limit(rows).toList()) {
             var button = Ui.button(Component.literal((selected.equals(team.id) ? "\u2713 " : "") + (team.archived ? "[A] " : "") + team.name + " (" + team.members + ")").withColor(team.color), b -> {
                 selected = team.id;
                 color = team.color; icon = team.icon;
+                banner = team.banner.copy();
                 if (management) nameDraft = team.name;
                 if (!state.teamAdmin && !state.self.teamChosen && !team.archived) confirm(SocialAction.TEAM_CHOOSE, team.id, "");
                 else { playerDraft = player == null ? playerDraft : player.getValue(); rebuildWidgets(); }
-            }).bounds(x, y, w, 20).build();
+            }).bounds(x, y, w, 34).build();
             com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identify(button, "team_" + team.id);
-            addRenderableWidget(button); y += 22;
+            addRenderableWidget(button);
+            addRenderableWidget(new BannerWidget(x + 4, y + 2, 15, 30, team.banner, "team_banner_" + team.id));
+            y += 36;
         }
         addRenderableWidget(Ui.button(Component.literal("<"), b -> { saveDrafts(); page = Math.max(0, page - 1); rebuildWidgets(); }).bounds(x, y, 28, 20).build());
         addRenderableWidget(Ui.button(Component.literal(">"), b -> { saveDrafts(); page++; rebuildWidgets(); }).bounds(x + w - 28, y, 28, 20).build());
@@ -52,9 +57,9 @@ public class TeamScreen extends SocialChildScreen {
         if (!management) {
             player = null;
             addRenderableWidget(Ui.button(Component.translatable("socialmod.group_settings.style"), b -> {
-                saveDrafts(); ClientCompat.setScreen(new TagStyleScreen(this, nameDraft, color, icon, "", (rgb, chosen) -> { color = rgb; icon = chosen; }));
+                saveDrafts(); ClientCompat.setScreen(new TagStyleScreen(this, nameDraft, color, icon, "", (rgb, chosen) -> { color = rgb; icon = chosen; }, banner, value -> banner = value));
             }).bounds(x + w - 80, y, 80, 20).build()); y += 24;
-            var create = Ui.button(Component.translatable("socialmod.team.create"), b -> confirm(SocialAction.TEAM_CREATE, name.getValue(), icon + ";" + String.format("#%06X", color & 0xFFFFFF)))
+            var create = Ui.button(Component.translatable("socialmod.team.create"), b -> confirm(SocialAction.TEAM_CREATE, name.getValue(), icon + ";" + String.format("#%06X", color & 0xFFFFFF) + ";" + com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(banner)))
                     .bounds(x, y, state.teamAdmin && !state.self.teamChosen ? w / 2 - 2 : w, 20).build();
             create.active = state.teamAdmin || !state.self.teamChosen; addRenderableWidget(create);
             if (state.teamAdmin && !state.self.teamChosen) addRenderableWidget(Ui.button(Component.translatable("socialmod.team.title"), b -> confirm(SocialAction.TEAM_CHOOSE, selected, "")).bounds(x + w / 2, y, w / 2, 20).build());
@@ -81,6 +86,12 @@ public class TeamScreen extends SocialChildScreen {
             }).bounds(x + 2 * w / 3, y, w / 3, 20).build());
         }
         addRenderableWidget(Ui.button(Component.translatable("gui.back"), b -> onClose()).bounds(width / 2 - 45, height - 24, 90, 20).build());
+        var target = state.teams.stream().filter(t -> t.id.equals(selected.isEmpty() ? state.self.teamId : selected)).findFirst();
+        if (target.isPresent() && !target.get().archived && (state.teamAdmin || target.get().leader.equals(state.self.uuid))) {
+            var team = target.get();
+            addRenderableWidget(Ui.button(Component.translatable("socialmod.banner.edit"), b -> { saveDrafts(); ClientCompat.setScreen(new BannerEditorScreen(this, team.banner, value -> ClientNet.action(SocialAction.TEAM_BANNER, team.id, com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(value)))); })
+                .bounds(x, height - 48, w, 20).build());
+        }
     }
     private void confirm(SocialAction action, String a, String b) {
         saveDrafts();

@@ -113,6 +113,7 @@ public final class SnapshotService {
         for (Group team : social.teams().all()) {
             SnapshotDto.TeamView view = new SnapshotDto.TeamView();
             view.id = team.id; view.name = team.name; view.color = team.color; view.icon = team.icon;
+            view.banner = team.banner.copy(); view.leader = team.leader() == null ? "" : team.leader().toString();
             view.archived = team.archived; view.members = team.members.size(); result.add(view);
         }
         return result;
@@ -127,6 +128,7 @@ public final class SnapshotService {
         dto.visualAdmin = com.takumistudios.socialmod.server.PermissionBridge.isStaff(player, "admin.visuals");
         dto.maxTeams = ServerConfig.get().maxTeams;
         dto.visual = social.visuals().design();
+        dto.originalInterface = social.visuals().originalInterface();
         dto.self.teamId = record.teamId; dto.self.teamChosen = record.teamChosen;
         for (var team : teams) if (!team.archived || dto.teamAdmin) dto.teams.add(team);
         dto.self.uuid = self.toString();

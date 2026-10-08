@@ -24,6 +24,14 @@ public final class ServerNet {
     }
 
     public static void register() {
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.PlayerSearchC2S.TYPE, (payload, context) ->
+            guarded(context.player(), "player_search", 2, social -> {
+                var player = context.player();
+                if (payload.request() < 0 || payload.page() < 0 || payload.page() > 10000 || payload.query().length() > 32) return;
+                var candidates = social.storage().players().stream().map(record -> new com.takumistudios.socialmod.common.model.PlayerSearch.Entry(
+                    record.id, record.name, social.presence().visibleStatus(player.getUUID(), record.id).id())).toList();
+                social.send(player, new Payloads.PlayerSearchS2C(com.takumistudios.socialmod.common.model.PlayerSearch.find(payload.request(), payload.query(), payload.page(), player.getUUID(), candidates)));
+            }));
         ServerPlayNetworking.registerGlobalReceiver(Payloads.HelloC2S.TYPE, (payload, context) ->
                 guarded(context.player(), "hello", 1, social -> social.onHello(context.player(), payload.protocol())));
         ServerPlayNetworking.registerGlobalReceiver(Payloads.SendC2S.TYPE, (payload, context) ->
@@ -76,6 +84,13 @@ public final class ServerNet {
         ServerConfig config = ServerConfig.get();
         PlayerRecord record = social.record(player);
         switch (action) {
+            case TEAM_BANNER -> social.teams().banner(player, a, b);
+            case VISUAL_ORIGINAL -> {
+                if (PermissionBridge.isStaff(player, "admin.visuals") && (a.equals("true") || a.equals("false"))) social.visuals().setOriginalInterface(Boolean.parseBoolean(a), player.getGameProfile().name());
+            }
+            case VISUAL_PERSONAL_ORIGINAL -> {
+                if (a.equals("true") || a.equals("false")) social.visuals().setPersonalOriginal(player, Boolean.parseBoolean(a));
+            }
             case VISUAL_ROLLBACK -> {
                 if (PermissionBridge.isStaff(player, "admin.visuals")) social.visuals().rollback(player.getGameProfile().name());
             }

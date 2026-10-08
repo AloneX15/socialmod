@@ -13,10 +13,13 @@ public final class FancyBridge {
         try { FancyBackend.register(); available = true; }
         catch (RuntimeException | LinkageError e) { disable(e); }
     }
-    public static boolean available() { return available && !failed; }
+    public static boolean installed() { return available && !failed; }
+    public static boolean available() { return installed() && !com.takumistudios.socialmod.client.theme.AppearanceMode.original(); }
+    public static boolean spiffyInstalled() { return installed() && !spiffyFailed && FabricLoader.getInstance().isModLoaded("spiffyhud"); }
+    public static void appearanceChanged() { if (installed()) try { FancyBackend.applyAppearance(); } catch (RuntimeException | LinkageError e) { disable(e); } }
     public static boolean spiffy() { return available() && !spiffyFailed && FabricLoader.getInstance().isModLoaded("spiffyhud"); }
     public static void identify(AbstractWidget widget, String id) {
-        if (available()) try { FancyBackend.identify(widget, id); } catch (RuntimeException | LinkageError e) { disable(e); }
+        if (installed()) try { FancyBackend.identify(widget, id); } catch (RuntimeException | LinkageError e) { disable(e); }
     }
     public static boolean hidden(AbstractWidget widget) {
         if (!available()) return false;
@@ -37,6 +40,10 @@ public final class FancyBridge {
     public static boolean customLabel(AbstractWidget widget) {
         if (!available()) return false;
         try { return FancyBackend.customLabel(widget); } catch(RuntimeException | LinkageError e) { disable(e); return false; }
+    }
+    public static net.minecraft.network.chat.Component label(AbstractWidget widget) {
+        if (available()) try { return FancyBackend.label(widget); } catch (RuntimeException | LinkageError e) { disable(e); }
+        return widget.getMessage();
     }
     public static float labelScale(AbstractWidget widget) {
         if (!available()) return 1;
