@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- El estandarte de FancyMenu conserva el clic cuando queda una referencia al editor ya cerrado; se comprueba la pantalla activa.
+
 - La gestión de TEAM conserva el equipo seleccionado y carga su nombre y color al abrir Renombrar o Estilo.
 - Los errores de TEAM distinguen destino ausente, nombres duplicados, color o emblema inválidos, jugador desconocido y permisos. El clic del estandarte en FancyMenu muestra el motivo si no puede abrir el editor.
 

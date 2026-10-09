@@ -273,4 +273,15 @@ La última actividad de un amigo invisible podía aparecer en el snapshot aunque
 - Síntoma: Renombrar y guardar un color respondían «TEAM, nombre, jugador o acción no válidos».
 - Causa reproducida: Gestionar abría con `selected` vacío incluso teniendo TEAM, y la navegación desde el catálogo descartaba la selección. Todos los rechazos de la transacción se resumían en una sola clave.
 - Solución: conservar la selección o cargar el TEAM local y sus valores; impedir acciones sin destino; devolver una clave específica por rechazo tanto en paquetes como en comandos. El estandarte de FancyMenu explica la falta de equipo o permiso con un aviso.
-- Pruebas: `TeamEditingTests` reproduce el destino vacío y comprueba renombrado y color a través de la UI y del servidor; gametest de servidor comprueba rechazos específicos sin mutación. `SocialCatalogTests` pulsa a través de la pantalla, tras cerrar el editor, con anclaje central y sin conversación seleccionada. Este último recorrido abre correctamente el estandarte; el fallo particular reportado sigue pendiente de identificar en la instalación del usuario.
+- Pruebas: `TeamEditingTests` reproduce el destino vacío y comprueba renombrado y color a través de la UI y del servidor; gametest de servidor comprueba rechazos específicos sin mutación. `SocialCatalogTests` pulsa a través de la pantalla, tras cerrar el editor, con anclaje central y sin conversación seleccionada. La regresión adicional retiene deliberadamente la referencia al editor cerrado: reproducía el clic bloqueado y pasa al comprobar la pantalla activa.
+
+## Clic bloqueado por una referencia al editor cerrado (2026-10-09)
+
+- Síntoma reproducido: el estandarte visible en la pantalla normal no responde, aunque el TEAM y los permisos son válidos.
+- Causa: `AbstractElement.isEditor()` consulta la instancia estática guardada por FancyMenu; una referencia retenida al editor anterior también se interpretaba como edición activa e impedía registrar o procesar la entrada.
+- Solución: comprobar la pantalla activa y reservar la referencia almacenada para las pantallas auxiliares del editor.
+- Prueba: `SocialCatalogTests` cierra el editor real, retiene su referencia y pulsa el estandarte desde `SocialScreen`; fallaba con el código anterior y abre `BannerEditorScreen` con la corrección.
+
+## Cierre del mundo de pruebas en CI 26.3 (2026-10-09)
+
+Los perfiles FancyMenu agotaron el tiempo después de las comprobaciones de UI. El volcado mostraba el hilo de render en `IntegratedServer.halt()` y los hilos de servidor y test en la barrera de `ThreadingImpl`, el interbloqueo conocido del arnés de Fabric. El test deja ahora la pantalla y sus hooks de entrada antes de sincronizar el cierre del mundo, manteniendo las comprobaciones de persistencia tras reiniciar.

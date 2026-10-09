@@ -305,6 +305,9 @@ public class SocialModClientGameTest implements FabricClientGameTest {
                 }
                 context.takeScreenshot("socialmod_xaero");
             }
+            // Leave editor widgets and their tick/input hooks before Fabric synchronizes shutdown.
+            context.setScreen(() -> null);
+            context.waitTicks(4);
             startHangWatchdog();
         }
         HANG_WATCH.set(false);

@@ -110,7 +110,7 @@ public final class SocialElements {
                 input.setRectangle(Math.max(1,getAbsoluteWidth()),Math.max(1,getAbsoluteHeight()),getAbsoluteX(),getAbsoluteY());
                 input.visible=enabled()&&shouldRender();input.active=input.visible&&!failed;
                 if (!enabled() || !shouldRender()) { session = null; return; }
-                if(!isEditor() && !socialBuilder.kind.equals("data") && !socialBuilder.kind.equals("team_tag_view")) {
+                if(!editing() && !socialBuilder.kind.equals("data") && !socialBuilder.kind.equals("team_tag_view")) {
                     var widgets=net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(host());
                     String inputId="catalog_input_"+getInstanceIdentifier();
                     if (!FancyBridge.identifier(input).equals(inputId)) FancyBridge.identify(input,inputId);
@@ -134,6 +134,10 @@ public final class SocialElements {
         }
         private void fail(Throwable e) { failed = true; session = null; input.active=input.visible=false; SocialMod.LOGGER.warn("SocialMod FancyMenu element disabled: {}",getInstanceIdentifier(),e); }
         private boolean isControl() { return socialBuilder.kind.equals("control"); }
+        private boolean editing() {
+            Screen current=ClientCompat.currentScreen();
+            return current instanceof LayoutEditorScreen || !SocialComponents.supported(current) && LayoutEditorScreen.getCurrentInstance()!=null;
+        }
         private AbstractWidget widget() { return session == null ? null : selectedControl; }
         private float scale() { return getAbsoluteWidth() / (float)Math.max(1,region[2]); }
         private double localX(double x) { return (x-getAbsoluteX()) / scale() + region[0]; }
@@ -170,7 +174,7 @@ public final class SocialElements {
         @Override public boolean mouseClicked(MouseButtonEvent e, boolean twice) {
             if (!enabled() || !shouldRender() || !isMouseOver(e.x(),e.y()) || failed) return false;
             if (socialBuilder.kind.equals("banner_view")) {
-                if (e.button() != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT || isEditor()) return false;
+                if (e.button() != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT || editing()) return false;
                 return openBanner(context,target);
             }
             if (session == null) return false;

@@ -139,18 +139,22 @@ final class SocialCatalogTests {
             layout.serializedElements.add(moved.getBuilder().serializeElementInternal(moved));
             LayoutHandler.openLayoutEditor(layout,host);
         });context.waitTicks(4);
+        var closedEditor=new java.util.concurrent.atomic.AtomicReference<de.keksuccino.fancymenu.customization.layout.editor.LayoutEditorScreen>();
         context.runOnClient(client->{
             if(!(ClientCompat.currentScreen() instanceof de.keksuccino.fancymenu.customization.layout.editor.LayoutEditorScreen editor))throw new AssertionError("Layout editor not opened");
+            closedEditor.set(editor);
             editor.closeEditor();
         });context.waitTicks(8);
         context.runOnClient(client->{
             var banner=(SocialElements.Element)ScreenCustomizationLayerHandler.getLayerOfScreen(ClientCompat.currentScreen()).getElementByInstanceIdentifier("catalog_banner");
             banner.context="self";
             String previousTeam=ClientState.get().snapshot().self.teamId;ClientState.get().snapshot().self.teamId=team;
+            // A cached editor reference must not make a normal social screen non-interactive.
+            closedEditor.get().setAsCurrentInstance();
             try {
             double mx=banner.getAbsoluteX()+banner.getAbsoluteWidth()/2.0,my=banner.getAbsoluteY()+banner.getAbsoluteHeight()/2.0;
             if(!ClientCompat.currentScreen().mouseClicked(new MouseButtonEvent(mx,my,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false) || !(ClientCompat.currentScreen() instanceof BannerEditorScreen))throw new AssertionError("Host banner click did not open editor: rectangle="+banner.getAbsoluteX()+","+banner.getAbsoluteY()+","+banner.getAbsoluteWidth()+","+banner.getAbsoluteHeight()+" hovered="+ClientCompat.currentScreen().children().stream().filter(w->w.isMouseOver(mx,my)).map(w->w.getClass().getName()).toList());
-            } finally {ClientState.get().snapshot().self.teamId=previousTeam;}
+            } finally {ClientState.get().snapshot().self.teamId=previousTeam;closedEditor.get().removed();}
         }); context.runOnClient(client->ClientCompat.currentScreen().onClose()); context.waitTicks(4);
         context.runOnClient(client->{
             de.keksuccino.fancymenu.customization.action.ActionRegistry.getAction("socialmod_search_players").execute("{}");
