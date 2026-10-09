@@ -99,7 +99,14 @@ public final class SocialComponents {
         return target(host,context,fixed);
     }
     private static boolean mayEditTeam(Screen host,String context,String fixed) {
-        var team=team(host,context,fixed); return team!=null && !team.archived && (ClientState.get().snapshot().teamAdmin || team.leader.equals(ClientState.get().snapshot().self.uuid));
+        return teamEditError(host,context,fixed).isEmpty();
+    }
+    /** A local explanation only; the server independently checks permissions on Save. */
+    public static String teamEditError(Screen host,String context,String fixed) {
+        var team=team(host,context,fixed);
+        if(team==null) return "socialmod.team." + (target(host,context,fixed).isBlank() ? context.equals("self") ? "no_team" : "select_team" : "not_found");
+        if(team.archived) return "socialmod.team.archived";
+        return ClientState.get().snapshot().teamAdmin || team.leader.equals(ClientState.get().snapshot().self.uuid) ? "" : "socialmod.team.banner_permission";
     }
     public static Screen create(Screen host, String module, String target) {
         String groupId = target.startsWith("g:") ? target.substring(2).split(":", 2)[0] : target;

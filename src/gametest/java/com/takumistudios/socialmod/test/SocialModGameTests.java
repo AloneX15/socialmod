@@ -239,6 +239,33 @@ public class SocialModGameTests {
         });
     }
 
+    @GameTest(maxTicks = 80)
+    public void teamEditsReturnSpecificErrorsAndPreserveRejectedValues(GameTestHelper helper) {
+        var social=social(helper);var owner=player(helper);
+        String original="Edit " + System.nanoTime();
+        check(helper,social.teams().create(owner,original,"shield;#3366FF"),"create editing fixture");
+        var team=social.teams().find(original);
+        var action=com.takumistudios.socialmod.common.net.SocialAction.TEAM_RENAME;
+        check(helper,social.teams().adminResult(action,"","Valid name","test").errorKey().equals("socialmod.team.select_team"),"empty TEAM error");
+        check(helper,social.teams().adminResult(action,"missing","Valid name","test").errorKey().equals("socialmod.team.not_found"),"missing TEAM error");
+        check(helper,social.teams().adminResult(action,team.id,"ab","test").errorKey().equals("socialmod.team.name_length"),"short name error");
+        check(helper,social.teams().adminResult(action,team.id,"x".repeat(49),"test").errorKey().equals("socialmod.team.name_length"),"long name silently truncated");
+        check(helper,team.name.equals(original),"rejected rename mutated TEAM");
+        String taken="Taken " + System.nanoTime();
+        check(helper,social.teams().create(player(helper),taken,"shield;#3366FF"),"duplicate name fixture");
+        check(helper,social.teams().adminResult(action,team.id,taken,"test").errorKey().equals("socialmod.team.name_exists"),"duplicate name error");
+        var style=com.takumistudios.socialmod.common.net.SocialAction.TEAM_STYLE;
+        check(helper,social.teams().adminResult(style,team.id,"shield","test").errorKey().equals("socialmod.team.bad_style"),"style format error");
+        check(helper,social.teams().adminResult(style,team.id,"missing;#123456","test").errorKey().equals("socialmod.team.bad_icon"),"icon error");
+        check(helper,social.teams().adminResult(style,team.id,"shield;bad-color","test").errorKey().equals("socialmod.team.bad_color"),"color error");
+        check(helper,team.color==0x3366FF&&team.icon.equals("shield"),"rejected style mutated TEAM");
+        check(helper,social.teams().adminResult(com.takumistudios.socialmod.common.net.SocialAction.TEAM_ASSIGN,"",team.id,"test").errorKey().equals("socialmod.team.select_player"),"empty player error");
+        check(helper,social.teams().adminResult(com.takumistudios.socialmod.common.net.SocialAction.TEAM_RESET,"MissingPlayer","","test").errorKey().equals("socialmod.team.player_not_found"),"missing player error");
+        check(helper,social.teams().adminResult(action,team.id,"Renamed " + System.nanoTime(),"test").success(),"valid rename rejected");
+        check(helper,social.teams().adminResult(style,team.id,"swords;#AA55FF","test").success()&&team.color==0xAA55FF,"valid style rejected");
+        social.teams().archive(team.id,"test cleanup");social.teams().archive(social.teams().find(taken).id,"test cleanup");helper.succeed();
+    }
+
     // ---------- Mensajes privados ----------
 
     @GameTest(maxTicks = 60)

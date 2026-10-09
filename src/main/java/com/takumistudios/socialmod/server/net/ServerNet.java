@@ -107,7 +107,11 @@ public final class ServerNet {
             case TEAM_CREATE -> social.teams().create(player, a, b);
             case TEAM_CHOOSE -> social.teams().choose(player, a);
             case TEAM_ASSIGN, TEAM_RESET, TEAM_ARCHIVE, TEAM_RESTORE, TEAM_RENAME, TEAM_STYLE -> {
-                if (PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN) && !social.teams().admin(action, a, b, player.getGameProfile().name())) social.notifier().feedback(player, false, "socialmod.team.invalid");
+                if (!PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN)) social.notifier().feedback(player, false, "socialmod.team.no_permission");
+                else {
+                    var result = social.teams().adminResult(action, a, b, player.getGameProfile().name());
+                    if (!result.success()) social.notifier().feedback(player, false, result.errorKey());
+                }
             }
             case FRIEND_REQUEST -> social.friends().request(player, a);
             case FRIEND_ACCEPT -> social.friends().accept(player, a);

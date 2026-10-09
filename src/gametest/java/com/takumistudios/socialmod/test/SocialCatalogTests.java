@@ -65,11 +65,14 @@ final class SocialCatalogTests {
                 if(conv.controls().stream().noneMatch(widget->com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identifier(widget).equals(id)))throw new AssertionError("Missing conversation control "+id);
             var missing=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_banner_view").buildDefaultInstance(); missing.context="fixed";missing.target="missing";missing.tick();
             if(read(missing,"banner")==null)throw new AssertionError("Missing TEAM has no blank banner");
-            if(missing.mouseClicked(new MouseButtonEvent(1,1,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false))throw new AssertionError("Missing TEAM opened banner editor");
+            if(!SocialComponents.teamEditError(host,"fixed","missing").equals("socialmod.team.not_found"))throw new AssertionError("Missing TEAM error not explained");
+            if(!missing.mouseClicked(new MouseButtonEvent(missing.getAbsoluteX()+missing.getAbsoluteWidth()/2.0,missing.getAbsoluteY()+missing.getAbsoluteHeight()/2.0,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false) || !(ClientCompat.currentScreen() instanceof net.minecraft.client.gui.screens.AlertScreen))throw new AssertionError("Missing TEAM click not explained");
+            ClientCompat.setScreen(host);
             var teamView=ClientState.get().snapshot().teams.stream().filter(t->t.id.equals(team)).findFirst().orElseThrow();
             boolean admin=ClientState.get().snapshot().teamAdmin;String leader=teamView.leader;
             try { ClientState.get().snapshot().teamAdmin=false;teamView.leader="another-player";
                 if(SocialComponents.create(host,"banner",team)!=null)throw new AssertionError("Banner editor bypassed permissions");
+                if(!SocialComponents.teamEditError(host,"fixed",team).equals("socialmod.team.banner_permission"))throw new AssertionError("Banner permission error not explained");
             } finally { ClientState.get().snapshot().teamAdmin=admin;teamView.leader=leader; }
             var layout=Layout.buildForScreen(host);
             var e=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_banner_view").buildDefaultInstance();
@@ -125,9 +128,29 @@ final class SocialCatalogTests {
             boolean handled=host.mouseClicked(new MouseButtonEvent(group.getAbsoluteX()+5,group.getAbsoluteY()+5,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false);
             if(!handled || !(ClientCompat.currentScreen() instanceof CreateGroupScreen))throw new AssertionError("Detached New Group button lost its action: handled="+handled+" screen="+ClientCompat.currentScreen().getClass().getSimpleName()+" group="+group.getAbsoluteX()+","+group.getAbsoluteY()+" focused="+host.getFocused()+" input="+read(group,"input")+" selected="+read(group,"selectedControl")+" children="+net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(host).stream().filter(w->w.isMouseOver(group.getAbsoluteX()+5,group.getAbsoluteY()+5)).map(w->com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identifier(w)+":"+w.getX()+","+w.getY()+","+w.getWidth()+","+w.getHeight()+","+w.active+","+w.visible).toList());
         });context.runOnClient(client->ClientCompat.currentScreen().onClose());context.waitTicks(4);
+        context.setScreen(()->new SocialScreen(null));context.waitTicks(8);
+        context.runOnClient(client->{
+            var host=ClientCompat.currentScreen();
+            var layout=LayoutHandler.getAllLayouts().stream().filter(l->l.layoutFile!=null&&l.layoutFile.getName().equals("socialmod_catalog_test.txt")).findFirst().orElseThrow();
+            layout.serializedElements.removeIf(data->!java.util.List.of("catalog_banner","catalog_tag").contains(data.getValue("instance_identifier")));
+            var moved=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_banner_view").buildDefaultInstance();
+            moved.context="fixed";moved.target=team;moved.anchorPoint=ElementAnchorPoints.MID_CENTERED;moved.posOffsetX=-17;moved.posOffsetY=-host.height/2+18;moved.baseWidth=35;moved.baseHeight=63;moved.setInstanceIdentifier("catalog_banner");
+            layout.serializedElements.removeIf(data->"catalog_banner".equals(data.getValue("instance_identifier")));
+            layout.serializedElements.add(moved.getBuilder().serializeElementInternal(moved));
+            LayoutHandler.openLayoutEditor(layout,host);
+        });context.waitTicks(4);
+        context.runOnClient(client->{
+            if(!(ClientCompat.currentScreen() instanceof de.keksuccino.fancymenu.customization.layout.editor.LayoutEditorScreen editor))throw new AssertionError("Layout editor not opened");
+            editor.closeEditor();
+        });context.waitTicks(8);
         context.runOnClient(client->{
             var banner=(SocialElements.Element)ScreenCustomizationLayerHandler.getLayerOfScreen(ClientCompat.currentScreen()).getElementByInstanceIdentifier("catalog_banner");
-            if(!banner.mouseClicked(new MouseButtonEvent(banner.getAbsoluteX()+4,banner.getAbsoluteY()+4,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false) || !(ClientCompat.currentScreen() instanceof BannerEditorScreen))throw new AssertionError("Banner click did not open editor");
+            banner.context="self";
+            String previousTeam=ClientState.get().snapshot().self.teamId;ClientState.get().snapshot().self.teamId=team;
+            try {
+            double mx=banner.getAbsoluteX()+banner.getAbsoluteWidth()/2.0,my=banner.getAbsoluteY()+banner.getAbsoluteHeight()/2.0;
+            if(!ClientCompat.currentScreen().mouseClicked(new MouseButtonEvent(mx,my,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false) || !(ClientCompat.currentScreen() instanceof BannerEditorScreen))throw new AssertionError("Host banner click did not open editor: rectangle="+banner.getAbsoluteX()+","+banner.getAbsoluteY()+","+banner.getAbsoluteWidth()+","+banner.getAbsoluteHeight()+" hovered="+ClientCompat.currentScreen().children().stream().filter(w->w.isMouseOver(mx,my)).map(w->w.getClass().getName()).toList());
+            } finally {ClientState.get().snapshot().self.teamId=previousTeam;}
         }); context.runOnClient(client->ClientCompat.currentScreen().onClose()); context.waitTicks(4);
         context.runOnClient(client->{
             de.keksuccino.fancymenu.customization.action.ActionRegistry.getAction("socialmod_search_players").execute("{}");

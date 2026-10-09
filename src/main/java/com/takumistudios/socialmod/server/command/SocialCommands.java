@@ -126,10 +126,10 @@ public final class SocialCommands {
     private static int teamAdmin(CommandContext<CommandSourceStack> ctx, String op, String value) {
         SocialServer social = SocialServer.get(); if (social == null) return 0;
         try {
-            boolean ok = social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.valueOf("TEAM_" + op.toUpperCase(java.util.Locale.ROOT)),
+            var result = social.teams().adminResult(com.takumistudios.socialmod.common.net.SocialAction.valueOf("TEAM_" + op.toUpperCase(java.util.Locale.ROOT)),
                     StringArgumentType.getString(ctx, "target"), value, ctx.getSource().getTextName());
-            if (!ok) ctx.getSource().sendFailure(Lang.tr("socialmod.team.invalid"));
-            return ok ? 1 : 0;
+            if (!result.success()) ctx.getSource().sendFailure(Lang.tr(result.errorKey()));
+            return result.success() ? 1 : 0;
         } catch (RuntimeException e) {
             com.takumistudios.socialmod.SocialMod.warnOnce("team_command", "Error procesando TEAM", e); return 0;
         }

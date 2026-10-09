@@ -267,3 +267,10 @@ La última actividad de un amigo invisible podía aparecer en el snapshot aunque
 - En 26.3 el identificador del botón izquierdo cambió. Los nuevos manejadores y sus tests utilizan
   `InputConstants.MOUSE_BUTTON_LEFT` para conservar el clic de estandartes, botones separados y barra en todas
   las versiones. La prueba de Nuevo grupo entra por la pantalla anfitriona y detectó este caso.
+
+## Gestión de TEAM sin destino y errores genéricos (2026-10-09)
+
+- Síntoma: Renombrar y guardar un color respondían «TEAM, nombre, jugador o acción no válidos».
+- Causa reproducida: Gestionar abría con `selected` vacío incluso teniendo TEAM, y la navegación desde el catálogo descartaba la selección. Todos los rechazos de la transacción se resumían en una sola clave.
+- Solución: conservar la selección o cargar el TEAM local y sus valores; impedir acciones sin destino; devolver una clave específica por rechazo tanto en paquetes como en comandos. El estandarte de FancyMenu explica la falta de equipo o permiso con un aviso.
+- Pruebas: `TeamEditingTests` reproduce el destino vacío y comprueba renombrado y color a través de la UI y del servidor; gametest de servidor comprueba rechazos específicos sin mutación. `SocialCatalogTests` pulsa a través de la pantalla, tras cerrar el editor, con anclaje central y sin conversación seleccionada. Este último recorrido abre correctamente el estandarte; el fallo particular reportado sigue pendiente de identificar en la instalación del usuario.

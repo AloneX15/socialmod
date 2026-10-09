@@ -33,19 +33,22 @@ public final class TeamService {
     public boolean create(ServerPlayer player, String rawName, String style) {
         boolean admin = PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN);
         PlayerRecord record = social.record(player);
-        if ((!admin && !mayChoose(record)) || (!admin && !PermissionBridge.allows(player, PermissionBridge.TEAM_CREATE))) return fail(player, "locked");
+        if (!admin && !mayChoose(record)) return fail(player, "locked");
+        if (!admin && !PermissionBridge.allows(player, PermissionBridge.TEAM_CREATE)) return fail(player, "create_permission");
         if (!ServerConfig.get().modules.groups) return fail(player, "disabled");
-        String name = TextSanitizer.cleanName(rawName, 48);
-        if (name.length() < 3 || name.length() > 48 || find(name) != null) return fail(player, "invalid");
+        String name = TextSanitizer.cleanName(rawName, 49);
+        if (TextSanitizer.length(name) < 3 || TextSanitizer.length(name) > 48) return fail(player, "name_length");
+        if (find(name) != null) return fail(player, "name_exists");
         if (all().stream().filter(g -> !g.archived).count() >= ServerConfig.get().maxTeams) return fail(player, "limit");
         String[] parts = style.split(";", -1);
         GroupIcon icon = GroupIcon.byId(parts.length > 0 ? parts[0] : "shield");
         Integer color = GroupService.parseColor(parts.length > 1 ? parts[1] : "#55FF55");
-        if (icon == null || color == null) return fail(player, "invalid");
+        if (icon == null) return fail(player, "bad_icon");
+        if (color == null) return fail(player, "bad_color");
         com.takumistudios.socialmod.common.model.TeamBanner banner;
         try { banner = parts.length == 3 ? com.takumistudios.socialmod.common.model.TeamBanner.parse(parts[2]) : new com.takumistudios.socialmod.common.model.TeamBanner(); validateBanner(banner); }
-        catch (RuntimeException e) { return fail(player, "invalid"); }
-        if (parts.length > 3) return fail(player, "invalid");
+        catch (RuntimeException e) { return fail(player, "bad_banner"); }
+        if (parts.length > 3) return fail(player, "bad_style");
         Group team = new Group();
         do { team.id = "t" + UUID.randomUUID().toString().replace("-", "").substring(0, 12); team.tag = team.id.substring(0, 5).toUpperCase(java.util.Locale.ROOT); }
         while (social.groups().all().containsKey(team.id) || social.groups().all().values().stream().anyMatch(g -> g.tag.equalsIgnoreCase(team.tag)));
@@ -60,7 +63,9 @@ public final class TeamService {
     public boolean choose(ServerPlayer player, String id) {
         Group team = find(id); PlayerRecord record = social.record(player);
         if (!mayChoose(record)) return fail(player, "locked");
-        if (team == null || team.archived) return fail(player, "invalid");
+        if (id.isBlank()) return fail(player, "select_team");
+        if (team == null) return fail(player, "not_found");
+        if (team.archived) return fail(player, "archived");
         assign(record, team); changed("CHOOSE " + record.name + " " + team.id); return true;
     }
     private void assign(PlayerRecord record, Group team) {
@@ -87,36 +92,61 @@ public final class TeamService {
         team.members.clear(); team.memberNames.clear(); team.archived = true;
         changed("ARCHIVE " + actor + " " + team.id); return true;
     }
+    public record AdminResult(boolean success, String errorKey) {
+        private static AdminResult ok() { return new AdminResult(true, ""); }
+        private static AdminResult failure(String reason) { return new AdminResult(false, "socialmod.team." + reason); }
+    }
     public boolean admin(SocialAction action, String a, String b, String actor) {
+        return adminResult(action, a, b, actor).success();
+    }
+    /** Same transaction for GUI and commands, with a precise rejection reason. */
+    public AdminResult adminResult(SocialAction action, String a, String b, String actor) {
         Group team = find(a);
+        if (action != SocialAction.TEAM_ASSIGN && action != SocialAction.TEAM_RESET) {
+            if (a.isBlank()) return AdminResult.failure("select_team");
+            if (team == null) return AdminResult.failure("not_found");
+        }
         switch (action) {
-            case TEAM_ARCHIVE -> { return archive(a, actor); }
+            case TEAM_ARCHIVE -> {
+                if (team.archived) return AdminResult.failure("already_archived");
+                return archive(a, actor) ? AdminResult.ok() : AdminResult.failure("not_found");
+            }
             case TEAM_RESTORE -> {
-                if (team == null || !team.archived || all().stream().filter(g -> !g.archived).count() >= ServerConfig.get().maxTeams) return false;
+                if (!team.archived) return AdminResult.failure("not_archived");
+                if (all().stream().filter(g -> !g.archived).count() >= ServerConfig.get().maxTeams) return AdminResult.failure("limit");
                 team.archived = false;
             }
             case TEAM_STYLE -> {
                 String[] style = b.split(";", -1);
-                GroupIcon icon = GroupIcon.byId(style[0]); Integer color = style.length == 2 ? GroupService.parseColor(style[1]) : null;
-                if (team == null || icon == null || color == null) return false;
+                if (style.length != 2) return AdminResult.failure("bad_style");
+                GroupIcon icon = GroupIcon.byId(style[0]); Integer color = GroupService.parseColor(style[1]);
+                if (icon == null) return AdminResult.failure("bad_icon");
+                if (color == null) return AdminResult.failure("bad_color");
                 team.icon = icon.id(); team.color = color; team.members.keySet().forEach(social.groups().nametags()::update);
             }
             case TEAM_RENAME -> {
-                String name = TextSanitizer.cleanName(b, 48);
+                String name = TextSanitizer.cleanName(b, 49);
                 Group other = find(name);
-                if (team == null || name.length() < 3 || (other != null && other != team)) return false;
+                if (TextSanitizer.length(name) < 3 || TextSanitizer.length(name) > 48) return AdminResult.failure("name_length");
+                if (other != null && other != team) return AdminResult.failure("name_exists");
                 team.name = name; team.members.keySet().forEach(social.groups().nametags()::update);
             }
             case TEAM_ASSIGN, TEAM_RESET -> {
-                PlayerRecord record = social.storage().findByName(a);
-                if (record == null) { try { record = social.storage().player(UUID.fromString(a)); } catch (IllegalArgumentException e) { return false; } }
+                if (a.isBlank()) return AdminResult.failure("select_player");
+                PlayerRecord record = social.storage().findByName(a.trim());
+                if (record == null) { try { record = social.storage().player(UUID.fromString(a.trim())); } catch (IllegalArgumentException e) { return AdminResult.failure("player_not_found"); } }
                 Group target = action == SocialAction.TEAM_RESET ? null : find(b);
-                if (record == null || (action == SocialAction.TEAM_ASSIGN && (target == null || target.archived))) return false;
+                if (record == null) return AdminResult.failure("player_not_found");
+                if (action == SocialAction.TEAM_ASSIGN) {
+                    if (b.isBlank()) return AdminResult.failure("select_team");
+                    if (target == null) return AdminResult.failure("not_found");
+                    if (target.archived) return AdminResult.failure("archived");
+                }
                 assign(record, target);
             }
-            default -> { return false; }
+            default -> { return AdminResult.failure("invalid_action"); }
         }
-        changed(action + " " + actor + " " + a); return true;
+        changed(action + " " + actor + " " + a); return AdminResult.ok();
     }
     private boolean fail(ServerPlayer player, String reason) {
         social.notifier().feedback(player, false, "socialmod.team." + reason); return false;
@@ -128,9 +158,12 @@ public final class TeamService {
     }
     public boolean banner(ServerPlayer player, String id, String json) {
         Group team = find(id);
-        if (team == null || team.archived || !(PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN) || player.getUUID().equals(team.leader()))) return fail(player, "locked");
+        if (id.isBlank()) return fail(player, "select_team");
+        if (team == null) return fail(player, "not_found");
+        if (team.archived) return fail(player, "archived");
+        if (!(PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN) || player.getUUID().equals(team.leader()))) return fail(player, "banner_permission");
         try { var value = com.takumistudios.socialmod.common.model.TeamBanner.parse(json); validateBanner(value); team.banner = value; }
-        catch (RuntimeException e) { return fail(player, "invalid"); }
+        catch (RuntimeException e) { return fail(player, "bad_banner"); }
         changed("BANNER " + player.getGameProfile().name() + " " + team.id); return true;
     }
     private void changed(String event) {

@@ -36,6 +36,17 @@ public final class SocialElements {
     private static final Component UNAVAILABLE=label("unavailable"), CHOOSE_CONTROL=label("choose_control");
     private static Screen host() { var screen = ClientCompat.currentScreen(); if (screen instanceof LayoutEditorScreen editor) return editor.layoutTargetScreen; if (SocialComponents.supported(screen)) return screen; var editor = LayoutEditorScreen.getCurrentInstance(); return editor == null ? screen : editor.layoutTargetScreen; }
     private static boolean enabled() { return SocialComponents.supported(host()) && ClientState.get().connected() && !AppearanceMode.original(); }
+    private static boolean openBanner(String context,String target) {
+        Screen parent=host();
+        String error=SocialComponents.teamEditError(parent,context,target);
+        if(!error.isEmpty()) {
+            ClientCompat.setScreen(new net.minecraft.client.gui.screens.AlertScreen(()->ClientCompat.setScreen(parent),Component.translatable("socialmod.banner.title"),Component.translatable(error)));
+            return true;
+        }
+        Screen editor=SocialComponents.create(parent,"banner",SocialComponents.resolve(parent,"banner",context,target));
+        if(editor==null)return false;
+        ClientCompat.setScreen(editor);return true;
+    }
     public static final class Builder extends ElementBuilder<Element, Editor> {
         final String kind, initial;
         Builder(String kind, String initial) { super("socialmod_" + kind); this.kind = kind; this.initial = initial; }
@@ -160,9 +171,7 @@ public final class SocialElements {
             if (!enabled() || !shouldRender() || !isMouseOver(e.x(),e.y()) || failed) return false;
             if (socialBuilder.kind.equals("banner_view")) {
                 if (e.button() != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT || isEditor()) return false;
-                Screen editor = SocialComponents.create(host(), "banner", SocialComponents.resolve(host(), "banner", context, target));
-                if (editor == null) return false;
-                ClientCompat.setScreen(editor); return true;
+                return openBanner(context,target);
             }
             if (session == null) return false;
             focused = true;
@@ -248,7 +257,8 @@ public final class SocialElements {
                     var session=SocialComponents.form(host(),module,context,target,form);if(session==null)return;
                     var widget=session.control(read(config,"control",""));
                     if(widget instanceof net.minecraft.client.gui.components.Button button && button.active && button.visible) SocialComponents.scoped(()->button.onPress(new MouseButtonEvent(button.getX()+1,button.getY()+1,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0))));
-                } else { String resolved=SocialComponents.resolve(host(),module,context,target);var screen=SocialComponents.create(host(),module,resolved);if(screen!=null)ClientCompat.setScreen(screen); }
+                } else if(module.equals("banner")) { openBanner(context,target); }
+                else { String resolved=SocialComponents.resolve(host(),module,context,target);var screen=SocialComponents.create(host(),module,resolved);if(screen!=null)ClientCompat.setScreen(screen); }
             } catch(RuntimeException | LinkageError e) { SocialMod.LOGGER.warn("Invalid SocialMod FancyMenu action",e); }
         }
         static String read(com.google.gson.JsonObject json,String key,String fallback) { return bounded(json.has(key)?json.get(key).getAsString():null,fallback); }

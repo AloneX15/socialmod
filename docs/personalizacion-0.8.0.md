@@ -21,7 +21,7 @@ en las pantallas de SocialMod. Reactivar estilos recupera el layout guardado.
 7. Guarda el layout con **Ctrl + S**. La configuración se guarda en FancyMenu, no en un perfil de SocialMod.
 
 El estandarte utiliza los datos reales del TEAM. Si cambia el equipo o su diseño, se actualiza la vista.
-Sin un TEAM disponible se muestra un aviso; añadir el elemento no crea un equipo ni otorga permisos.
+Sin un TEAM disponible se muestra un estandarte blanco; añadir el elemento no crea un equipo ni otorga permisos.
 
 ## Módulos completos y controles separados
 
@@ -98,8 +98,8 @@ consultando el historial. Los módulos movidos o escalados envían los eventos a
 ## Estandarte y TAG del TEAM
 
 **SocialMod: TEAM banner / Estandarte del TEAM** muestra un estandarte blanco cuando no hay equipo.
-Al pulsarlo abre el editor si eres líder o administrador y el equipo no está archivado. Sin equipo o permisos
-permanece inactivo. La acción **SocialMod: Editor de estandarte** (`socialmod_edit_team_banner`) permite abrir
+Al pulsarlo abre el editor si eres líder o administrador y el equipo no está archivado. Si falta el equipo o
+no tienes permiso, muestra un aviso que explica el motivo y permite volver a la pantalla. La acción **SocialMod: Editor de estandarte** (`socialmod_edit_team_banner`) permite abrir
 el mismo editor desde cualquier botón de FancyMenu en una pantalla social:
 
 ```json
@@ -120,3 +120,11 @@ su apariencia y sus filas al diseño predeterminado y se desactivan sus layouts.
 imágenes del usuario y los layouts ajenos. El ejemplo neutro `clean` sigue disponible en `docs/examples/series/`.
 
 Creado por TakumiStudios.
+
+## Gestión del TEAM
+
+Al abrir Gestionar se conserva el TEAM seleccionado en el catálogo; si no habías seleccionado ninguno, se carga
+tu TEAM actual. El nombre y el color iniciales corresponden a ese destino. Sin destino, los botones que requieren
+un TEAM quedan desactivados y su ayuda indica que debes elegir uno de la lista. El título muestra el TEAM que
+estás editando. Los errores de nombre, color, emblema, jugador y permisos se explican por separado, también
+al usar comandos.
