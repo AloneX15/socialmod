@@ -67,9 +67,13 @@ public final class SocialElements {
             element.form = bounded(data.getValue("social_form"), "main");
             element.control = bounded(data.getValue("social_control"), "");
             element.hideOriginal = !"false".equals(data.getValue("social_hide_original"));
+            if(data.getValue("social_show_controls")!=null)element.showControls = !"false".equals(data.getValue("social_show_controls"));
+            element.showBackground = !"false".equals(data.getValue("social_show_background"));
             return element;
         }
         @Override protected SerializedElement serializeElement(Element e, SerializedElement data) {
+            data.putProperty("social_show_controls", String.valueOf(e.showControls));
+            data.putProperty("social_show_background", String.valueOf(e.showBackground));
             data.putProperty("social_hide_original", String.valueOf(e.hideOriginal)); data.putProperty("social_module", e.module); data.putProperty("social_context", e.context);
             data.putProperty("social_target", e.target); data.putProperty("social_form", e.form); data.putProperty("social_control", e.control); return data;
         }
@@ -80,7 +84,7 @@ public final class SocialElements {
     }
     private static String bounded(String value, String fallback) { return value == null ? fallback : value.length() <= 180 && value.chars().noneMatch(c -> c < 32) ? value : fallback; }
     public static final class Element extends AbstractElement {
-        public boolean hideOriginal = true;
+        public boolean hideOriginal = true, showControls, showBackground = true;
         public String module, context = "self", target = "", form = "main", control = "";
         private final Builder socialBuilder;
         private SocialComponents.Form session;
@@ -108,7 +112,7 @@ public final class SocialElements {
         };
         @Override public List<net.minecraft.client.gui.components.events.GuiEventListener> getWidgetsToRegister() { return socialBuilder.kind.equals("data") || socialBuilder.kind.equals("team_tag_view") ? List.of() : List.of(input); }
         Element(Builder builder) {
-            super(builder); socialBuilder = builder; module = builder.initial;
+            super(builder); socialBuilder = builder; module = builder.initial; showControls = !List.of("conversations","players").contains(module);
             baseWidth = builder.kind.equals("banner_view") ? 60 : builder.kind.equals("data") || builder.kind.equals("team_tag_view") ? 150 : builder.kind.equals("control") ? 160 : builder.initial.equals("basic") ? 540 : 400;
             baseHeight = builder.kind.equals("banner_view") ? 120 : builder.kind.equals("data") || builder.kind.equals("team_tag_view") || builder.kind.equals("control") ? 20 : 300;
         }
@@ -166,7 +170,14 @@ public final class SocialElements {
                     withWidgetBounds(widget, () -> FancyBridge.present(input, () -> widget.extractRenderState(graphics,mx,my,delta)));
                 } else {
                     graphics.pose().translate(x,y); graphics.pose().scale(scale(),scale()); graphics.pose().translate(-region[0],-region[1]-scroll);
-                    SocialComponents.scoped(() -> session.render(() -> session.screen.extractRenderState(graphics,(int)localX(mx),(int)localY(my),delta), FancyBackend.hudTick));
+                    SocialComponents.scoped(() -> session.render(() -> {
+                        if (session.screen instanceof SocialScreen social) {
+                            social.drawComponent(module, graphics, (int)localX(mx), (int)localY(my), showBackground, showControls);
+                            if (showControls) for(var widget : session.controls())
+                                if (!(widget instanceof SocialBlockWidget) && !(widget instanceof SocialBackgroundWidget))
+                                    widget.extractRenderState(graphics,(int)localX(mx),(int)localY(my),delta);
+                        } else session.screen.extractRenderState(graphics,(int)localX(mx),(int)localY(my),delta);
+                    }, FancyBackend.hudTick));
                 }
             } catch (RuntimeException | LinkageError e) { fail(e); }
             finally { graphics.pose().popMatrix(); graphics.disableScissor(); }
@@ -189,7 +200,7 @@ public final class SocialElements {
             focused = true;
             try {
                 if (isControl()) { var widget=widget(); if(widget==null) return false; session.screen.setFocused(widget); return withWidgetBounds(widget, () -> SocialComponents.scoped(() -> widget.mouseClicked(e,twice))); }
-                return SocialComponents.scoped(() -> session.originalControls(() -> session.screen.mouseClicked(mapped(e),twice), FancyBackend.hudTick));
+                return SocialComponents.scoped(() -> session.originalControls(() -> !showControls && session.screen instanceof SocialScreen ? session.contentOnly(() -> session.screen.mouseClicked(mapped(e),twice)) : session.screen.mouseClicked(mapped(e),twice), FancyBackend.hudTick));
             } catch (RuntimeException | LinkageError error) { fail(error); return false; }
         }
         @Override public boolean mouseReleased(MouseButtonEvent e) {
@@ -202,11 +213,11 @@ public final class SocialElements {
         }
         @Override public boolean mouseScrolled(double x,double y,double dx,double dy) {
             if (session==null || !enabled() || !isMouseOver(x,y) || isControl()) return false;
-            if (guardedInput(()->SocialComponents.scoped(()->session.originalControls(()->session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy), FancyBackend.hudTick)))) return true;
+            if (guardedInput(()->SocialComponents.scoped(()->session.originalControls(()-> !showControls && session.screen instanceof SocialScreen ? session.contentOnly(()->session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy)) : session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy), FancyBackend.hudTick)))) return true;
             int maximum=Math.max(0,region[3]-(int)(getAbsoluteHeight()/scale())); scroll=Math.clamp(scroll-(int)(dy*20),0,maximum); return true;
         }
-        @Override public boolean keyPressed(KeyEvent e) { return focused && session!=null && enabled() && guardedInput(()->SocialComponents.scoped(()->session.screen.keyPressed(e))); }
-        @Override public boolean charTyped(CharacterEvent e) { return focused && session!=null && enabled() && guardedInput(()->SocialComponents.scoped(()->session.screen.charTyped(e))); }
+        @Override public boolean keyPressed(KeyEvent e) { return focused && session!=null && (showControls || !(session.screen instanceof SocialScreen)) && enabled() && guardedInput(()->SocialComponents.scoped(()->session.screen.keyPressed(e))); }
+        @Override public boolean charTyped(CharacterEvent e) { return focused && session!=null && (showControls || !(session.screen instanceof SocialScreen)) && enabled() && guardedInput(()->SocialComponents.scoped(()->session.screen.charTyped(e))); }
         @Override public void setFocused(boolean value) { focused=value; }
         @Override public boolean isFocused() { return focused; }
         @Override public boolean isMouseOver(double x,double y) { return containsMousePosition(x,y); }
@@ -241,6 +252,10 @@ public final class SocialElements {
             addRenderableWidget(Ui.button(label("context."+element.context),b->{capture();var contexts=List.of("self","selected","fixed");element.context=contexts.get((contexts.indexOf(element.context)+1)%contexts.size());rebuildWidgets();}).bounds(x,y,w,20).build()); y+=24;
             destination=new StyledEditBox(font,x,y,w,20,label("target")); destination.setMaxLength(180);destination.setValue(element.target);destination.setHint(label("target"));addRenderableWidget(destination);y+=24;
             formName=new StyledEditBox(font,x,y,w,20,label("form"));formName.setMaxLength(64);formName.setValue(element.form);formName.setHint(label("form"));addRenderableWidget(formName);y+=24;
+            if (!element.isControl() && List.of("conversations","players","chat").contains(element.module)) {
+                addRenderableWidget(Ui.button(Component.translatable("socialmod.catalog.show_controls", Component.translatable(element.showControls ? "gui.yes" : "gui.no")), b -> { capture();element.showControls=!element.showControls;rebuildWidgets(); }).bounds(x,y,w,20).build()); y+=24;
+                addRenderableWidget(Ui.button(Component.translatable("socialmod.catalog.show_background", Component.translatable(element.showBackground ? "gui.yes" : "gui.no")), b -> { capture();element.showBackground=!element.showBackground;rebuildWidgets(); }).bounds(x,y,w,20).build()); y+=24;
+            }
             if(element.isControl()) {
                 var realHost=back instanceof LayoutEditorScreen editor?editor.layoutTargetScreen:SocialComponents.supported(back)?back:host();
                 var session=SocialComponents.form(realHost,element.module,element.context,element.target,element.form);

@@ -673,5 +673,8 @@
   "socialmod.catalog.module.quick_reply": "Quick reply",
   "socialmod.catalog.module.group_style": "Edit group color and icon",
   "socialmod.catalog.module.create_group_style": "Edit new group tag style",
-  "socialmod.catalog.module.tag_banner": "Edit banner in tag draft"
+  "socialmod.catalog.module.tag_banner": "Edit banner in tag draft",
+  "socialmod.advanced.block.background": "Panel background",
+  "socialmod.catalog.show_controls": "Show native controls: %s",
+  "socialmod.catalog.show_background": "Show panel background: %s"
 }

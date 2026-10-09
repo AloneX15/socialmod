@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fondo del panel editable y ocultable en FancyMenu; listas de conversaciones y jugadores sin controles integrados por defecto, con fondo opcional y miembros del TEAM en layouts estrechos.
+
 - FancyMenu Add Action incluye accesos individuales a todos los módulos, gestión de TEAM, personalización, editores, respuesta rápida, volver y subpaneles de estilo con borradores compartidos.
 
 - El estandarte de FancyMenu conserva el clic cuando queda una referencia al editor ya cerrado; se comprueba la pantalla activa.

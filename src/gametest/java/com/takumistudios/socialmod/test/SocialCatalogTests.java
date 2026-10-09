@@ -106,6 +106,13 @@ final class SocialCatalogTests {
             var control=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_control").buildDefaultInstance();control.module="settings";control.form="shared";control.control=form.key(field);control.anchorPoint=ElementAnchorPoints.TOP_LEFT;control.posOffsetX=260;control.posOffsetY=60;control.baseWidth=220;control.setInstanceIdentifier("catalog_field");layout.serializedElements.add(control.getBuilder().serializeElementInternal(control));
             var search=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_module_search").buildDefaultInstance();search.anchorPoint=ElementAnchorPoints.TOP_LEFT;search.posOffsetX=260;search.posOffsetY=90;search.baseWidth=250;search.baseHeight=200;search.setInstanceIdentifier("catalog_search");layout.serializedElements.add(search.getBuilder().serializeElementInternal(search));
             var chat=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_module_chat").buildDefaultInstance();chat.context="fixed";chat.target=conversation;chat.form="history";chat.anchorPoint=ElementAnchorPoints.TOP_LEFT;chat.posOffsetX=520;chat.posOffsetY=60;chat.baseWidth=220;chat.baseHeight=230;chat.setInstanceIdentifier("catalog_chat");layout.serializedElements.add(chat.getBuilder().serializeElementInternal(chat));
+            var players=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_module_players").buildDefaultInstance();
+            players.context="fixed";players.target=ClientState.get().snapshot().self.mainGroup;players.form="players_test";players.anchorPoint=ElementAnchorPoints.TOP_LEFT;
+            players.posOffsetX=10;players.posOffsetY=310;players.baseWidth=180;players.baseHeight=140;players.showBackground=false;players.setInstanceIdentifier("catalog_players");
+            layout.serializedElements.add(players.getBuilder().serializeElementInternal(players));
+            var conversations=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_module_conversations").buildDefaultInstance();
+            conversations.anchorPoint=ElementAnchorPoints.TOP_LEFT;conversations.posOffsetX=200;conversations.posOffsetY=310;conversations.baseWidth=200;conversations.baseHeight=140;conversations.showBackground=false;conversations.setInstanceIdentifier("catalog_conversations");
+            layout.serializedElements.add(conversations.getBuilder().serializeElementInternal(conversations));
             var groupButton=conv.controls().stream().filter(widget->com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identifier(widget).equals("button_socialmod.panel.new_group")).findFirst().orElseThrow();
             var group=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_control").buildDefaultInstance();group.module="conversations";group.control=conv.key(groupButton);group.anchorPoint=ElementAnchorPoints.TOP_LEFT;group.posOffsetX=80;group.posOffsetY=270;group.baseWidth=140;group.baseHeight=20;group.setInstanceIdentifier("catalog_group");layout.serializedElements.add(group.getBuilder().serializeElementInternal(group));
             var path=client.gameDirectory.toPath().resolve("config/fancymenu/customization/socialmod_catalog_test.txt");
@@ -146,6 +153,28 @@ final class SocialCatalogTests {
             if(HistoryInteractionTests.number(form.screen,"chatScroll")!=HistoryInteractionTests.number(form.screen,"historyMaximum"))throw new AssertionError("Scaled scrollbar mapping failed");
         });context.waitTicks(3);
         context.takeScreenshot("catalog_01_banner_and_controls");
+        context.runOnClient(client->{
+            var host=ClientCompat.currentScreen();var layer=ScreenCustomizationLayerHandler.getLayerOfScreen(host);
+            var players=(SocialElements.Element)layer.getElementByInstanceIdentifier("catalog_players");
+            var conversations=(SocialElements.Element)layer.getElementByInstanceIdentifier("catalog_conversations");
+            if(players.showControls || conversations.showControls || players.showBackground || conversations.showBackground)throw new AssertionError("Content-only settings not restored");
+            var playerForm=SocialComponents.form(host,"players","fixed",ClientState.get().snapshot().self.mainGroup,"players_test");
+            if(playerForm.region()[2]<=1)throw new AssertionError("Embedded players column collapsed in narrow layout");
+            var rows=(Ui.RowList)read(playerForm.screen,"right");
+            if(rows.rows.size()<2)throw new AssertionError("Players module did not render group member and online self");
+            var convForm=SocialComponents.form(host,"conversations","self","","main");
+            convForm.contentOnly(()-> {if(convForm.controls().stream().anyMatch(w->w.visible))throw new AssertionError("Content-only panel retained native controls");return null;});
+            var background=layer.vanillaWidgetElements.stream().filter(e->"socialmod_panel_background".equals(e.getInstanceIdentifier())).findFirst().orElseThrow(()->new AssertionError("Panel background not discoverable in FancyMenu"));
+            var widget=background.widgetMeta.getWidget();
+            ((de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)widget).setHiddenFancyMenu(true);
+            if(!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.hidden(widget))throw new AssertionError("Panel background cannot be hidden");
+        });context.waitTicks(3);
+        context.takeScreenshot("catalog_03_content_only_transparent_background");
+        context.runOnClient(client->{
+            var host=ClientCompat.currentScreen();
+            var background=net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(host).stream().filter(w->com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identifier(w).equals("panel_background")).findFirst().orElseThrow();
+            ((de.keksuccino.fancymenu.util.rendering.ui.widget.CustomizableWidget)(Object)background).setHiddenFancyMenu(false);
+        });
         context.runOnClient(client->{
             var host=ClientCompat.currentScreen();var group=(SocialElements.Element)ScreenCustomizationLayerHandler.getLayerOfScreen(host).getElementByInstanceIdentifier("catalog_group");
             boolean handled=host.mouseClicked(new MouseButtonEvent(group.getAbsoluteX()+5,group.getAbsoluteY()+5,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false);

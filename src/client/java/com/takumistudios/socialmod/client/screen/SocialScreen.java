@@ -121,6 +121,17 @@ public class SocialScreen extends Screen {
     public @Nullable String selectedConversation() {
         return selected;
     }
+    private boolean componentControls = true;
+    /** Embedded modules select their own column even when the native theme uses tabs. */
+    public void prepareComponent(String module) {
+        tab = module.equals("players") ? Tab.PLAYERS : module.equals("conversations") ? Tab.CONVERSATIONS : Tab.CHAT;
+    }
+    public void drawComponent(String kind, GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean background, boolean controls) {
+        boolean previous = componentControls; componentControls = controls;
+        int[] bounds = componentRegion(kind);
+        try { drawBlock(kind, graphics, mouseX, mouseY, bounds[0], bounds[1], bounds[2], bounds[3], background); }
+        finally { componentControls = previous; }
+    }
     public int[] componentRegion(String kind) {
         return switch (kind) {
             case "conversations" -> new int[]{convX, top, Math.max(1, convW), bottom - top};
@@ -164,6 +175,11 @@ public class SocialScreen extends Screen {
             top += (areaH - panelH) / 2; bottom = top + panelH;
         }
         frameLeft = leftEdge; frameTop = top; frameRight = rightEdge; frameBottom = bottom;
+        if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
+            boolean full = VisualManager.get().mode.equals("full");
+            addRenderableWidget(new SocialBackgroundWidget(full ? 0 : frameLeft - 3, full ? 0 : frameTop - 3,
+                    full ? width : frameRight - frameLeft + 6, full ? height : frameBottom - frameTop + 6, full));
+        }
         int available = rightEdge - leftEdge;
 
         Theme theme = Ui.theme();
@@ -713,8 +729,10 @@ public class SocialScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Theme theme = Ui.theme();
-        if (VisualManager.get().mode.equals("full")) Ui.background(graphics, this.width, this.height);
-        else Ui.panel(graphics, frameLeft - 3, frameTop - 3, frameRight + 3, frameBottom + 3);
+        if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
+            if (VisualManager.get().mode.equals("full")) Ui.background(graphics, this.width, this.height);
+            else Ui.panel(graphics, frameLeft - 3, frameTop - 3, frameRight + 3, frameBottom + 3);
+        }
 
         if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
         if (convW > 0) {
@@ -738,9 +756,12 @@ public class SocialScreen extends Screen {
         return !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available();
     }
     public void drawBlock(String kind, GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h) {
+        drawBlock(kind, graphics, mouseX, mouseY, x, y, w, h, true);
+    }
+    private void drawBlock(String kind, GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, boolean background) {
         int oldTop = top, oldBottom = bottom; top = y; bottom = y + h;
         try {
-            Ui.panel(graphics, x, y, x + w, y + h);
+            if (background) Ui.panel(graphics, x, y, x + w, y + h);
             switch (kind) {
                 case "conversations" -> { convX = x; convW = w; drawConversations(graphics, mouseX, mouseY); }
                 case "chat" -> { chatX = x; chatW = w; drawChat(graphics, mouseX, mouseY); }
@@ -758,8 +779,8 @@ public class SocialScreen extends Screen {
         SnapshotDto snapshot = state.snapshot();
         int x = convX + 3;
         int w = convW - 6;
-        int viewTop = top + 20;
-        int viewBottom = bottom - mainButtonHeight() - 5;
+        int viewTop = top + (componentControls ? 20 : 3);
+        int viewBottom = bottom - (componentControls ? mainButtonHeight() + 5 : 3);
         left.begin(convX, viewTop, convW, viewBottom - viewTop);
         graphics.enableScissor(convX, viewTop, convX + convW, viewBottom);
         int y = 0;
@@ -1300,7 +1321,7 @@ public class SocialScreen extends Screen {
         int x = playersX + 3;
         int w = playersW - 6;
         int viewTop = top + 3;
-        int viewBottom = bottom - mainButtonHeight() - 5;
+        int viewBottom = bottom - (componentControls ? mainButtonHeight() + 5 : 3);
         right.begin(playersX, viewTop, playersW, viewBottom - viewTop);
         graphics.enableScissor(playersX, viewTop, playersX + playersW, viewBottom);
         int y = 0;

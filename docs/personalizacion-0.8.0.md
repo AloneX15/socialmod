@@ -143,3 +143,15 @@ Las acciones de estilo de grupo, grupo nuevo y estandarte del borrador TAG reuti
 conservando el borrador del formulario `main` (o el nombre que configures). El selector de **Control independiente**
 permite escoger los controles que dependen de la propiedad o página actual del editor.
 Los cuatro identificadores anteriores siguen funcionando en los layouts guardados.
+
+## Fondo y paneles sin controles
+
+FancyMenu reconoce el fondo nativo como **Fondo del panel** (`socialmod_panel_background`). Puedes ocultarlo,
+moverlo, cambiar sus dimensiones o sustituir su textura sin ocultar las listas.
+
+Los elementos **SocialMod: Conversaciones** y **SocialMod: Jugadores** muestran solo su contenido por defecto.
+En su configuración, **Mostrar controles nativos** permite recuperar la búsqueda y botones integrados;
+**Mostrar fondo del panel** permite dejar el contenido transparente sobre tu imagen de FancyMenu.
+Los controles independientes siguen disponibles aunque estén desactivados dentro del panel.
+Jugadores dispone de su propia columna en distribuciones estrechas o con pestañas y carga los miembros del
+TEAM del contexto configurado, además de los jugadores conectados. Usa `self`, `selected` o un ID `fixed`.

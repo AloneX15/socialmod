@@ -115,7 +115,11 @@ public final class SocialComponents {
         var team = ClientState.get().snapshot().teams.stream().filter(t -> t.id.equals(groupId)).findFirst().orElse(null);
         boolean teamEdit = team != null && !team.archived && (ClientState.get().snapshot().teamAdmin || team.leader.equals(ClientState.get().snapshot().self.uuid));
         return switch (module) {
-            case "conversations", "players" -> new SocialScreen(null);
+            case "conversations" -> new SocialScreen(null);
+            case "players" -> {
+                String conversation = target.startsWith("g:") || target.startsWith("dm:") ? target : group == null || group.channels.isEmpty() ? null : "g:" + group.id + ":" + group.channels.getFirst().name;
+                yield new SocialScreen(conversation);
+            }
             case "chat" -> {
                 String conversation = target.startsWith("g:") || target.startsWith("dm:") ? target : group == null || group.channels.isEmpty() ? null : "g:" + group.id + ":" + group.channels.getFirst().name;
                 yield conversation == null || com.takumistudios.socialmod.common.model.ConversationId.parse(conversation) == null ? null : new SocialScreen(conversation);
@@ -159,6 +163,11 @@ public final class SocialComponents {
             detached.forEach((widget,stamp) -> { if (stamp >= tick - 1 && widget.visible) { hidden.add(widget); widget.visible = false; } });
             try { return draw.get(); } finally { hidden.forEach(widget -> widget.visible = true); }
         }
+        public <T> T contentOnly(Supplier<T> work) {
+            var hidden = new ArrayList<AbstractWidget>();
+            for (var widget : controls()) if (!(widget instanceof SocialBlockWidget) && widget.visible) { hidden.add(widget); widget.visible=false; }
+            try { return work.get(); } finally { for(var widget : hidden) widget.visible=true; }
+        }
         public void render(Runnable draw, long tick) { originalControls(() -> { draw.run(); return null; }, tick); }
         public final Screen screen;
         public final String module, target;
@@ -167,7 +176,9 @@ public final class SocialComponents {
         private Form(Screen host, Screen screen, String module, String target) {
             this.host = host; this.screen = screen; this.module = module; this.target = target;
             int canvasWidth=screen instanceof SocialScreen || screen instanceof VisualEditorScreen ? 540 : 400;
-            OWNERS.put(screen, new java.lang.ref.WeakReference<>(host)); scoped(() -> screen.init(canvasWidth, 340));
+            OWNERS.put(screen, new java.lang.ref.WeakReference<>(host));
+            if (screen instanceof SocialScreen social) social.prepareComponent(module);
+            scoped(() -> screen.init(canvasWidth, 340));
             if(screen instanceof SocialScreen social && social.selectedConversation()!=null) {
                 var cache=ClientState.get().conversation(social.selectedConversation());if(!cache.requested) { cache.requested=true;ClientNet.history(social.selectedConversation(),0); }
             }

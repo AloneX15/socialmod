@@ -673,5 +673,8 @@
   "socialmod.catalog.module.quick_reply": "Respuesta rápida",
   "socialmod.catalog.module.group_style": "Editar color e icono del grupo",
   "socialmod.catalog.module.create_group_style": "Editar estilo del grupo nuevo",
-  "socialmod.catalog.module.tag_banner": "Editar estandarte del borrador del TAG"
+  "socialmod.catalog.module.tag_banner": "Editar estandarte del borrador del TAG",
+  "socialmod.advanced.block.background": "Fondo del panel",
+  "socialmod.catalog.show_controls": "Mostrar controles nativos: %s",
+  "socialmod.catalog.show_background": "Mostrar fondo del panel: %s"
 }

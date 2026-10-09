@@ -289,3 +289,12 @@ Los perfiles FancyMenu agotaron el tiempo después de las comprobaciones de UI. 
 ### Catálogo incompleto de Add Action
 
 FancyMenu solo registraba cuatro acciones aunque había más paneles navegables. Se registran acciones individuales para todos los módulos y accesos de editor, volver y subpaneles de borradores. La prueba de cliente ejecuta las acciones reales y comprueba el destino de gestión de TEAM y los subpaneles de estilo.
+
+### Fondo no editable y módulos de listas incompletos en FancyMenu
+
+El marco se dibujaba fuera de los widgets y no aparecía en el editor. Jugadores heredaba la pestaña Chat,
+con una columna de ancho cero en distribuciones estrechas, y el formulario no cargaba el grupo del contexto.
+Conversaciones renderizaba toda la pantalla recortada, incluidos búsqueda y botones. Se añade un widget
+independiente de fondo, se prepara la columna y conversación de cada módulo y se renderiza su contenido
+con opciones persistentes para controles y fondo. El gametest comprueba el fondo ocultable, miembros y
+jugador conectado, las dimensiones y la restauración de las opciones, con captura del contenido transparente.
