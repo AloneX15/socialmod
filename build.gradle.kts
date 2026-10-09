@@ -201,7 +201,7 @@ if (project.hasProperty("seriesPack")) {
         systemProperty("socialmod.test.seriesPack", "true")
         doFirst {
             project.copy {
-                val style = project.findProperty("seriesPack").toString().let { if (it == "dedsafio") it else "christmas" }
+                val style = "clean"
                 from(zipTree(rootProject.file("docs/examples/series/$style-$mcVersion.zip")))
                 into(project.layout.buildDirectory.dir("run/clientGameTest"))
             }

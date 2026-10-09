@@ -138,14 +138,14 @@ public class SocialModGameTests {
     }
 
     @GameTest
-    public void christmasPresetSharesTexturesFontAndFrameSettings(GameTestHelper helper) {
+    public void neutralPresetSharesSettings(GameTestHelper helper) {
         SocialServer social = social(helper); ServerPlayer first = player(helper), second = player(helper);
         var previous = social.visuals().design().copy();
-        var preset = com.takumistudios.socialmod.common.model.VisualPresets.christmas();
+        var preset = com.takumistudios.socialmod.common.model.SeriesTemplates.visual("clean");
         social.visuals().publish(com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(preset), "test");
         var a = social.snapshots().build(first).visual; var b = social.snapshots().build(second).visual;
-        check(helper, a.font.equals("socialmod:christmas") && b.font.equals(a.font), "Christmas font differs between players");
-        check(helper, a.panelInset == 20 && b.inputTexture.equals(preset.inputTexture), "Christmas frame/input settings not shared");
+        check(helper, a.font.equals("minecraft:default") && b.font.equals(a.font), "Neutral font differs between players");
+        check(helper, a.panelInset == 0 && b.inputTexture.equals(preset.inputTexture), "Neutral frame/input settings not shared");
         social.visuals().publish(com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(previous), "test cleanup");
         check(helper, social.snapshots().build(first).visual.font.equals(previous.font), "Previous design not restored");
         helper.succeed();

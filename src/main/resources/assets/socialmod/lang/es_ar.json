@@ -464,7 +464,6 @@
   "socialmod.visual.template.compact": "Compacta",
   "socialmod.visual.template.sidebar": "Lateral",
   "socialmod.visual.template.full": "Pantalla completa",
-  "socialmod.visual.template.christmas": "Navidad: botones ilustrados",
   "socialmod.visual.property.panelInset": "Margen del marco",
   "socialmod.visual.property.inputTexture": "Textura de campo",
   "socialmod.visual.property.inputFocusTexture": "Campo enfocado",
@@ -578,10 +577,8 @@
   "socialmod.series.backup_hint": "Crea un respaldo; los diseños incluidos también desactivan el otro ejemplo.",
   "socialmod.advanced.design": "Diseño: %s",
   "socialmod.advanced.design.clean": "Social limpio",
-  "socialmod.advanced.design.dedsafio": "Inspirado en Dedsafío 4",
   "socialmod.advanced.install": "Instalar diseño con respaldo",
-  "socialmod.visual.template.clean": "Social limpio",
-  "socialmod.visual.template.dedsafio": "Inspirado en Dedsafío 4",
+  "socialmod.visual.template.clean": "Normal",
   "socialmod.series.unversioned": "Versiones de mods sin especificar; comprueba su compatibilidad.",
   "socialmod.sync.oversized": "El estado social supera 8 MiB. Reduce los límites del servidor; los comandos siguen disponibles.",
   "socialmod.sync.retry": "Recuperando la sincronización del panel social…",
@@ -589,9 +586,6 @@
   "socialmod.panel.no_motd": "Sin mensaje fijado",
   "socialmod.advanced.invalid_property": "Revisa el campo %s y los recursos del diseño.",
   "socialmod.error.storage_unavailable": "El historial no está disponible temporalmente. Cierra y vuelve a abrir la conversación para reintentar.",
-  "socialmod.advanced.design.christmas": "Navidad gráfica",
-  "socialmod.advanced.festive_frame": "Borde navideño",
-  "socialmod.advanced.festive_icon": "Icono navideño (tree, candy, santa…)",
   "socialmod.banner.title": "Estandarte",
   "socialmod.banner.edit": "Editar estandarte del TEAM",
   "socialmod.banner.base": "Color base: %s",
@@ -650,5 +644,7 @@
   "socialmod.catalog.target": "Destino fijo: ID de TEAM/grupo o UUID del jugador",
   "socialmod.catalog.unavailable": "Sin datos o permisos para este contexto",
   "socialmod.catalog.module.basic": "Editor visual básico",
-  "socialmod.catalog.module.rows": "Editor de filas"
+  "socialmod.catalog.module.rows": "Editor de filas",
+  "socialmod.catalog.team_tag_view": "TAG del TEAM con icono",
+  "socialmod.catalog.hide_original": "Ocultar control original: %s"
 }

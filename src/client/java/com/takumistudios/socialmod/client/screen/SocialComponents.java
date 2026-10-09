@@ -142,6 +142,14 @@ public final class SocialComponents {
     }
     public static void clear() { for (var forms : FORMS.values()) for (var form : forms.values()) form.close(); FORMS.clear(); OWNERS.clear(); SELECTIONS.clear();if(presenceSubscribed){presenceSubscribed=false;ClientNet.action(SocialAction.PANEL_CLOSE,"");} }
     public static final class Form {
+        private final Map<AbstractWidget,Long> detached = new WeakHashMap<>();
+        public void detach(AbstractWidget widget, long tick) { detached.put(widget,tick); }
+        public <T> T originalControls(Supplier<T> draw, long tick) {
+            var hidden = new ArrayList<AbstractWidget>();
+            detached.forEach((widget,stamp) -> { if (stamp >= tick - 1 && widget.visible) { hidden.add(widget); widget.visible = false; } });
+            try { return draw.get(); } finally { hidden.forEach(widget -> widget.visible = true); }
+        }
+        public void render(Runnable draw, long tick) { originalControls(() -> { draw.run(); return null; }, tick); }
         public final Screen screen;
         public final String module, target;
         public final Screen host;

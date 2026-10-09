@@ -3,7 +3,6 @@ package com.takumistudios.socialmod.client.screen;
 import com.takumistudios.socialmod.client.theme.VisualText;
 
 import com.takumistudios.socialmod.client.theme.VisualManager;
-import com.takumistudios.socialmod.client.theme.ChristmasSkin;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -15,15 +14,9 @@ import net.minecraft.resources.Identifier;
 /** Native button behavior with resource-pack and design-controlled presentation. */
 public final class StyledButton extends Button {
     private boolean selected;
-    private final ChristmasSkin.Role skinRole;
-    private final String skinIcon;
-    private long pressedUntil;
     private final Component actionLabel;
-    private StyledButton(int x, int y, int w, int h, Component text, OnPress press) { super(x, y, w, h, text, press, DEFAULT_NARRATION); actionLabel = text.copy(); skinRole=ChristmasSkin.role(text);skinIcon=ChristmasSkin.icon(text,skinRole); }
+    private StyledButton(int x, int y, int w, int h, Component text, OnPress press) { super(x, y, w, h, text, press, DEFAULT_NARRATION); actionLabel = text.copy(); }
     @Override protected net.minecraft.network.chat.MutableComponent createNarrationMessage() { return actionLabel.copy(); }
-    public ChristmasSkin.Role skinRole() { return skinRole; }
-    public String skinIcon() { return skinIcon; }
-    @Override public void onPress(net.minecraft.client.input.InputWithModifiers input) { pressedUntil=net.minecraft.util.Util.getMillis()+140;super.onPress(input); }
     @Override protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         boolean contrast = com.takumistudios.socialmod.client.ClientConfig.get().accessibility.highContrast;
         var design = VisualManager.get(); var rect = VisualManager.rect(this);
@@ -31,45 +24,31 @@ public final class StyledButton extends Button {
         if (rect != null && !rect.texture.isEmpty()) texture = rect.texture;
         if (contrast) texture = "";
         boolean externalBackground = !contrast && com.takumistudios.socialmod.client.compat.fancy.FancyBridge.buttonBackground(this, graphics);
-        boolean christmas=ChristmasSkin.enabled() && texture.isEmpty() && !externalBackground;
-        if(christmas)ChristmasSkin.button(graphics,this,skinRole,selected,net.minecraft.util.Util.getMillis()<pressedUntil);
-        else if (!externalBackground && !texture.isEmpty()) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.parse(texture), getX(), getY(), getWidth(), getHeight());
+        if (!externalBackground && !texture.isEmpty()) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.parse(texture), getX(), getY(), getWidth(), getHeight());
         else if (!externalBackground) graphics.fill(getX(), getY(), getRight(), getBottom(), contrast ? (selected ? 0xFF303030 : 0xFF000000) : !active ? design.buttonDisabledColor : isHoveredOrFocused() ? design.buttonHoverColor : design.buttonColor);
-        for (int i = 0; !christmas && !externalBackground && texture.isEmpty() && i < (contrast ? 1 : design.borderWidth); i++) graphics.outline(getX() + i, getY() + i, Math.max(1, getWidth() - i * 2), Math.max(1, getHeight() - i * 2), Ui.theme().colors().border());
+        for (int i = 0; !externalBackground && texture.isEmpty() && i < (contrast ? 1 : design.borderWidth); i++) graphics.outline(getX() + i, getY() + i, Math.max(1, getWidth() - i * 2), Math.max(1, getHeight() - i * 2), Ui.theme().colors().border());
         var label = com.takumistudios.socialmod.client.compat.fancy.FancyBridge.label(this).copy();
         var externalIcon = com.takumistudios.socialmod.client.compat.fancy.FancyBridge.skinTexture(this, true);
         if (externalIcon != null) {
             int size = Math.max(1, Math.min(getWidth() - 4, getHeight() - 4));
             graphics.blit(RenderPipelines.GUI_TEXTURED, externalIcon.id(), getX() + (getWidth() - size) / 2, getY() + (getHeight() - size) / 2, 0, 0, size, size, externalIcon.width(), externalIcon.height(), externalIcon.width(), externalIcon.height());
         }
-        if(design.seriesStyle.equals("dedsafio") && !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.customLabel(this) && getMessage().getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents translated) {
-            String icon=switch(translated.getKey()) { case "socialmod.team.title" -> "⚑ "; case "socialmod.visual.title" -> "✦ "; case "socialmod.panel.settings" -> "☷ "; case "socialmod.panel.new_group" -> "+ "; default -> ""; };
-            if(!icon.isEmpty())label=Component.literal(icon).append(label);
-        }
+
         if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.customLabel(this))
             label.withStyle(style -> style.withFont(new net.minecraft.network.chat.FontDescription.Resource(Identifier.parse(design.font))));
         if (rect != null) label.withStyle(style -> style.withColor(rect.textColor));
-        int padding = christmas ? ChristmasSkin.labelPadding(getWidth(),getHeight()) : Math.min(design.padding, Math.max(0, (getWidth() - 8) / 2));
-        int iconSize=christmas?Math.min(16,Math.max(8,getHeight()-8)):0;
-        boolean compact=christmas && (getWidth()<90 || getMessage().getString().length()<2);
+        int padding = Math.min(design.padding, Math.max(0, (getWidth() - 8) / 2));
         var font = Minecraft.getInstance().font;
-        if(compact) {
-            String glyph=getMessage().getString();
-            if(glyph.length()==1 && !glyph.equals("➤") && !glyph.equals("⌖") && !glyph.equals("✦"))graphics.text(font,label,getX()+(getWidth()-font.width(label))/2,getY()+(getHeight()-font.lineHeight)/2,skinRole.darkText?0xFF252019:active?0xFFFFFFFF:0xFFAAAAAA);
-            else ChristmasSkin.buttonIcon(graphics,this,skinIcon,getX()+(getWidth()-iconSize)/2,getY()+(getHeight()-iconSize)/2,iconSize);
-            return;
-        }
-        int available = Math.max(1, getWidth() - 2 * padding - (christmas ? iconSize+3 : 0)), textWidth = font.width(label);
-        if(christmas && textWidth>available) { label=Component.literal(font.plainSubstrByWidth(label.getString(),Math.max(1,available-font.width("…")))+"…").withStyle(label.getStyle());textWidth=font.width(label); }
-        if(christmas)ChristmasSkin.buttonIcon(graphics,this,skinIcon,getX()+padding,getY()+(getHeight()-iconSize)/2,iconSize);
+
+        int available = Math.max(1, getWidth() - 2 * padding), textWidth = font.width(label);
         float fit = Math.max(.75f, Math.min(1, (float) available / Math.max(1, textWidth)));
         float scale = com.takumistudios.socialmod.client.compat.fancy.FancyBridge.labelScale(this) * fit;
         if (!Float.isFinite(scale) || scale <= 0) return;
         boolean shadow = com.takumistudios.socialmod.client.compat.fancy.FancyBridge.labelShadow(this);
-        int color = rect == null ? christmas && skinRole.darkText ? 0xFF252019 : Ui.theme().colors().text() : rect.textColor;
+        int color = rect == null ? Ui.theme().colors().text() : rect.textColor;
         graphics.enableScissor(getX() + padding, getY(), getRight() - padding, getBottom());
         graphics.pose().pushMatrix();
-        try { graphics.pose().translate(getX() + (getWidth() + (christmas ? iconSize+3 : 0)) / 2f, getY() + (getHeight() - 8 * scale) / 2f);
+        try { graphics.pose().translate(getX() + getWidth() / 2f, getY() + (getHeight() - 8 * scale) / 2f);
         graphics.pose().scale(scale, scale);
         graphics.text(font, label, -textWidth / 2, 0, color, shadow);
         } finally { graphics.pose().popMatrix();graphics.disableScissor(); }

@@ -1,7 +1,6 @@
 package com.takumistudios.socialmod.client.screen;
 
 import com.takumistudios.socialmod.common.model.VisualDesign;
-import com.takumistudios.socialmod.common.model.VisualPresets;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -14,7 +13,7 @@ public final class VisualTemplateScreen extends SocialChildScreen {
     @Override protected boolean rebuildOnChange() { return false; }
     @Override protected void init() {
         int w = Math.min(240, width - 16), x = (width - w) / 2;
-        String[] names = {"compact", "sidebar", "full", "christmas", "dedsafio"};
+        String[] names = {"compact", "sidebar", "full"};
         for (int i = 0; i < names.length; i++) {
             String name = names[i];
             addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.template." + name), b -> {

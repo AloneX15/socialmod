@@ -113,7 +113,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload test reports
-        if: ${{ failure() }}
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: reports-mc${{ matrix.minecraft }}${{ matrix.compat && '-compat' || '' }}
@@ -131,7 +131,7 @@ jobs:
       fail-fast: false
       matrix:
         minecraft: ["26.1.2", "26.2", "26.3"]
-        profile: [native, fancy, both, christmas, dedsafio]
+        profile: [native, fancy, both, clean]
     steps:
       - uses: actions/checkout@v7
 
@@ -169,7 +169,7 @@ jobs:
         env:
           # Renderizado por software (Mesa): 26.3 necesita un visual GLX de 24 bits y acaba usando Vulkan con lavapipe
           LIBGL_ALWAYS_SOFTWARE: "1"
-        run: xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX +render" ./gradlew :${{ matrix.minecraft }}:runClientGameTest ${{ matrix.profile == 'fancy' && '-PfancyMenu -PfancyOnly' || matrix.profile == 'both' && '-PfancyMenu' || matrix.profile == 'christmas' && '-PfancyMenu -PseriesPack=christmas' || matrix.profile == 'dedsafio' && '-PfancyMenu -PseriesPack=dedsafio' || '' }} --stacktrace
+        run: xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX +render" ./gradlew :${{ matrix.minecraft }}:runClientGameTest ${{ matrix.profile == 'fancy' && '-PfancyMenu -PfancyOnly' || matrix.profile == 'both' && '-PfancyMenu' || matrix.profile == 'clean' && '-PfancyMenu -PseriesPack=clean' || '' }} --stacktrace
 
       - name: Upload screenshots
         if: ${{ always() }}

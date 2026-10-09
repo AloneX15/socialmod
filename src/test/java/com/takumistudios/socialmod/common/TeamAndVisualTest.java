@@ -24,34 +24,22 @@ class TeamAndVisualTest {
         try (var paths = java.nio.file.Files.list(directory.resolve("visual-history"))) { assertEquals(20, paths.count()); }
         assertFalse(java.nio.file.Files.exists(directory.resolve("visual.json.tmp")));
     }
-    @Test void christmasTemplateIsValidAndCopiesRemainIndependent() {
-        var first = com.takumistudios.socialmod.common.model.VisualPresets.christmas();
-        assertEquals("christmas", first.decoration); assertEquals("full", first.mode);
-        assertDoesNotThrow(first::validate);
-        first.theme.getAsJsonObject("colors").addProperty("accent", "#000000");
-        var second = com.takumistudios.socialmod.common.model.VisualPresets.christmas();
-        assertEquals("#FFFFD978", second.theme.getAsJsonObject("colors").get("accent").getAsString());
+    @Test void retiredStylesResetEntireDesign() {
+        for (String style : java.util.List.of("christmas", "dedsafio")) {
+            var reset = VisualDesign.parse("{\"seriesStyle\":\""+style+"\",\"mode\":\"full\",\"widthPercent\":99,\"buttonColor\":123}");
+            assertEquals(VisualDesign.GSON.toJson(new VisualDesign()), VisualDesign.GSON.toJson(reset));
+        }
+        assertEquals("none", VisualDesign.parse("{\"decoration\":\"christmas\"}").decoration);
         assertThrows(IllegalArgumentException.class, () -> VisualDesign.parse("{\"decoration\":\"unknown\"}"));
     }
     @Test void visualFrameAndInputSettingsRemainBackwardCompatible() {
-        var old = VisualDesign.parse("{\"mode\":\"compact\"}");
-        assertEquals(0, old.panelInset); assertEquals("", old.inputTexture);
-        var preset = com.takumistudios.socialmod.common.model.VisualPresets.christmas();
-        assertEquals(20, preset.panelInset); assertEquals("socialmod:christmas/input", preset.inputTexture);
-        assertEquals(preset.buttonSelectedTexture, preset.copy().buttonSelectedTexture);
-        preset.panelInset = 25; assertThrows(IllegalArgumentException.class, preset::validate);
-        preset.panelInset = 20; preset.inputTexture = "socialmod:../invalid"; assertThrows(IllegalArgumentException.class, preset::validate);
+        var preset=VisualDesign.parse("{\"mode\":\"compact\",\"panelInset\":20,\"inputTexture\":\"socialmod:custom/input\"}");
+        assertEquals(20,preset.copy().panelInset); assertEquals("socialmod:custom/input",preset.copy().inputTexture);
+        preset.panelInset=25; assertThrows(IllegalArgumentException.class,preset::validate);
+        preset.panelInset=20; preset.inputTexture="socialmod:../invalid"; assertThrows(IllegalArgumentException.class,preset::validate);
     }
-    @Test void christmasResourcesIncludeScalableSpritesAndSpanishFont() throws Exception {
-        var paths = com.takumistudios.socialmod.common.model.VisualPresets.assetPaths();
-        assertTrue(paths.contains("textures/gui/sprites/christmas/panel.png.mcmeta"));
-        for (String path : paths) try (var input = getClass().getResourceAsStream("/assets/socialmod/" + path)) { assertNotNull(input, path); assertTrue(input.readAllBytes().length > 0); }
-        try (var input = getClass().getResourceAsStream("/assets/socialmod/font/christmas.json")) {
-            var font = com.google.gson.JsonParser.parseString(new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-            String rows = font.getAsJsonArray("providers").get(0).getAsJsonObject().getAsJsonArray("chars").toString();
-            assertTrue(rows.contains("\u00f1")); assertTrue(rows.contains("\u00bf"));
-            assertEquals("minecraft:default", font.getAsJsonArray("providers").get(1).getAsJsonObject().get("id").getAsString());
-        }
+    @Test void removedPresetFontReturnsToDefault() {
+        assertEquals("minecraft:default",VisualDesign.parse("{\"font\":\"socialmod:christmas\"}").font);
     }
     @Test void oldPlayersKeepGroupsWithoutSelectingTeam() {
         PlayerRecord record = SocialStorage.gson().fromJson("{\"mainGroup\":\"abcd\"}", PlayerRecord.class).normalize();

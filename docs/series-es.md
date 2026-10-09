@@ -1,5 +1,7 @@
 # Navidad gráfica y Dedsafío: el juego siempre visible
 
+> Los estilos y ZIP descritos en esta guía histórica se han retirado. Consulta [la personalización actual](personalizacion-0.8.0.md) y [los ejemplos neutros](examples/series/README.md).
+
 > Guía histórica de 0.6.0. Desde 0.7.0 los perfiles se gestionan en FancyMenu; consulta [la personalización actual](personalizacion-0.7.0.md).
 
 SocialMod 0.6.0 incluye dos diseños editables con **FancyMenu** y **SpiffyHUD**. Navidad usa los PNG originales proporcionados: botones de nieve, acebo y lazos, más iconos pixel art de Minecraft. Dedsafío conserva su marco gris y sus detalles rojos.

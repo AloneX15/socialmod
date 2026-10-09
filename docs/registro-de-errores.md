@@ -251,3 +251,19 @@ La última actividad de un amigo invisible podía aparecer en el snapshot aunque
 - **Síntoma:** FancyMenu se desactivaba mientras una imagen todavía se estaba cargando. **Causa:** una textura asíncrona puede tener un identificador nulo hasta estar preparada. **Solución:** utilizar el PNG incluido como respaldo mientras la copia editable carga. **Prueba:** primera apertura con FancyMenu, instalación y recarga reales.
 - **Síntoma:** guardar un perfil tras cambiar de Navidad a Dedsafío podía fallar por imágenes ausentes. **Causa:** se conservaba el layout desactivado, pero se retiraban sus recursos. **Solución:** conservar imágenes asociadas a los ejemplos desactivados, byte por byte, dentro de la operación respaldada. **Prueba:** cambio, exportación, restauración y regresión con bytes binarios.
 - **Síntoma:** aparecían cajas vacías en el HUD navideño. **Causa:** se dibujaba el borde antes de comprobar si había filas. **Solución:** omitir componentes vacíos en juego; mantener su vista previa en el editor. **Prueba:** capturas de panel y HUD y comprobación de render de SpiffyHUD.
+
+## Historial y elementos de FancyMenu (2026-10-09)
+
+- El historial respondía a la rueda pero carecía de barra. Ahora permite clic y arrastre; al llegar al inicio
+  conserva la paginación y al recibir mensajes conserva la posición de lectura. `HistoryInteractionTests`
+  comprueba arrastre al inicio y llegada de mensajes en una conversación larga.
+- Los módulos incrustados agrupaban controles y no permitían ocultar sus originales al separarlos.
+  El selector muestra nombres traducidos, comparte formulario y oculta únicamente las copias originales;
+  `SocialCatalogTests` verifica los controles de todos los módulos, persistencia, campos y acciones.
+- El estandarte sin TEAM mostraba un mensaje de contexto. Ahora utiliza un estandarte blanco y no permite edición
+  sin equipo/permisos. Se añade clic de edición y acción configurable. El TAG con icono conserva el color del TEAM.
+- Los estilos retirados tenían recursos y perfiles de prueba propios. Se eliminan y se restablece el diseño completo
+  de sus configuraciones. Tests de migración verifican filas, apariencia, layouts desactivados y archivos conservados.
+- En 26.3 el identificador del botón izquierdo cambió. Los nuevos manejadores y sus tests utilizan
+  `InputConstants.MOUSE_BUTTON_LEFT` para conservar el clic de estandartes, botones separados y barra en todas
+  las versiones. La prueba de Nuevo grupo entra por la pantalla anfitriona y detectó este caso.

@@ -29,17 +29,27 @@ class SeriesPackTest {
         String layout="config/fancymenu/customization/socialmod_christmas.txt",image="config/fancymenu/assets/socialmod/christmas_graphic/buttons/red.png";
         put(layout,"is_enabled = true\nsource = [source:local]"+image+"\n");
         byte[] edited={0,(byte)255,42,(byte)128};Files.createDirectories(root.resolve(image).getParent());Files.write(root.resolve(image),edited);
-        put(SeriesPack.VISUAL,SeriesPack.GSON.toJson(SeriesTemplates.visual("dedsafio")));
+        put(SeriesPack.VISUAL,SeriesPack.GSON.toJson(SeriesTemplates.visual("clean")));
         var pack=capture("Dedsafio");SeriesPack.install(root,pack,"dedsafio");
         assertArrayEquals(edited,Files.readAllBytes(root.resolve(image)));assertTrue(Files.readString(root.resolve(layout)).contains("is_enabled = false"));
         SeriesPack.restore(root);assertArrayEquals(edited,Files.readAllBytes(root.resolve(image)));assertTrue(Files.readString(root.resolve(layout)).contains("is_enabled = true"));
     }
-    @Test void christmasCaptureIncludesWholePaletteAfterEditorRewritesLayout() throws Exception {
-        put(A,"is_enabled = true\n");put(SeriesPack.VISUAL,SeriesPack.GSON.toJson(SeriesTemplates.visual("christmas")));
-        for(String kind:List.of("buttons","icons"))for(String asset:kind.equals("buttons")?List.of("red","green","wood","ice","gold","purple"):List.of("sword","gingerbread","crafting_gift","tree","creeper","santa","snowman","candy"))put("config/fancymenu/assets/socialmod/christmas_graphic/"+kind+"/"+asset+".png","edited "+asset);
-        var pack=capture("Christmas",A);assertEquals(16,pack.files().size());
-        assertEquals("edited purple",new String(pack.files().get("config/fancymenu/assets/socialmod/christmas_graphic/buttons/purple.png"),java.nio.charset.StandardCharsets.UTF_8));
-        Path zip=root.resolve("christmas.zip");SeriesPack.write(zip,pack);assertEquals(pack.files().keySet(),SeriesPack.read(zip).files().keySet());
+    @Test void retiredImportResetsRowsAndDisablesLayouts() throws Exception {
+        put(A,"is_enabled = true\n"); put(SeriesPack.VISUAL,"{\"seriesStyle\":\"christmas\",\"widthPercent\":99}");
+        var rows=RowDesign.defaults(); rows.templates.values().forEach(row->row.enabled=true); put(SeriesPack.ROWS,RowDesign.GSON.toJson(rows));
+        var pack=capture("Legacy",A); SeriesPack.install(root,pack,"legacy");
+        assertEquals(VisualDesign.GSON.toJson(new VisualDesign()),Files.readString(root.resolve(SeriesPack.VISUAL)));
+        assertEquals(RowDesign.GSON.toJson(RowDesign.defaults()),Files.readString(root.resolve(SeriesPack.ROWS)));
+        assertTrue(Files.readString(root.resolve(A)).contains("is_enabled = false"));
+    }
+    @Test void localMigrationPreservesAssetsAndUnrelatedLayouts() throws Exception {
+        put(SeriesPack.VISUAL,"{\"seriesStyle\":\"dedsafio\"}"); put(A,"is_enabled = true");
+        String old="config/fancymenu/customization/socialmod_dedsafio.txt"; put(old,"is_enabled = true\n"); put(ASSET,"user image");
+        RetiredStyles.migrate(root); RetiredStyles.migrate(root);
+        assertEquals("is_enabled = true",Files.readString(root.resolve(A)));
+        assertTrue(Files.readString(root.resolve(old)).contains("is_enabled = false"));
+        assertEquals("user image",Files.readString(root.resolve(ASSET)));
+        assertEquals(RowDesign.GSON.toJson(RowDesign.defaults()),Files.readString(root.resolve(SeriesPack.ROWS)));
     }
     @Test void selectedExportExcludesUnrelatedSettingsAndLayouts() throws Exception {
         put(A,"source = [source:local]"+ASSET);put(ASSET,"image");put(B,"unrelated");put("config/fancymenu/options.txt","private preferences");
@@ -107,7 +117,7 @@ class SeriesPackTest {
         assertNotNull(repository,"Repository examples not found");
         for(String style:SeriesTemplates.IDS) for(String mc:List.of("26.1.2","26.2","26.3")) {
             var pack=SeriesPack.read(repository.resolve("docs/examples/series/"+style+"-"+mc+".zip"));
-            assertEquals(mc,pack.metadata().minecraft());assertTrue(pack.metadata().requiredMods().contains("spiffyhud"));assertEquals(style.equals("christmas")?18:4,pack.files().size());
+            assertEquals(mc,pack.metadata().minecraft());assertTrue(pack.metadata().requiredMods().contains("spiffyhud"));assertEquals(4,pack.files().size());
         }
     }
     @Test void retiredLayoutIsDisabledAndMissingLocalModelsReturnToBasic() throws Exception {

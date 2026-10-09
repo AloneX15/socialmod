@@ -47,7 +47,6 @@ public final class SocialModClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(client -> { ClientConfig.shutdown(); com.takumistudios.socialmod.client.theme.SeriesProfiles.shutdown(); com.takumistudios.socialmod.client.theme.RowTemplates.shutdown(); com.takumistudios.socialmod.client.theme.LocalSeriesDesign.shutdown(); });
         SocialKeys.register();
         com.takumistudios.socialmod.client.compat.fancy.FancyBridge.register();
-        com.takumistudios.socialmod.client.theme.RowTemplates.load();
         com.takumistudios.socialmod.client.theme.LocalSeriesDesign.load();
         VisualManager.register();
 

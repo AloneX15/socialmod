@@ -258,7 +258,7 @@ Issues y propuestas en el [repositorio](../../issues). Las vulnerabilidades se r
 
 Desde la versión 0.4.0, **FancyMenu** y **SpiffyHUD** son integraciones opcionales de cliente. El editor permite mover y redimensionar los bloques del panel, personalizar las filas y colocar componentes de HUD con datos reales de SocialMod. Sin estos mods se conserva la interfaz básica.
 
-Los ejemplos **Navidad gráfica** (seis botones PNG y ocho iconos originales) y **Dedsafío** mantienen visible el mundo, sin fondo global ni desenfoque.
+El ejemplo neutro **clean** mantiene visible el mundo. Los estilos incluidos de Navidad y Dedsafio se han retirado; sus configuraciones antiguas vuelven al diseño predeterminado.
 
 El botón **Editor visual** abre las herramientas avanzadas cuando FancyMenu está instalado. El diseño se distribuye mediante el modpack, mediante los perfiles de FancyMenu. FancyMenu requiere Konkrete y Melody; SpiffyHUD añade la edición del HUD.
 
@@ -272,11 +272,13 @@ conectados y desconectados conocidos y abre mensajes directos.
 
 - [Catálogo de elementos y personalización actual](docs/personalizacion-0.8.0.md).
 - [Guía de estandartes y modos originales de 0.7.0](docs/personalizacion-0.7.0.md).
-- Los documentos y ZIP de Navidad/Dedsafío de 0.6.0 se conservan como ejemplos históricos.
+- Los controles de todos los módulos se pueden colocar por separado, ocultando sus originales.
+- El estandarte blanco indica que no hay TEAM; el clic abre su editor con permisos. El TAG con icono es un elemento independiente.
+- El chat tiene una barra de historial arrastrable compatible con los módulos de FancyMenu.
 Pruebas opcionales: `./gradlew :26.3:runClientGameTest -PfancyMenu` (ambos editores) y `-PfancyMenu -PfancyOnly` (FancyMenu sin SpiffyHUD).
 
 Creado por **TakumiStudios**.
 
 <sub>SocialMod · TakumiStudios · Licencia MIT</sub>
 
-Plantilla navideña con guías ilustradas: [Español](docs/series-es.md) | [English](docs/series-en.md).
+Ejemplos neutros para modpacks: [guía](docs/examples/series/README.md).

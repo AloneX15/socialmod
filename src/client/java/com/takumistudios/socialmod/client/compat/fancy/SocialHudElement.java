@@ -28,13 +28,10 @@ public final class SocialHudElement extends AbstractElement {
     private int[] rowHeights = new int[0];
     private String measuredKind;
     private static final String[] ARROWS = {"\u2191","\u2197","\u2192","\u2198","\u2193","\u2199","\u2190","\u2196"};
-    public final Property.StringProperty rowKind,skinIcon;
-    public final Property.BooleanProperty festiveFrame;
+    public final Property.StringProperty rowKind;
     SocialHudElement(Builder builder) {
         super(builder); kind = builder.kind;
         rowKind = putProperty(Property.stringProperty("socialmod_row", switch(kind) { case "toasts" -> "toast"; case "social" -> "conversation"; case "pings" -> "message"; default -> "party"; }, false, false, "socialmod.advanced.row_kind"));
-        skinIcon=putProperty(Property.stringProperty("socialmod_skin_icon","",false,false,"socialmod.advanced.festive_icon"));
-        festiveFrame=putProperty(Property.booleanProperty("socialmod_festive_frame",false,"socialmod.advanced.festive_frame"));
         baseWidth = 180; baseHeight = 40;
     }
     @Override public boolean shouldRender() {
@@ -57,12 +54,7 @@ public final class SocialHudElement extends AbstractElement {
             if (!preview && !rows.isEmpty()) hudFrames++;
             int x = getAbsoluteX(), y = getAbsoluteY(), w = Math.max(24, getAbsoluteWidth());
             graphics.enableScissor(x, y, x + w, y + Math.max(12, getAbsoluteHeight())); clipped = true;
-            boolean festive=festiveFrame.get() && com.takumistudios.socialmod.client.theme.ChristmasSkin.enabled();
-            if(festive) {
-                com.takumistudios.socialmod.client.screen.Ui.panel(graphics,x,y,x+w,y+Math.max(12,getAbsoluteHeight()));
-                if(com.takumistudios.socialmod.client.theme.ChristmasSkin.ICONS.contains(skinIcon.get()))com.takumistudios.socialmod.client.theme.ChristmasSkin.icon(graphics,skinIcon.get(),x+4,y+5,12);
-                x+=20;w=Math.max(12,w-24);y+=5;
-            }
+
             var template = RowTemplates.template(rowKind.get());
             if (template == null) template = RowTemplates.template("party");
             String selectedKind = rowKind.get();

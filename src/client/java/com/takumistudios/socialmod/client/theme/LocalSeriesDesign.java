@@ -12,11 +12,12 @@ public final class LocalSeriesDesign {
     private static volatile VisualDesign active;
     private static final ExecutorService IO = Executors.newSingleThreadExecutor(r -> { var t = new Thread(r,"SocialMod-Series-Design-IO"); t.setDaemon(true); return t; });
     public static VisualDesign get() { return active; }
-    public static void load() { IO.execute(() -> { if (!Files.isRegularFile(FILE)) return; try { if (Files.size(FILE) > 65_536) throw new IllegalArgumentException("Local design exceeds size limit"); active = VisualDesign.parse(Files.readString(FILE)); } catch(Exception e) {
+    public static void load() { IO.execute(() -> { try { com.takumistudios.socialmod.common.model.RetiredStyles.migrate(net.minecraft.client.Minecraft.getInstance().gameDirectory.toPath());
+                if (!Files.isRegularFile(FILE)) return; if (Files.size(FILE) > 65_536) throw new IllegalArgumentException("Local design exceeds size limit"); active = VisualDesign.parse(Files.readString(FILE)); } catch(Exception e) {
                 SocialMod.LOGGER.warn("Invalid local series appearance; keeping basic appearance",e);
                 try { Files.move(FILE,FILE.resolveSibling("visual.json.bak"),StandardCopyOption.REPLACE_EXISTING); }
                 catch(java.io.IOException backupError) { SocialMod.LOGGER.warn("Could not back up invalid local appearance",backupError); }
-            } }); }
+            } finally { RowTemplates.load(); } }); }
     public static CompletableFuture<Void> save(VisualDesign value) {
         value.validate(); var snapshot = value.copy();
         return CompletableFuture.runAsync(() -> { try { Files.createDirectories(FILE.getParent()); var tmp=FILE.resolveSibling("visual.json.tmp"); Files.writeString(tmp,VisualDesign.GSON.toJson(snapshot)); Files.move(tmp,FILE,StandardCopyOption.REPLACE_EXISTING,StandardCopyOption.ATOMIC_MOVE); active=snapshot; } catch(Exception e) { SocialMod.LOGGER.warn("Could not save local appearance",e); throw new CompletionException(e); } },IO);

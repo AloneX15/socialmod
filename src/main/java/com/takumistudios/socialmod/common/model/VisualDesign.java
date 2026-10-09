@@ -46,11 +46,17 @@ public final class VisualDesign {
         if (result == null) throw new IllegalArgumentException("Empty visual design");
         result.validate(); return result;
     }
+    public boolean retired() { return "christmas".equals(seriesStyle) || "dedsafio".equals(seriesStyle) || "christmas".equals(decoration) || "socialmod:christmas".equals(font); }
     public VisualDesign copy() { return parse(GSON.toJson(this)); }
     public void validate() {
         if (GSON.toJson(this).length() > 65536) throw new IllegalArgumentException("Visual size");
-        if (!java.util.List.of("none", "christmas").contains(decoration)) throw new IllegalArgumentException("Decoration");
-        if (seriesStyle == null || !java.util.List.of("", "clean", "christmas", "dedsafio").contains(seriesStyle)) throw new IllegalArgumentException("Series style");
+        if (retired()) {
+            VisualDesign defaults = new VisualDesign();
+            try { for (var field : VisualDesign.class.getFields()) if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) field.set(this,field.get(defaults)); }
+            catch (IllegalAccessException ex) { throw new IllegalStateException("Cannot reset retired design",ex); }
+        }
+        if (!java.util.List.of("none").contains(decoration)) throw new IllegalArgumentException("Decoration");
+        if (seriesStyle == null || !java.util.List.of("", "clean").contains(seriesStyle)) throw new IllegalArgumentException("Series style");
         if (version != 1 || !java.util.List.of("compact", "sidebar", "full").contains(mode)
                 || sidebarWidthPercent < 25 || sidebarWidthPercent > 75 || widthPercent < 35 || widthPercent > 100 || heightPercent < 45 || heightPercent > 100
                 || panelInset < 0 || panelInset > 24 || borderWidth < 0 || borderWidth > 8 || padding < 0 || padding > 24 || hudScale < 50 || hudScale > 200

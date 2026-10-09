@@ -42,7 +42,7 @@ final class SpiffyBackend {
             element.baseWidth = 170; element.baseHeight = kind.equals("social") ? 32 : 64;
             element.posOffsetX = kind.equals("social") || kind.equals("toasts") ? -178 : 8;
             element.posOffsetY = switch(kind) { case "social" -> 8; case "toasts" -> 44; case "party" -> 8; default -> 76; };
-            if(style.equals("christmas")) { element.festiveFrame.set(true);element.skinIcon.set(switch(kind) { case "social"->"santa";case "party"->"gingerbread";case "pings"->"candy";default->"crafting_gift"; }); }
+
             element.setInstanceIdentifier("socialmod_"+style+"_"+kind); hud.serializedElements.add(element.getBuilder().serializeElementInternal(element));
         }
         return de.keksuccino.fancymenu.util.properties.PropertiesParser.serializeSetToFancyString(hud.serialize());

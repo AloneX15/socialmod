@@ -464,7 +464,6 @@
   "socialmod.visual.template.compact": "Compact",
   "socialmod.visual.template.sidebar": "Sidebar",
   "socialmod.visual.template.full": "Full screen",
-  "socialmod.visual.template.christmas": "Christmas: illustrated buttons",
   "socialmod.visual.property.panelInset": "Frame inset",
   "socialmod.visual.property.inputTexture": "Input texture",
   "socialmod.visual.property.inputFocusTexture": "Focused input texture",
@@ -578,10 +577,8 @@
   "socialmod.series.backup_hint": "Creates a backup; built-in designs also disable the other example.",
   "socialmod.advanced.design": "Design: %s",
   "socialmod.advanced.design.clean": "Social clean",
-  "socialmod.advanced.design.dedsafio": "Dedsafio 4 inspired",
   "socialmod.advanced.install": "Install design with backup",
-  "socialmod.visual.template.clean": "Social clean",
-  "socialmod.visual.template.dedsafio": "Dedsafio 4 inspired",
+  "socialmod.visual.template.clean": "Default",
   "socialmod.series.unversioned": "Mod versions are unspecified; check compatibility.",
   "socialmod.sync.oversized": "Social state exceeds 8 MiB. Reduce server limits; commands remain available.",
   "socialmod.sync.retry": "Recovering social panel synchronization…",
@@ -589,9 +586,6 @@
   "socialmod.panel.no_motd": "No message set",
   "socialmod.advanced.invalid_property": "Check the %s field and design resources.",
   "socialmod.error.storage_unavailable": "History is temporarily unavailable. Close and reopen the conversation to retry.",
-  "socialmod.advanced.design.christmas": "Christmas graphic",
-  "socialmod.advanced.festive_frame": "Festive border",
-  "socialmod.advanced.festive_icon": "Christmas icon (tree, candy, santa…)",
   "socialmod.banner.title": "Banner",
   "socialmod.banner.edit": "Edit TEAM banner",
   "socialmod.banner.base": "Base color: %s",
@@ -650,5 +644,7 @@
   "socialmod.catalog.target": "Fixed target: TEAM/group ID or player UUID",
   "socialmod.catalog.unavailable": "No data or permission for this context",
   "socialmod.catalog.module.basic": "Basic visual editor",
-  "socialmod.catalog.module.rows": "Row editor"
+  "socialmod.catalog.module.rows": "Row editor",
+  "socialmod.catalog.team_tag_view": "TEAM tag with icon",
+  "socialmod.catalog.hide_original": "Hide original control: %s"
 }

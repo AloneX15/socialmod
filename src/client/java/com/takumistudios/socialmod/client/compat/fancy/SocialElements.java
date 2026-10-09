@@ -23,15 +23,18 @@ import java.util.*;
 public final class SocialElements {
     public static void register() {
         ElementRegistry.register(new Builder("banner_view", "banner"));
+        ElementRegistry.register(new Builder("team_tag_view", "team_tag"));
         ElementRegistry.register(new Builder("data", "team_name"));
         ElementRegistry.register(new Builder("control", "settings"));
         for (String module : SocialComponents.MODULES) ElementRegistry.register(new Builder("module_" + module, module));
         ActionRegistry.register(new SocialAction(false)); ActionRegistry.register(new SocialAction(true));
+        ActionRegistry.register(new SocialAction("socialmod_search_players", "search"));
+        ActionRegistry.register(new SocialAction("socialmod_edit_team_banner", "banner"));
         for (String data : SocialComponents.DATA) PlaceholderRegistry.register(new DataPlaceholder(data));
     }
     private static Component label(String key) { return Component.translatable("socialmod.catalog." + key); }
     private static final Component UNAVAILABLE=label("unavailable"), CHOOSE_CONTROL=label("choose_control");
-    private static Screen host() { var screen = ClientCompat.currentScreen(); return screen instanceof LayoutEditorScreen editor ? editor.layoutTargetScreen : screen; }
+    private static Screen host() { var screen = ClientCompat.currentScreen(); if (screen instanceof LayoutEditorScreen editor) return editor.layoutTargetScreen; if (SocialComponents.supported(screen)) return screen; var editor = LayoutEditorScreen.getCurrentInstance(); return editor == null ? screen : editor.layoutTargetScreen; }
     private static boolean enabled() { return SocialComponents.supported(host()) && ClientState.get().connected() && !AppearanceMode.original(); }
     public static final class Builder extends ElementBuilder<Element, Editor> {
         final String kind, initial;
@@ -44,10 +47,11 @@ public final class SocialElements {
             element.target = bounded(data.getValue("social_target"), "");
             element.form = bounded(data.getValue("social_form"), "main");
             element.control = bounded(data.getValue("social_control"), "");
+            element.hideOriginal = !"false".equals(data.getValue("social_hide_original"));
             return element;
         }
         @Override protected SerializedElement serializeElement(Element e, SerializedElement data) {
-            data.putProperty("social_module", e.module); data.putProperty("social_context", e.context);
+            data.putProperty("social_hide_original", String.valueOf(e.hideOriginal)); data.putProperty("social_module", e.module); data.putProperty("social_context", e.context);
             data.putProperty("social_target", e.target); data.putProperty("social_form", e.form); data.putProperty("social_control", e.control); return data;
         }
         @Override public Editor wrapIntoEditorElement(Element e, LayoutEditorScreen editor) { return new Editor(e, editor); }
@@ -57,6 +61,7 @@ public final class SocialElements {
     }
     private static String bounded(String value, String fallback) { return value == null ? fallback : value.length() <= 180 && value.chars().noneMatch(c -> c < 32) ? value : fallback; }
     public static final class Element extends AbstractElement {
+        public boolean hideOriginal = true;
         public String module, context = "self", target = "", form = "main", control = "";
         private final Builder socialBuilder;
         private SocialComponents.Form session;
@@ -82,11 +87,11 @@ public final class SocialElements {
             @Override public boolean charTyped(CharacterEvent e) { return Element.this.charTyped(e); }
             @Override public void setFocused(boolean value) { super.setFocused(value);Element.this.setFocused(value); }
         };
-        @Override public List<net.minecraft.client.gui.components.events.GuiEventListener> getWidgetsToRegister() { return socialBuilder.kind.equals("data") || socialBuilder.kind.equals("banner_view") ? List.of() : List.of(input); }
+        @Override public List<net.minecraft.client.gui.components.events.GuiEventListener> getWidgetsToRegister() { return socialBuilder.kind.equals("data") || socialBuilder.kind.equals("team_tag_view") ? List.of() : List.of(input); }
         Element(Builder builder) {
             super(builder); socialBuilder = builder; module = builder.initial;
-            baseWidth = builder.kind.equals("banner_view") ? 60 : builder.kind.equals("data") ? 150 : builder.kind.equals("control") ? 160 : builder.initial.equals("basic") ? 540 : 400;
-            baseHeight = builder.kind.equals("banner_view") ? 120 : builder.kind.equals("data") || builder.kind.equals("control") ? 20 : 300;
+            baseWidth = builder.kind.equals("banner_view") ? 60 : builder.kind.equals("data") || builder.kind.equals("team_tag_view") ? 150 : builder.kind.equals("control") ? 160 : builder.initial.equals("basic") ? 540 : 400;
+            baseHeight = builder.kind.equals("banner_view") ? 120 : builder.kind.equals("data") || builder.kind.equals("team_tag_view") || builder.kind.equals("control") ? 20 : 300;
         }
         @Override public void tick() {
             super.tick(); if (failed) return;
@@ -94,20 +99,25 @@ public final class SocialElements {
                 input.setRectangle(Math.max(1,getAbsoluteWidth()),Math.max(1,getAbsoluteHeight()),getAbsoluteX(),getAbsoluteY());
                 input.visible=enabled()&&shouldRender();input.active=input.visible&&!failed;
                 if (!enabled() || !shouldRender()) { session = null; return; }
-                if(!isEditor() && !socialBuilder.kind.equals("data") && !socialBuilder.kind.equals("banner_view")) {
+                if(!isEditor() && !socialBuilder.kind.equals("data") && !socialBuilder.kind.equals("team_tag_view")) {
                     var widgets=net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(host());
-                    if(!widgets.contains(input)) { FancyBridge.identify(input,"catalog_input_"+getInstanceIdentifier());widgets.addFirst(input); }
+                    String inputId="catalog_input_"+getInstanceIdentifier();
+                    if (!FancyBridge.identifier(input).equals(inputId)) FancyBridge.identify(input,inputId);
+                    if(!widgets.contains(input)) widgets.addFirst(input);
                 }
                 if (socialBuilder.kind.equals("banner_view")) {
                     var team = SocialComponents.team(host(), context, target);
-                    if (team != bannerSource) { bannerSource = team; banner = team == null ? null : new BannerWidget(0,0,60,120,team.banner,"element_banner_" + getInstanceIdentifier()); }
+                    if (banner == null || team != bannerSource || version != ClientState.get().version()) { bannerSource = team; version = ClientState.get().version(); banner = new BannerWidget(0,0,60,120,team == null ? new com.takumistudios.socialmod.common.model.TeamBanner() : team.banner,"element_banner_" + getInstanceIdentifier()); }
+                } else if (socialBuilder.kind.equals("team_tag_view")) {
+                    var team = SocialComponents.team(host(), context, target);
+                    value = team == null ? Component.empty() : com.takumistudios.socialmod.client.TagRenderer.line(team.name, team.color, team.icon, "");
                 } else if (socialBuilder.kind.equals("data")) {
                     String source = module + "/" + context + "/" + target + "/" + SocialComponents.selection(host());
                     if (version != ClientState.get().version() || !source.equals(textSource)) { version = ClientState.get().version(); textSource = source; value = Component.literal(SocialComponents.text(host(),module,context,target)); }
                 } else {
                     var next = SocialComponents.form(host(),module,context,target,form);
                     if (next != session) { session = next; scroll = 0; }
-                    if (session != null) { session.tick(FancyBackend.hudTick); region = session.region(); selectedControl=isControl()?session.control(control):null; }
+                    if (session != null) { session.tick(FancyBackend.hudTick); region = session.region(); selectedControl=isControl()?session.control(control):null; if (selectedControl != null) { input.setMessage(selectedControl.getMessage()); input.active=selectedControl.active && selectedControl.visible; } else if (isControl()) input.active=false; if (selectedControl != null && hideOriginal) session.detach(selectedControl, FancyBackend.hudTick); }
                 }
             } catch (RuntimeException | LinkageError e) { fail(e); }
         }
@@ -122,17 +132,18 @@ public final class SocialElements {
             int x=getAbsoluteX(), y=getAbsoluteY(), w=Math.max(1,getAbsoluteWidth()), h=Math.max(1,getAbsoluteHeight());
             graphics.enableScissor(x,y,x+w,y+h); graphics.pose().pushMatrix();
             try {
-                if (socialBuilder.kind.equals("banner_view")) {
+                if (socialBuilder.kind.equals("team_tag_view")) { graphics.text(Minecraft.getInstance().font,value,x,y,0xFFFFFFFF);
+                } else if (socialBuilder.kind.equals("banner_view")) {
                     if (banner != null) { banner.setRectangle(w,h,x,y); banner.extractWidgetRenderState(graphics,mx,my,delta); }
                     else graphics.text(Minecraft.getInstance().font,UNAVAILABLE,x,y,0xFFAAAAAA);
                 } else if (socialBuilder.kind.equals("data")) graphics.text(Minecraft.getInstance().font,value,x,y,0xFFFFFFFF);
                 else if (session == null) graphics.text(Minecraft.getInstance().font,UNAVAILABLE,x,y,0xFFAAAAAA);
                 else if (isControl()) {
                     var widget = widget(); if (widget == null) { graphics.text(Minecraft.getInstance().font,CHOOSE_CONTROL,x,y,0xFFAAAAAA); return; }
-                    withWidgetBounds(widget, () -> SocialComponents.scoped(() -> widget.extractRenderState(graphics,mx,my,delta)));
+                    withWidgetBounds(widget, () -> FancyBridge.present(input, () -> widget.extractRenderState(graphics,mx,my,delta)));
                 } else {
                     graphics.pose().translate(x,y); graphics.pose().scale(scale(),scale()); graphics.pose().translate(-region[0],-region[1]-scroll);
-                    SocialComponents.scoped(() -> session.screen.extractRenderState(graphics,(int)localX(mx),(int)localY(my),delta));
+                    SocialComponents.scoped(() -> session.render(() -> session.screen.extractRenderState(graphics,(int)localX(mx),(int)localY(my),delta), FancyBackend.hudTick));
                 }
             } catch (RuntimeException | LinkageError e) { fail(e); }
             finally { graphics.pose().popMatrix(); graphics.disableScissor(); }
@@ -146,11 +157,18 @@ public final class SocialElements {
         private MouseButtonEvent mapped(MouseButtonEvent e) { return new MouseButtonEvent(localX(e.x()),localY(e.y()),e.buttonInfo()); }
         private boolean guardedInput(java.util.function.Supplier<Boolean> work) { try{return work.get();}catch(RuntimeException|LinkageError e){fail(e);return false;} }
         @Override public boolean mouseClicked(MouseButtonEvent e, boolean twice) {
-            if (!enabled() || !shouldRender() || !isMouseOver(e.x(),e.y()) || session == null || failed) return false;
+            if (!enabled() || !shouldRender() || !isMouseOver(e.x(),e.y()) || failed) return false;
+            if (socialBuilder.kind.equals("banner_view")) {
+                if (e.button() != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT || isEditor()) return false;
+                Screen editor = SocialComponents.create(host(), "banner", SocialComponents.resolve(host(), "banner", context, target));
+                if (editor == null) return false;
+                ClientCompat.setScreen(editor); return true;
+            }
+            if (session == null) return false;
             focused = true;
             try {
                 if (isControl()) { var widget=widget(); if(widget==null) return false; session.screen.setFocused(widget); return withWidgetBounds(widget, () -> SocialComponents.scoped(() -> widget.mouseClicked(e,twice))); }
-                return SocialComponents.scoped(() -> session.screen.mouseClicked(mapped(e),twice));
+                return SocialComponents.scoped(() -> session.originalControls(() -> session.screen.mouseClicked(mapped(e),twice), FancyBackend.hudTick));
             } catch (RuntimeException | LinkageError error) { fail(error); return false; }
         }
         @Override public boolean mouseReleased(MouseButtonEvent e) {
@@ -163,7 +181,7 @@ public final class SocialElements {
         }
         @Override public boolean mouseScrolled(double x,double y,double dx,double dy) {
             if (session==null || !enabled() || !isMouseOver(x,y) || isControl()) return false;
-            if (guardedInput(()->SocialComponents.scoped(()->session.screen.mouseScrolled(localX(x),localY(y),dx,dy)))) return true;
+            if (guardedInput(()->SocialComponents.scoped(()->session.originalControls(()->session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy), FancyBackend.hudTick)))) return true;
             int maximum=Math.max(0,region[3]-(int)(getAbsoluteHeight()/scale())); scroll=Math.clamp(scroll-(int)(dy*20),0,maximum); return true;
         }
         @Override public boolean keyPressed(KeyEvent e) { return focused && session!=null && enabled() && guardedInput(()->SocialComponents.scoped(()->session.screen.keyPressed(e))); }
@@ -196,17 +214,18 @@ public final class SocialElements {
         @Override protected void init() {
             int w=Math.min(340,width-20),x=(width-w)/2,y=32;
             var options=element.socialBuilder.kind.equals("data")?SocialComponents.DATA:SocialComponents.MODULES;
-            if (!element.socialBuilder.kind.equals("banner_view")) {
+            if (!element.socialBuilder.kind.equals("banner_view") && !element.socialBuilder.kind.equals("team_tag_view")) {
                 addRenderableWidget(Ui.button(label("module."+element.module),b->{capture();element.module=options.get((options.indexOf(element.module)+1)%options.size());element.control="";rebuildWidgets();}).bounds(x,y,w,20).build()); y+=24;
             }
             addRenderableWidget(Ui.button(label("context."+element.context),b->{capture();var contexts=List.of("self","selected","fixed");element.context=contexts.get((contexts.indexOf(element.context)+1)%contexts.size());rebuildWidgets();}).bounds(x,y,w,20).build()); y+=24;
             destination=new StyledEditBox(font,x,y,w,20,label("target")); destination.setMaxLength(180);destination.setValue(element.target);destination.setHint(label("target"));addRenderableWidget(destination);y+=24;
             formName=new StyledEditBox(font,x,y,w,20,label("form"));formName.setMaxLength(64);formName.setValue(element.form);formName.setHint(label("form"));addRenderableWidget(formName);y+=24;
             if(element.isControl()) {
-                var realHost=back instanceof LayoutEditorScreen editor?editor.layoutTargetScreen:back;
+                var realHost=back instanceof LayoutEditorScreen editor?editor.layoutTargetScreen:SocialComponents.supported(back)?back:host();
                 var session=SocialComponents.form(realHost,element.module,element.context,element.target,element.form);
                 List<String> controls=session==null?List.of():session.controls().stream().filter(widget->widget.visible).map(session::key).toList();
-                addRenderableWidget(Ui.button(Component.literal(element.control.isEmpty()?label("choose_control").getString():element.control),b->{capture();if(!controls.isEmpty())element.control=controls.get((controls.indexOf(element.control)+1)%controls.size());rebuildWidgets();}).bounds(x,y,w,20).build());
+                addRenderableWidget(Ui.button(Component.translatable("socialmod.catalog.hide_original", Component.translatable(element.hideOriginal ? "gui.yes" : "gui.no")), b -> { capture(); element.hideOriginal = !element.hideOriginal; rebuildWidgets(); }).bounds(x,y,w,20).build()); y+=24;
+                addRenderableWidget(Ui.button(element.control.isEmpty() ? label("choose_control") : session != null && session.control(element.control) != null ? session.control(element.control).getMessage() : Component.literal(element.control),b->{capture();if(!controls.isEmpty())element.control=controls.get((controls.indexOf(element.control)+1)%controls.size());rebuildWidgets();}).bounds(x,y,w,20).build());
             }
             addRenderableWidget(Ui.button(Component.translatable("gui.done"),b->onClose()).bounds(x,height-26,w,20).build());
         }
@@ -215,14 +234,16 @@ public final class SocialElements {
     }
     static final class SocialAction extends Action {
         final boolean controlAction;
-        SocialAction(boolean control) { super(control?"socialmod_form_control":"socialmod_open_module");controlAction=control; }
+        final String defaultModule;
+        SocialAction(boolean control) { super(control?"socialmod_form_control":"socialmod_open_module");controlAction=control; defaultModule="teams"; }
+        SocialAction(String id, String module) { super(id); controlAction=false; defaultModule=module; }
         @Override public boolean hasValue() { return true; }
         @Override public void execute(String json) {
             if(!enabled())return;
             try {
                 if(json.length()>2048)return;
                 var config=com.google.gson.JsonParser.parseString(json).getAsJsonObject();
-                String module=read(config,"module","teams"),context=read(config,"context","self"),target=read(config,"target",""),form=read(config,"form","main");
+                String module=read(config,"module",defaultModule),context=read(config,"context","self"),target=read(config,"target",""),form=read(config,"form","main");
                 if(controlAction) {
                     var session=SocialComponents.form(host(),module,context,target,form);if(session==null)return;
                     var widget=session.control(read(config,"control",""));
@@ -231,14 +252,14 @@ public final class SocialElements {
             } catch(RuntimeException | LinkageError e) { SocialMod.LOGGER.warn("Invalid SocialMod FancyMenu action",e); }
         }
         static String read(com.google.gson.JsonObject json,String key,String fallback) { return bounded(json.has(key)?json.get(key).getAsString():null,fallback); }
-        @Override public Component getDisplayName() { return Component.literal("SocialMod: ").append(label(controlAction?"control":"open")); }
+        @Override public Component getDisplayName() { return Component.literal("SocialMod: ").append(label(defaultModule.equals("search") ? "module.search" : defaultModule.equals("banner") ? "module.banner" : controlAction?"control":"open")); }
         @Override public Component getDescription() { return label("description"); }
         @Override public Component getValueDisplayName() { return label("configure"); }
-        @Override public String getValuePreset() { return "{\"module\":\"teams\",\"context\":\"self\",\"target\":\"\",\"form\":\"main\",\"control\":\"\"}"; }
+        @Override public String getValuePreset() { return "{\"module\":\""+defaultModule+"\",\"context\":\"self\",\"target\":\"\",\"form\":\"main\",\"control\":\"\"}"; }
         @Override public boolean canRunAsync() { return false; }
         @Override public void editValue(ActionInstance instance,ActionEditingCompletedFeedback done,ActionEditingCanceledFeedback cancelled) {
-            var builder=new Builder("control","teams"); var element=builder.buildDefaultInstance();
-            try { var config=com.google.gson.JsonParser.parseString(instance.value).getAsJsonObject();element.module=read(config,"module","teams");element.context=read(config,"context","self");element.target=read(config,"target","");element.form=read(config,"form","main");element.control=read(config,"control",""); } catch(RuntimeException e) { SocialMod.LOGGER.debug("Reset malformed action configuration",e); }
+            var builder=new Builder(controlAction ? "control" : "module_"+defaultModule,defaultModule); var element=builder.buildDefaultInstance();
+            try { var config=com.google.gson.JsonParser.parseString(instance.value).getAsJsonObject();element.module=read(config,"module",defaultModule);element.context=read(config,"context","self");element.target=read(config,"target","");element.form=read(config,"form","main");element.control=read(config,"control",""); } catch(RuntimeException e) { SocialMod.LOGGER.debug("Reset malformed action configuration",e); }
             Screen previous=ClientCompat.currentScreen();
             ClientCompat.setScreen(new Configuration(previous,element,()->{var config=new com.google.gson.JsonObject();config.addProperty("module",element.module);config.addProperty("context",element.context);config.addProperty("target",element.target);config.addProperty("form",element.form);config.addProperty("control",element.control);done.accept(instance,config.toString(),element.module);}));
         }

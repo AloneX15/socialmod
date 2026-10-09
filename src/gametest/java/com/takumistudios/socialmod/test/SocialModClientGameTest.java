@@ -135,6 +135,8 @@ public class SocialModClientGameTest implements FabricClientGameTest {
             }, 200);
             context.waitTicks(10);
             context.takeScreenshot("socialmod_panel");
+            if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.installed()) FancyIntegrationTests.prepare(context);
+            HistoryInteractionTests.run(context,groupKey[0]);
             context.runOnClient(client -> {
                 var binding = com.takumistudios.socialmod.client.SocialKeys.OPEN_PANEL;
                 var original = com.mojang.blaze3d.platform.InputConstants.getKey(binding.saveString());

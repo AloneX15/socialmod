@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Barra de historial arrastrable y conservación de posición ante mensajes nuevos.
+- Controles independientes de todos los módulos de FancyMenu con ocultación de originales y acciones de búsqueda y estandarte.
+- Estandarte blanco sin TEAM, clic de edición con permisos y elemento de TAG con icono y color.
+- Retirada de Navidad y Dedsafio; restablecimiento completo de sus diseños antiguos y ejemplo neutro.
+
 ## 0.8.0
 
 - Add FancyMenu catalog elements for live TEAM banners, contextual text, native modules and independent form controls on SocialMod screens.

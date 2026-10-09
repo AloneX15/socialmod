@@ -58,7 +58,7 @@ public class SocialScreen extends Screen {
     private static int gap() { return Math.max(2, VisualManager.get().padding); }
     private static final int ROW = 11;
     private static final int INPUT_HEIGHT = 18;
-    private static int mainButtonHeight() { return VisualManager.get().seriesStyle.equals("christmas")?32:20; }
+    private static int mainButtonHeight() { return 20; }
     /** Mensajes enviados (para recorrerlos con las flechas). Compartido con Quick-Reply. */
     static final List<String> SENT_HISTORY = new ArrayList<>();
 
@@ -165,7 +165,6 @@ public class SocialScreen extends Screen {
         }
         frameLeft = leftEdge; frameTop = top; frameRight = rightEdge; frameBottom = bottom;
         int available = rightEdge - leftEdge;
-        if (visual.seriesStyle.equals("dedsafio")) top += 18;
 
         Theme theme = Ui.theme();
         Theme.Column convCol = theme.column("conversations").orElse(Theme.DEFAULT.columns().get(0));
@@ -218,7 +217,7 @@ public class SocialScreen extends Screen {
         }
 
         top += mainButtonHeight() + 4 + inset;
-        int headerButtonWidth = Math.max(20, Math.min(VisualManager.get().seriesStyle.equals("christmas") ? 140 : 100, (available - 8) / 3));
+        int headerButtonWidth = Math.max(20, Math.min(100, (available - 8) / 3));
         addRenderableWidget(Ui.button(Component.translatable("socialmod.team.title"), b -> openChild(new TeamScreen(this)))
                 .bounds(leftEdge, top - mainButtonHeight() - 4 - inset, headerButtonWidth, mainButtonHeight()).build());
         if (ClientState.get().snapshot().visualAdmin) addRenderableWidget(Ui.button(Component.translatable("socialmod.visual.title"), b -> openChild(com.takumistudios.socialmod.client.compat.fancy.FancyBridge.installed() ? new AdvancedCustomizationScreen(this) : new VisualEditorScreen(this)))
@@ -564,6 +563,7 @@ public class SocialScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && historyMaximum > 0 && blockVisible("chat") && Ui.inside(event.x(),event.y(),chatX+chatW-7,historyTop,6,historyHeight)) { historyDragging = true; moveHistory(event.y()); return true; }
         if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
             // In 26.x vanilla routes the first hovered component. A passive block underneath
             // another moved block must not capture its click; real controls retain priority.
@@ -596,6 +596,39 @@ public class SocialScreen extends Screen {
         return chatW > 0 && blockVisible("chat") && chatRows.click(mx, my, rightClick);
     }
 
+    private long historyFirst = -1, historyLast = -1;
+    private int historyContent;
+    private String historyConversation;
+    private int historyMaximum, historyTop, historyHeight, historyThumb;
+    private boolean historyDragging;
+    private void moveHistory(double y) {
+        int travel = Math.max(1, historyHeight - historyThumb);
+        chatScroll = historyMaximum - (int)(Math.clamp((y-historyTop-historyThumb/2.0)/travel,0.0,1.0)*historyMaximum);
+    }
+    @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (historyDragging) { moveHistory(event.y()); return true; }
+        return super.mouseDragged(event,dx,dy);
+    }
+    @Override public boolean mouseReleased(MouseButtonEvent event) {
+        if (historyDragging) { historyDragging=false; return true; }
+        return super.mouseReleased(event);
+    }
+    private void anchorHistory(int content, ClientState.ConversationCache cache) {
+        long first=cache.messages.isEmpty() ? -1 : cache.messages.getFirst().id();
+        long last=cache.messages.isEmpty() ? -1 : cache.messages.getLast().id();
+        if (java.util.Objects.equals(historyConversation,selected) && chatScroll > 0 && first == historyFirst && last != historyLast) chatScroll += Math.max(0,content-historyContent);
+        historyConversation=selected; historyFirst=first; historyLast=last; historyContent=content;
+    }
+    private void drawHistory(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int top, int height, int content) {
+        historyTop=top; historyHeight=Math.max(1,height); historyMaximum=Math.max(0,content-historyHeight);
+        historyThumb=Math.min(historyHeight,Math.max(12,historyHeight*historyHeight/Math.max(1,content)));
+        if(historyMaximum == 0) return;
+        int x=chatX+chatW-7;
+        int y=top+(int)((historyHeight-historyThumb)*(1.0-chatScroll/(double)historyMaximum));
+        graphics.fill(x,top,x+6,top+historyHeight,Ui.theme().colors().panel());
+        graphics.fill(x+1,y,x+5,y+historyThumb,Ui.theme().colors().accent());
+    }
+
     private SocialBlockWidget topBlock(double x, double y) {
         var children = children();
         for (int i = children.size() - 1; i >= 0; i--) if (children.get(i) instanceof SocialBlockWidget block && block.visible && !com.takumistudios.socialmod.client.compat.fancy.FancyBridge.hidden(block) && Ui.inside(x, y, block.getX(), block.getY(), block.getWidth(), block.getHeight())) return block;
@@ -613,6 +646,7 @@ public class SocialScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
         if (com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
+            if (super.mouseScrolled(mx,my,scrollX,scrollY)) return true;
             var block = topBlock(mx,my); if (block == null) return super.mouseScrolled(mx,my,scrollX,scrollY);
             if (block.kind().equals("conversations")) return left.scroll(mx,my,scrollY);
             if (block.kind().equals("players")) return right.scroll(mx,my,scrollY);
@@ -681,17 +715,7 @@ public class SocialScreen extends Screen {
         Theme theme = Ui.theme();
         if (VisualManager.get().mode.equals("full")) Ui.background(graphics, this.width, this.height);
         else Ui.panel(graphics, frameLeft - 3, frameTop - 3, frameRight + 3, frameBottom + 3);
-        if (VisualManager.get().seriesStyle.equals("dedsafio")) {
-            for(int inset=0;inset<3;inset++) graphics.outline(frameLeft-4+inset,frameTop-4+inset,frameRight-frameLeft+8-2*inset,frameBottom-frameTop+8-2*inset,0xFFD1D5DC);
-            int badgeX=(frameLeft+frameRight)/2-8, badgeY=Math.max(1,frameTop-22);
-            graphics.fill(badgeX,badgeY,badgeX+16,frameTop,0xE0151820);
-            graphics.outline(badgeX,badgeY,16,frameTop-badgeY,0xFFD1D5DC);
-            for(int i=0;i<5;i++) { graphics.fill(badgeX+3+i,badgeY+5+i,badgeX+4+i,badgeY+7+i,0xFFB52635); graphics.fill(badgeX+12-i,badgeY+5+i,badgeX+13-i,badgeY+7+i,0xFFB52635); }
-            for(int x=frameLeft;x<frameRight;x+=48) graphics.fill(x,frameTop-3,Math.min(x+16,frameRight),frameTop,0xFFB52635);
-            var team=ClientState.get().snapshot().teams.stream().filter(t -> t.id.equals(ClientState.get().snapshot().self.teamId)).findFirst();
-            String label=team.map(t -> t.name).orElse(title.getString());
-            VisualText.centeredText(graphics,font,Component.literal(Ui.trim(font,label,frameRight-frameLeft-12)),(frameLeft+frameRight)/2,frameTop+4,Ui.title());
-        }
+
         if (!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.available()) {
         if (convW > 0) {
             Ui.panel(graphics, convX, top, convX + convW, bottom);
@@ -932,6 +956,7 @@ public class SocialScreen extends Screen {
         if (selected == null) {
             VisualText.centeredText(graphics, font, Component.translatable("socialmod.panel.select_conversation"), chatX + chatW / 2, (top + bottom) / 2, theme.colors().muted());
             drawNotice(graphics, x, bottom - INPUT_HEIGHT - 18, w);
+            historyMaximum=0; historyDragging=false;
             chatRows.begin(chatX, top, 0, 0);
             return;
         }
@@ -979,9 +1004,7 @@ public class SocialScreen extends Screen {
             }
         }
         y += ROW;
-        if (group != null && VisualManager.get().seriesStyle.equals("dedsafio")) {
-            VisualText.text(graphics,font,Ui.trim(font,Component.translatable("socialmod.panel.motd",group.motd.isEmpty()?Component.translatable("socialmod.panel.no_motd").getString():group.motd).getString(),w),x,y,theme.colors().muted()); y+=ROW;
-        }
+
         if (group != null && !group.pinned.isEmpty()) {
             VisualText.text(graphics, font, Ui.trim(font, Component.translatable("socialmod.panel.pinned", group.pinned).getString(), w), x, y, theme.colors().unread());
             y += ROW;
@@ -1002,10 +1025,11 @@ public class SocialScreen extends Screen {
         if (RowTemplates.enabled("message")) drawTemplateMessages(graphics, mouseX, mouseY, listTop, listBottom, cache);
         else {
         float textScale = ClientConfig.get().panel.textScale / 100.0F;
-        rebuildLines((int) ((w - 12) / textScale));
+        rebuildLines((int) ((w - 20) / textScale));
         int lineHeight = Math.round((font.lineHeight + 1) * textScale);
         int contentHeight = lines.size() * lineHeight;
         int viewHeight = listBottom - listTop;
+        anchorHistory(contentHeight,cache);
         int maxScroll = Math.max(0, contentHeight - viewHeight);
         chatScroll = Mth.clamp(chatScroll, 0, maxScroll);
 
@@ -1057,6 +1081,7 @@ public class SocialScreen extends Screen {
         }
         graphics.disableScissor();
         chatRows.end(viewHeight);
+        drawHistory(graphics,listTop,viewHeight,contentHeight);
 
         if (hoverItem != null) {
             graphics.setTooltipForNextFrame(font, hoverItem, mouseX, mouseY);
@@ -1090,7 +1115,7 @@ public class SocialScreen extends Screen {
 
     private void drawTemplateMessages(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int listTop, int listBottom, ClientState.ConversationCache cache) {
         var state = ClientState.get();
-        int width = Math.max(1, chatW - 8);
+        int width = Math.max(1, chatW - 16);
         String language = Minecraft.getInstance().getLanguageManager().getSelected();
         if (templateVersion != state.version() || templateWidth != width || templateRevision != RowTemplates.revision()
                 || !java.util.Objects.equals(templateConversation,selected) || !templateLanguage.equals(language)) {
@@ -1108,6 +1133,7 @@ public class SocialScreen extends Screen {
             templateRevision = RowTemplates.revision(); templateConversation = selected; templateLanguage = language;
         }
         int total = templateHeight;
+        anchorHistory(total,cache);
         int viewHeight = Math.max(1, listBottom - listTop), maxScroll = Math.max(0, total - viewHeight); chatScroll = Mth.clamp(chatScroll, 0, maxScroll);
         if (chatScroll >= maxScroll && cache.hasMore && !cache.messages.isEmpty()) { long before = cache.messages.getFirst().id(); if (historyRequestedBefore != before) { historyRequestedBefore = before; ClientNet.history(selected, before); } }
         chatRows.begin(chatX, listTop, chatW, viewHeight); chatRows.scroll = 0;
@@ -1125,6 +1151,7 @@ public class SocialScreen extends Screen {
             y += row.height;
         }
         graphics.disableScissor(); chatRows.end(viewHeight);
+        drawHistory(graphics,listTop,viewHeight,total);
     }
 
     /** Aviso de transparencia (PLAN 4.2) y del modo spy si el servidor lo activó (PLAN 9). */

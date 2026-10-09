@@ -1,5 +1,7 @@
 # Christmas graphic and Dedsafio: keep the game visible
 
+> Los estilos y ZIP descritos en esta guía histórica se han retirado. Consulta [la personalización actual](personalizacion-0.8.0.md) y [los ejemplos neutros](examples/series/README.md).
+
 > Historical 0.6.0 guide. Since 0.7.0, profiles are managed by FancyMenu; see the [current customization guide](personalizacion-0.7.0.md).
 
 SocialMod 0.6.0 provides two editable **FancyMenu + SpiffyHUD** examples. Christmas uses the exact supplied PNGs: snow, holly and bow button panels, plus Minecraft pixel-art icons. Dedsafio retains its grey frame and red details.

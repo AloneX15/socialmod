@@ -56,12 +56,7 @@ public final class SeriesPack {
     public static Contents capture(Path root, String name,String author,String version,String minecraft,Collection<String> layouts) throws IOException {
         var files=new TreeMap<String,byte[]>();
         for(String path:List.of(ROWS,VISUAL)) if(Files.exists(safe(root,path))) files.put(path,readFile(safe(root,path)));
-        if(files.containsKey(VISUAL) && VisualDesign.parse(new String(files.get(VISUAL),java.nio.charset.StandardCharsets.UTF_8)).seriesStyle.equals("christmas")) {
-            for(String kind:List.of("buttons","icons")) for(String assetName:kind.equals("buttons")?List.of("red","green","wood","ice","gold","purple"):List.of("sword","gingerbread","crafting_gift","tree","creeper","santa","snowman","candy")) {
-                String path="config/fancymenu/assets/socialmod/christmas_graphic/"+kind+"/"+assetName+".png";
-                files.put(path,readFile(safe(root,path)));
-            }
-        }
+
         for(String path:layouts) {
             if(!allowed(path) || !path.startsWith("config/fancymenu/customization/")) throw new IOException("Invalid layout: "+path);
             files.put(path,readFile(safe(root,path)));
@@ -149,7 +144,7 @@ public final class SeriesPack {
     private record State(String profile,List<String> files,Map<String,String> baseline) { }
     private record Backup(Map<String,String> files,List<String> absent,String state) { }
     public static synchronized void install(Path root,Contents contents,String profile) throws IOException {
-        validate(contents); var base=folder(root); Files.createDirectories(safe(root,"config/socialmod/series"));
+        validate(contents); contents=RetiredStyles.normalize(contents); var base=folder(root); Files.createDirectories(safe(root,"config/socialmod/series"));
         Path stateFile=safe(root,"config/socialmod/series/active.json"), backupFile=safe(root,"config/socialmod/series/last-backup.json");
         var retired=new TreeSet<String>();
         if(contents.files().containsKey(VISUAL)) {
@@ -169,12 +164,7 @@ public final class SeriesPack {
                 if(allowed(ref)&&ref.contains("/assets/")&&!contents.files().containsKey(ref)&&Files.exists(safe(root,ref)))retired.add(ref);
             }
         }
-        if(retired.stream().anyMatch(path->path.startsWith("config/fancymenu/customization/socialmod_christmas"))) {
-            for(String kind:List.of("buttons","icons"))for(String assetName:kind.equals("buttons")?List.of("red","green","wood","ice","gold","purple"):List.of("sword","gingerbread","crafting_gift","tree","creeper","santa","snowman","candy")) {
-                String path="config/fancymenu/assets/socialmod/christmas_graphic/"+kind+"/"+assetName+".png";
-                if(!contents.files().containsKey(path)&&Files.exists(safe(root,path)))retired.add(path);
-            }
-        }
+
         var owned=new TreeSet<>(contents.files().keySet()); owned.addAll(retired);
         if(owned.size()>MAX_FILES) throw new IOException("Too many managed files");
         validatePaths(owned);

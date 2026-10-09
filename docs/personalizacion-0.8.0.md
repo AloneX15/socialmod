@@ -78,3 +78,45 @@ Documentación oficial: [inicio y barra](https://docs.fancymenu.net/docs/en-US/h
 [elementos](https://github.com/Keksuccino/FancyMenu-Dev-Docs/wiki/Elements),
 [acciones](https://github.com/Keksuccino/FancyMenu-Dev-Docs/wiki/Actions) y
 [placeholders](https://github.com/Keksuccino/FancyMenu-Dev-Docs/wiki/Placeholders).
+
+## Controles separados y desplazamiento
+
+Añade **SocialMod: Control independiente**, abre **Configurar**, elige el módulo y pulsa el selector de control
+hasta elegir su nombre. Esto funciona en todos los módulos que incluyan botones o campos. En **Conversaciones**
+puedes elegir Buscar conversaciones, Buscar jugadores, Nuevo grupo y Ajustes. Comparte el nombre de formulario
+con el módulo incrustado para conservar la búsqueda y los borradores. **Ocultar control original: Sí** evita
+que aparezca dos veces dentro del módulo; cambia a No si necesitas ambos.
+
+Mueve y redimensiona el control desde FancyMenu. Conserva su acción y permite personalizar fondos, etiquetas
+e iconos. Los controles se identifican internamente por claves estables; el selector muestra su nombre traducido.
+Los controles dinámicos aparecen cuando están disponibles en el formulario.
+
+El historial tiene una barra vertical: arrastra su cursor para consultar mensajes anteriores o utiliza la rueda
+sobre el chat. Llegar al inicio carga mensajes antiguos. Los mensajes nuevos conservan la posición si estás
+consultando el historial. Los módulos movidos o escalados envían los eventos a las coordenadas de su contenido.
+
+## Estandarte y TAG del TEAM
+
+**SocialMod: TEAM banner / Estandarte del TEAM** muestra un estandarte blanco cuando no hay equipo.
+Al pulsarlo abre el editor si eres líder o administrador y el equipo no está archivado. Sin equipo o permisos
+permanece inactivo. La acción **SocialMod: Editor de estandarte** (`socialmod_edit_team_banner`) permite abrir
+el mismo editor desde cualquier botón de FancyMenu en una pantalla social:
+
+```json
+{"context":"self"}
+```
+
+La acción de búsqueda (`socialmod_search_players`) abre Buscar jugadores; acepta `{}` para el jugador local.
+Ambas permiten configurar el contexto y destino desde el editor de acciones.
+
+**SocialMod: TAG del TEAM con icono** (`socialmod_team_tag_view`) muestra solo el icono y la etiqueta de equipo
+con su color, sin nombre de jugador ni rango. Admite los contextos local, seleccionado y fijo. Sin equipo no
+muestra texto. El formato utiliza los ajustes de iconos y corchetes del TAG.
+
+## Retirada de estilos incluidos
+
+Dedsafio y Navidad ya no se incluyen. Al cargar o importar una configuración que los utilice se restablecen
+su apariencia y sus filas al diseño predeterminado y se desactivan sus layouts. Se conservan los archivos de
+imágenes del usuario y los layouts ajenos. El ejemplo neutro `clean` sigue disponible en `docs/examples/series/`.
+
+Creado por TakumiStudios.

@@ -1,11 +1,10 @@
-# Series examples
+# Neutral FancyMenu examples
 
-Two editable examples: Christmas graphic, using the exact original PNGs supplied by the user, and the Dedsafio 4 inspired layout. Both keep the world visible. Christmas has six button images and eight standalone icons; no artwork has been regenerated or changed.
+`clean-26.1.2.zip`, `clean-26.2.zip` and `clean-26.3.zip` contain neutral SocialMod layouts, editable rows and
+transparent appearance settings for the corresponding Minecraft version. FancyMenu and SpiffyHUD are optional
+client dependencies; use the matching example for the installed version.
 
-Source: `SeriesTemplates`, `ChristmasSkin`, `FancyBackend.template` and `SpiffyBackend.seriesLayout`. Run `:<mc>:runClientGameTest -PfancyMenu` to generate ZIPs in `versions/<mc>/build/run/clientGameTest/advanced-export/`. Copy them here after the run passes. Christmas contains 18 design/resource entries plus the manifest; Dedsafio contains four design entries plus the manifest. Screenshot names start with `series_<style>_<language>_`.
+The Christmas and Dedsafio built-in styles and exported examples have been removed. Old configurations using
+them reset to the default design when loaded or imported. User image files are retained.
 
-Installation and editing: [Español](../../series-es.md) · [English](../../series-en.md). Existing local profiles remain compatible.
-
-Artwork provenance: supplied references and the original user-provided prompt, “six horizontal Christmas Minecraft pixel-art buttons, transparent background, text-free center, beveled edges, snow and holly; red, green, wood, ice, gold and purple”. The original PNG copies are packaged under `assets/socialmod/textures/christmas_graphic/`.
-
-Creado por **TakumiStudios**.
+Creado por TakumiStudios.

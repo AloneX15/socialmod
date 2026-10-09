@@ -13,6 +13,12 @@ public final class FancyBridge {
         try { FancyBackend.register(); available = true; }
         catch (RuntimeException | LinkageError e) { disable(e); }
     }
+    private static AbstractWidget presentation;
+    public static void present(AbstractWidget proxy, Runnable render) {
+        AbstractWidget previous = presentation; presentation = proxy;
+        try { render.run(); } finally { presentation = previous; }
+    }
+    private static AbstractWidget presented(AbstractWidget widget) { return presentation == null ? widget : presentation; }
     public static boolean installed() { return available && !failed; }
     public static boolean available() { return installed() && !com.takumistudios.socialmod.client.theme.AppearanceMode.original() && !com.takumistudios.socialmod.client.screen.SocialComponents.embedded(); }
     public static boolean spiffyInstalled() { return installed() && !spiffyFailed && FabricLoader.getInstance().isModLoaded("spiffyhud"); }
@@ -26,35 +32,32 @@ public final class FancyBridge {
         if (!available()) return false;
         try { return FancyBackend.hidden(widget); } catch (RuntimeException | LinkageError e) { disable(e); return false; }
     }
-    public static com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture skinTexture(AbstractWidget widget,boolean icon) {
+    public static com.takumistudios.socialmod.client.theme.WidgetTexture skinTexture(AbstractWidget widget,boolean icon) {
         if(!available())return null;
-        try { return FancyBackend.skinTexture(widget,icon); } catch(RuntimeException|LinkageError e) { disable(e);return null; }
+        try { return FancyBackend.skinTexture(presented(widget),icon); } catch(RuntimeException|LinkageError e) { disable(e);return null; }
     }
-    public static com.takumistudios.socialmod.client.theme.ChristmasSkin.Texture skinAsset(String kind,String name) {
-        if(!available())return null;
-        try { return FancyBackend.skinAsset(kind,name); } catch(RuntimeException|LinkageError e) { disable(e);return null; }
-    }
+
     public static boolean buttonBackground(AbstractWidget widget, net.minecraft.client.gui.GuiGraphicsExtractor graphics) {
         if (!available()) return false;
-        try { return FancyBackend.buttonBackground(widget, graphics); } catch (RuntimeException | LinkageError e) { disable(e); return false; }
+        try { return FancyBackend.buttonBackground(presented(widget), graphics); } catch (RuntimeException | LinkageError e) { disable(e); return false; }
     }
     public static boolean customLabel(AbstractWidget widget) {
         if (!available()) return false;
-        try { return FancyBackend.customLabel(widget); } catch(RuntimeException | LinkageError e) { disable(e); return false; }
+        try { return FancyBackend.customLabel(presented(widget)); } catch(RuntimeException | LinkageError e) { disable(e); return false; }
     }
     private static final java.util.Map<AbstractWidget,String> identifiers=new java.util.WeakHashMap<>();
     public static String identifier(AbstractWidget widget) { return identifiers.getOrDefault(widget,""); }
     public static net.minecraft.network.chat.Component label(AbstractWidget widget) {
-        if (available()) try { return FancyBackend.label(widget); } catch (RuntimeException | LinkageError e) { disable(e); }
-        return widget.getMessage();
+        if (available()) try { return FancyBackend.label(presented(widget)); } catch (RuntimeException | LinkageError e) { disable(e); }
+        return presented(widget).getMessage();
     }
     public static float labelScale(AbstractWidget widget) {
         if (!available()) return 1;
-        try { return FancyBackend.labelScale(widget); } catch(RuntimeException | LinkageError e) { disable(e); return 1; }
+        try { return FancyBackend.labelScale(presented(widget)); } catch(RuntimeException | LinkageError e) { disable(e); return 1; }
     }
     public static boolean labelShadow(AbstractWidget widget) {
         if (!available()) return false;
-        try { return FancyBackend.labelShadow(widget); } catch(RuntimeException | LinkageError e) { disable(e); return false; }
+        try { return FancyBackend.labelShadow(presented(widget)); } catch(RuntimeException | LinkageError e) { disable(e); return false; }
     }
     public static boolean customized(Screen screen) {
         if (!available()) return false;

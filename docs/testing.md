@@ -104,10 +104,12 @@ waypoint, salir y cerrar funciona sin bloqueos.
 
 ## Diseños de serie y protocolo 4
 
-`-PfancyMenu` comprueba ambos diseños, sus fondos transparentes, sus HUD, perfiles y exportaciones. `-PfancyMenu -PfancyOnly` verifica el fallback sin SpiffyHUD. `-PfancyMenu -PseriesPack=christmas` y `-PfancyMenu -PseriesPack=dedsafio` arrancan con el ZIP publicado de cada diseño. Ejecutar cada perfil para 26.1.2, 26.2 y 26.3.
+`-PfancyMenu` comprueba el diseño neutro, sus fondos transparentes, sus HUD, perfiles y exportaciones. `-PfancyMenu -PfancyOnly` verifica el fallback sin SpiffyHUD. `-PfancyMenu -PseriesPack=clean` arranca con el ZIP neutro publicado. Ejecutar cada perfil para 26.1.2, 26.2 y 26.3.
 
 Las capturas `series_<estilo>_<idioma>_panel` y `_hud` proceden del juego real. Los ZIP reproducibles se escriben en `versions/<mc>/build/run/clientGameTest/advanced-export/`. Copiarlos a `docs/examples/series/` después de pasar las pruebas.
 
 `SnapshotSyncTest` verifica deltas, fragmentos UTF-8, aplicación atómica, recuperación y límites. `PersistenceRecoveryTest` verifica lectura fallida, reintento y drenaje de índices grandes. El benchmark de snapshots mide 50 y 200 destinatarios; sus tiempos son diagnósticos de CI y no equivalen a conexiones de red reales.
 
 La validación de 0.6.0 está en [Implementación del plan](implementacion-0.6.0.md). El cliente también deja pendientes un guardado y una activación y comprueba que el cierre los termina.
+
+La cobertura actual incluye barra de historial, anclaje ante mensajes nuevos, controles independientes de todos los módulos, estandarte blanco, clic y acciones de búsqueda/edición, TAG con color y restablecimiento de diseños retirados.
