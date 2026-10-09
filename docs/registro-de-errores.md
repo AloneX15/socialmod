@@ -315,3 +315,5 @@ los PNG originales de corona, corazón y persona, los controles de perfil y una 
 
 La prueba de reinicio falló al iniciar otra prueba de TEAM antes de recibir el snapshot de limpieza.
 Se espera explícitamente el TEAM restaurado tras limpiar cada fixture; la suite vuelve a pasar.
+
+Los perfiles abiertos desde una lista embebida conservan su contexto de grupo, pero al cerrar vuelven al host de FancyMenu mediante la relación de propietario del formulario. El gametest verifica ese retorno.

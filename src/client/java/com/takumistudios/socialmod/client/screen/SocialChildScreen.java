@@ -39,7 +39,7 @@ public abstract class SocialChildScreen extends Screen {
 
     @Override
     public void onClose() {
-        ClientCompat.setScreen(parent);
+        ClientCompat.setScreen(SocialComponents.owner(parent));
     }
 
     @Override

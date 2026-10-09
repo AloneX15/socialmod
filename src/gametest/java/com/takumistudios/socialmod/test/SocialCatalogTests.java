@@ -183,7 +183,7 @@ final class SocialCatalogTests {
             host.mouseScrolled(element.getAbsoluteX()+10,element.getAbsoluteY()+20,0,4);
             var row=element.listRows.rows.getFirst();
             if(!host.mouseClicked(new MouseButtonEvent(element.getAbsoluteX()+10,element.getAbsoluteY()+element.listRows.viewY+row.y()+2,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false) || !(ClientCompat.currentScreen() instanceof ProfileScreen))throw new AssertionError("Responsive member click lost its target");
-            ClientCompat.setScreen(host);element.baseWidth=180;element.baseHeight=140;
+            ClientCompat.currentScreen().onClose();if(ClientCompat.currentScreen()!=host)throw new AssertionError("Member profile did not return to its FancyMenu host");element.baseWidth=180;element.baseHeight=140;
         });context.waitTicks(3);
         context.runOnClient(client->{
             var host=ClientCompat.currentScreen();
