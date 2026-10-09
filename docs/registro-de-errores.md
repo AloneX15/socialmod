@@ -285,3 +285,7 @@ La última actividad de un amigo invisible podía aparecer en el snapshot aunque
 ## Cierre del mundo de pruebas en CI 26.3 (2026-10-09)
 
 Los perfiles FancyMenu agotaron el tiempo después de las comprobaciones de UI. El volcado mostraba el hilo de render en `IntegratedServer.halt()` y los hilos de servidor y test en la barrera de `ThreadingImpl`, el interbloqueo conocido del arnés de Fabric. El test deja ahora la pantalla y sus hooks de entrada antes de sincronizar el cierre del mundo, manteniendo las comprobaciones de persistencia tras reiniciar.
+
+### Catálogo incompleto de Add Action
+
+FancyMenu solo registraba cuatro acciones aunque había más paneles navegables. Se registran acciones individuales para todos los módulos y accesos de editor, volver y subpaneles de borradores. La prueba de cliente ejecuta las acciones reales y comprueba el destino de gestión de TEAM y los subpaneles de estilo.

@@ -33,6 +33,29 @@ final class SocialCatalogTests {
         context.setScreen(()->new SocialScreen(conversation));context.waitTicks(4);
         context.runOnClient(client->{
             var host=ClientCompat.currentScreen();
+            for(String module:SocialComponents.MODULES) {
+                String id=module.equals("search")?"socialmod_search_players":module.equals("banner")?"socialmod_edit_team_banner":"socialmod_open_"+module;
+                var action=de.keksuccino.fancymenu.customization.action.ActionRegistry.getAction(id);
+                if(action==null || action.getDisplayName().getString().contains("socialmod.catalog."))throw new AssertionError("Missing named navigation action: "+module);
+                String destination=module.equals("chat")?conversation:java.util.List.of("group","invite").contains(module)?ClientState.get().snapshot().self.mainGroup:module.equals("profile")?ClientState.get().snapshot().self.uuid:team;
+                action.execute("{\"context\":\"fixed\",\"target\":\""+destination+"\"}");
+                if(ClientCompat.currentScreen()==host)throw new AssertionError("Named navigation action did not open panel: "+module);
+                if(module.equals("team_management") && (!(ClientCompat.currentScreen() instanceof TeamManagementScreen screen) || !screen.selectedTeam().equals(team)))throw new AssertionError("TEAM settings action lost selected destination");
+                ClientCompat.setScreen(host);
+            }
+            for(String id:java.util.List.of("socialmod_create_group_style","socialmod_group_style","socialmod_tag_banner")) {
+                var action=de.keksuccino.fancymenu.customization.action.ActionRegistry.getAction(id);
+                action.execute("{\"context\":\"fixed\",\"target\":\""+(id.equals("socialmod_group_style")?ClientState.get().snapshot().self.mainGroup:team)+"\"}");
+                if(!(ClientCompat.currentScreen() instanceof TagStyleScreen || ClientCompat.currentScreen() instanceof BannerEditorScreen))throw new AssertionError("Draft navigation failed: "+id);
+                ClientCompat.setScreen(host);
+            }
+            de.keksuccino.fancymenu.customization.action.ActionRegistry.getAction("socialmod_open_advanced").execute("{}");
+            if(!(ClientCompat.currentScreen() instanceof AdvancedCustomizationScreen))throw new AssertionError("Advanced action failed");
+            de.keksuccino.fancymenu.customization.action.ActionRegistry.getAction("socialmod_open_back").execute("{}");
+            if(ClientCompat.currentScreen()!=host)throw new AssertionError("Back action lost parent");
+            de.keksuccino.fancymenu.customization.action.ActionRegistry.getAction("socialmod_open_quick_reply").execute("{\"context\":\"fixed\",\"target\":\""+conversation+"\"}");
+            if(!(ClientCompat.currentScreen() instanceof QuickReplyScreen))throw new AssertionError("Quick reply action failed");
+            ClientCompat.setScreen(host);
             for(String module:SocialComponents.MODULES) if(ElementRegistry.getBuilder("socialmod_module_"+module)==null)throw new AssertionError("Missing catalog module "+module);
             for(String module:SocialComponents.MODULES) {
                 String destination=module.equals("chat")?conversation:java.util.List.of("group","invite").contains(module)?ClientState.get().snapshot().self.mainGroup:module.equals("profile")?ClientState.get().snapshot().self.uuid:team;

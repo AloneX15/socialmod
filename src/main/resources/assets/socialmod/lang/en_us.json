@@ -665,5 +665,13 @@
   "socialmod.team.banner_permission": "Only the TEAM leader or an administrator can edit its banner.",
   "socialmod.team.no_team": "You have no TEAM assigned. The white banner is a preview without a team.",
   "socialmod.team.editing": "Editing TEAM: %s",
-  "socialmod.team.create_permission": "You do not have permission to create a TEAM on this server."
+  "socialmod.team.create_permission": "You do not have permission to create a TEAM on this server.",
+  "socialmod.catalog.module.advanced": "Advanced customization",
+  "socialmod.catalog.module.screen_editor": "Edit screen with FancyMenu",
+  "socialmod.catalog.module.hud_editor": "Edit HUD with Spiffy",
+  "socialmod.catalog.module.back": "Back to previous screen",
+  "socialmod.catalog.module.quick_reply": "Quick reply",
+  "socialmod.catalog.module.group_style": "Edit group color and icon",
+  "socialmod.catalog.module.create_group_style": "Edit new group tag style",
+  "socialmod.catalog.module.tag_banner": "Edit banner in tag draft"
 }

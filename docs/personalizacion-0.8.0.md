@@ -128,3 +128,18 @@ tu TEAM actual. El nombre y el color iniciales corresponden a ese destino. Sin d
 un TEAM quedan desactivados y su ayuda indica que debes elegir uno de la lista. El título muestra el TEAM que
 estás editando. Los errores de nombre, color, emblema, jugador y permisos se explican por separado, también
 al usar comandos.
+
+## Acciones individuales de navegación
+
+En **Add Action → SocialMod** cada panel tiene su propia acción: conversaciones, chat, jugadores, búsqueda,
+catálogo y gestión de TEAM, perfil, ajustes personales, crear grupo, ajustes del grupo, invitaciones,
+TAG, estandarte, apariencia y editores básico y de filas. También hay accesos a personalización avanzada,
+editor de pantalla FancyMenu, editor HUD Spiffy, respuesta rápida y volver.
+
+Para abrir los ajustes administrativos del TEAM, elige **SocialMod: Gestión de TEAM**
+(`socialmod_open_team_management`). Con `{}` usa tu TEAM; con contexto `selected` conserva la selección
+actual y con `fixed` admite un ID concreto. Requiere los mismos permisos de administración que el botón nativo.
+Las acciones de estilo de grupo, grupo nuevo y estandarte del borrador TAG reutilizan sus controles nativos,
+conservando el borrador del formulario `main` (o el nombre que configures). El selector de **Control independiente**
+permite escoger los controles que dependen de la propiedad o página actual del editor.
+Los cuatro identificadores anteriores siguen funcionando en los layouts guardados.

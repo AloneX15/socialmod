@@ -665,5 +665,13 @@
   "socialmod.team.banner_permission": "Solo el líder del TEAM o un administrador puede editar su estandarte.",
   "socialmod.team.no_team": "No tienes un TEAM asignado. El estandarte blanco es una vista previa sin equipo.",
   "socialmod.team.editing": "Editando TEAM: %s",
-  "socialmod.team.create_permission": "No tienes permiso para crear un TEAM en este servidor."
+  "socialmod.team.create_permission": "No tienes permiso para crear un TEAM en este servidor.",
+  "socialmod.catalog.module.advanced": "Personalización avanzada",
+  "socialmod.catalog.module.screen_editor": "Editar pantalla con FancyMenu",
+  "socialmod.catalog.module.hud_editor": "Editar HUD con Spiffy",
+  "socialmod.catalog.module.back": "Volver a la pantalla anterior",
+  "socialmod.catalog.module.quick_reply": "Respuesta rápida",
+  "socialmod.catalog.module.group_style": "Editar color e icono del grupo",
+  "socialmod.catalog.module.create_group_style": "Editar estilo del grupo nuevo",
+  "socialmod.catalog.module.tag_banner": "Editar estandarte del borrador del TAG"
 }

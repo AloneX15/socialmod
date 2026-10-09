@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- FancyMenu Add Action incluye accesos individuales a todos los módulos, gestión de TEAM, personalización, editores, respuesta rápida, volver y subpaneles de estilo con borradores compartidos.
+
 - El estandarte de FancyMenu conserva el clic cuando queda una referencia al editor ya cerrado; se comprueba la pantalla activa.
 
 - La gestión de TEAM conserva el equipo seleccionado y carga su nombre y color al abrir Renombrar o Estilo.

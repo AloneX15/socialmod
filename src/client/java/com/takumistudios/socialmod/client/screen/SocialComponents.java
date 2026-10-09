@@ -90,12 +90,13 @@ public final class SocialComponents {
         return current;
     }
     public static String resolve(Screen host,String module,String context,String fixed) {
+        if(module.equals("quick_reply") && context.equals("self")) return Objects.toString(ClientState.get().activeConversation(), "");
         if(module.equals("profile")) {
             if(context.equals("fixed"))return fixed;
             if(context.equals("selected")) { var id=com.takumistudios.socialmod.common.model.ConversationId.parse(selection(host));return id!=null && id.isDirect() && ClientState.get().selfId()!=null?id.other(ClientState.get().selfId()).toString():""; }
             return ClientState.get().snapshot().self.uuid;
         }
-        if(List.of("group","invite","chat").contains(module)) return context.equals("fixed")?fixed:context.equals("selected")?selection(host):ClientState.get().snapshot().self.mainGroup;
+        if(List.of("group","invite","chat","quick_reply").contains(module)) return context.equals("fixed")?fixed:context.equals("selected")?selection(host):ClientState.get().snapshot().self.mainGroup;
         return target(host,context,fixed);
     }
     private static boolean mayEditTeam(Screen host,String context,String fixed) {
@@ -119,6 +120,8 @@ public final class SocialComponents {
                 String conversation = target.startsWith("g:") || target.startsWith("dm:") ? target : group == null || group.channels.isEmpty() ? null : "g:" + group.id + ":" + group.channels.getFirst().name;
                 yield conversation == null || com.takumistudios.socialmod.common.model.ConversationId.parse(conversation) == null ? null : new SocialScreen(conversation);
             }
+            case "advanced" -> new AdvancedCustomizationScreen(host);
+            case "quick_reply" -> com.takumistudios.socialmod.common.model.ConversationId.parse(target) == null ? null : new QuickReplyScreen(target);
             case "search" -> new PlayerSearchScreen(host);
             case "teams" -> { var screen = new TeamScreen(host); screen.componentSelect(groupId); yield screen; }
             case "team_management" -> { if (!ClientState.get().snapshot().teamAdmin) yield null; var screen = new TeamManagementScreen(host); screen.componentSelect(groupId); yield screen; }

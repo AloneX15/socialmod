@@ -30,6 +30,14 @@ public final class SocialElements {
         ActionRegistry.register(new SocialAction(false)); ActionRegistry.register(new SocialAction(true));
         ActionRegistry.register(new SocialAction("socialmod_search_players", "search"));
         ActionRegistry.register(new SocialAction("socialmod_edit_team_banner", "banner"));
+        for (String module : SocialComponents.MODULES)
+            if (!module.equals("search") && !module.equals("banner"))
+                ActionRegistry.register(new SocialAction("socialmod_open_" + module, module));
+        for (String module : List.of("advanced", "screen_editor", "hud_editor", "back", "quick_reply"))
+            ActionRegistry.register(new SocialAction("socialmod_open_" + module, module));
+        ActionRegistry.register(new SocialAction("socialmod_group_style", "group", "button_socialmod.group_settings.style/1", "group_style"));
+        ActionRegistry.register(new SocialAction("socialmod_create_group_style", "create_group", "button_socialmod.group_settings.style/1", "create_group_style"));
+        ActionRegistry.register(new SocialAction("socialmod_tag_banner", "tag", "button_socialmod.banner.title/1", "tag_banner"));
         for (String data : SocialComponents.DATA) PlaceholderRegistry.register(new DataPlaceholder(data));
     }
     private static Component label(String key) { return Component.translatable("socialmod.catalog." + key); }
@@ -248,8 +256,11 @@ public final class SocialElements {
     static final class SocialAction extends Action {
         final boolean controlAction;
         final String defaultModule;
-        SocialAction(boolean control) { super(control?"socialmod_form_control":"socialmod_open_module");controlAction=control; defaultModule="teams"; }
+        String defaultControl="", displayKey="";
+        boolean generic;
+        SocialAction(boolean control) { super(control?"socialmod_form_control":"socialmod_open_module");controlAction=control; defaultModule="teams"; generic=true; }
         SocialAction(String id, String module) { super(id); controlAction=false; defaultModule=module; }
+        SocialAction(String id, String module, String control, String label) { super(id); controlAction=true; defaultModule=module; defaultControl=control; displayKey=label; }
         @Override public boolean hasValue() { return true; }
         @Override public void execute(String json) {
             if(!enabled())return;
@@ -259,21 +270,24 @@ public final class SocialElements {
                 String module=read(config,"module",defaultModule),context=read(config,"context","self"),target=read(config,"target",""),form=read(config,"form","main");
                 if(controlAction) {
                     var session=SocialComponents.form(host(),module,context,target,form);if(session==null)return;
-                    var widget=session.control(read(config,"control",""));
+                    var widget=session.control(read(config,"control",defaultControl));
                     if(widget instanceof net.minecraft.client.gui.components.Button button && button.active && button.visible) SocialComponents.scoped(()->button.onPress(new MouseButtonEvent(button.getX()+1,button.getY()+1,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0))));
-                } else if(module.equals("banner")) { openBanner(context,target); }
+                } else if(module.equals("back")) { host().onClose(); }
+                else if(module.equals("screen_editor")) { FancyBridge.edit(host()); }
+                else if(module.equals("hud_editor")) { FancyBridge.editHud(); }
+                else if(module.equals("banner")) { openBanner(context,target); }
                 else { String resolved=SocialComponents.resolve(host(),module,context,target);var screen=SocialComponents.create(host(),module,resolved);if(screen!=null)ClientCompat.setScreen(screen); }
             } catch(RuntimeException | LinkageError e) { SocialMod.LOGGER.warn("Invalid SocialMod FancyMenu action",e); }
         }
         static String read(com.google.gson.JsonObject json,String key,String fallback) { return bounded(json.has(key)?json.get(key).getAsString():null,fallback); }
-        @Override public Component getDisplayName() { return Component.literal("SocialMod: ").append(label(defaultModule.equals("search") ? "module.search" : defaultModule.equals("banner") ? "module.banner" : controlAction?"control":"open")); }
+        @Override public Component getDisplayName() { return Component.literal("SocialMod: ").append(label(!displayKey.isEmpty() ? "module."+displayKey : generic ? controlAction ? "control" : "open" : "module."+defaultModule)); }
         @Override public Component getDescription() { return label("description"); }
         @Override public Component getValueDisplayName() { return label("configure"); }
-        @Override public String getValuePreset() { return "{\"module\":\""+defaultModule+"\",\"context\":\"self\",\"target\":\"\",\"form\":\"main\",\"control\":\"\"}"; }
+        @Override public String getValuePreset() { return "{\"module\":\""+defaultModule+"\",\"context\":\"self\",\"target\":\"\",\"form\":\"main\",\"control\":\""+defaultControl+"\"}"; }
         @Override public boolean canRunAsync() { return false; }
         @Override public void editValue(ActionInstance instance,ActionEditingCompletedFeedback done,ActionEditingCanceledFeedback cancelled) {
             var builder=new Builder(controlAction ? "control" : "module_"+defaultModule,defaultModule); var element=builder.buildDefaultInstance();
-            try { var config=com.google.gson.JsonParser.parseString(instance.value).getAsJsonObject();element.module=read(config,"module",defaultModule);element.context=read(config,"context","self");element.target=read(config,"target","");element.form=read(config,"form","main");element.control=read(config,"control",""); } catch(RuntimeException e) { SocialMod.LOGGER.debug("Reset malformed action configuration",e); }
+            try { var config=com.google.gson.JsonParser.parseString(instance.value).getAsJsonObject();element.module=read(config,"module",defaultModule);element.context=read(config,"context","self");element.target=read(config,"target","");element.form=read(config,"form","main");element.control=read(config,"control",defaultControl); } catch(RuntimeException e) { SocialMod.LOGGER.debug("Reset malformed action configuration",e); }
             Screen previous=ClientCompat.currentScreen();
             ClientCompat.setScreen(new Configuration(previous,element,()->{var config=new com.google.gson.JsonObject();config.addProperty("module",element.module);config.addProperty("context",element.context);config.addProperty("target",element.target);config.addProperty("form",element.form);config.addProperty("control",element.control);done.accept(instance,config.toString(),element.module);}));
         }
