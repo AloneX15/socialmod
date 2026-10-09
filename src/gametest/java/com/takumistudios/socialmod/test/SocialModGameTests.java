@@ -40,6 +40,38 @@ public class SocialModGameTests {
         check(helper, previous == social.visuals().originalInterface(), "stranger changed global appearance");
         social.teams().archive(team.id, "test cleanup"); helper.succeed();
     }
+    @GameTest
+    public void teamVipIsLeaderOnlyAndBannerOnly(GameTestHelper helper) {
+        var social=social(helper);var leader=player(helper);var member=player(helper);var outsider=player(helper);
+        check(helper,social.teams().create(leader,"VIP "+System.nanoTime(),"shield;#55FF55"),"create VIP fixture");
+        var team=social.teams().of(leader.getUUID());
+        social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.TEAM_ASSIGN,member.getUUID().toString(),team.id,"test");
+        check(helper,!social.teams().setVip(outsider,team.id,member.getUUID().toString(),true),"outsider granted VIP");
+        check(helper,!social.teams().setVip(member,team.id,member.getUUID().toString(),true),"member granted VIP");
+        check(helper,!social.teams().setVip(leader,team.id,leader.getUUID().toString(),true),"leader changed to VIP");
+        check(helper,!social.teams().setVip(leader,team.id,outsider.getUUID().toString(),true),"nonmember made VIP");
+        var probe=new com.takumistudios.socialmod.common.net.Payloads.ActionC2S(com.takumistudios.socialmod.common.net.SocialAction.TEAM_GRANT_VIP,team.id,member.getUUID().toString());
+        com.takumistudios.socialmod.server.net.ActionTestProbe.dispatch(social,leader,probe);
+        check(helper,team.roleOf(member.getUUID())==Role.VIP,"packet did not grant VIP");
+        check(helper,social.teams().banner(member,team.id,"{\"base\":14}"),"VIP cannot edit banner");
+        check(helper,social.groups().canAccess(team,member.getUUID(),team.defaultChannel()),"VIP lost chat access");
+        check(helper,!social.groups().has(team,member.getUUID(),com.takumistudios.socialmod.common.model.GroupPermission.MANAGE_ROLES),"VIP obtained management permissions");
+        String name=team.name;int color=team.color;
+        com.takumistudios.socialmod.server.net.ActionTestProbe.dispatch(social,member,new com.takumistudios.socialmod.common.net.Payloads.ActionC2S(com.takumistudios.socialmod.common.net.SocialAction.TEAM_STYLE,team.id,"swords;#AA55FF"));
+        com.takumistudios.socialmod.server.net.ActionTestProbe.dispatch(social,member,new com.takumistudios.socialmod.common.net.Payloads.ActionC2S(com.takumistudios.socialmod.common.net.SocialAction.TEAM_RENAME,team.id,"Unauthorized"));
+        check(helper,team.color==color && team.name.equals(name),"VIP edited TEAM settings");
+        check(helper,social.teams().setVip(leader,team.id,member.getUUID().toString(),false),"leader cannot revoke VIP");
+        check(helper,team.roleOf(member.getUUID())==Role.MEMBER && !social.teams().banner(member,team.id,"{}"),"revocation did not remove banner access");
+        check(helper,social.teams().setVip(leader,team.id,member.getUUID().toString(),true),"cannot grant again");
+        social.teams().archive(team.id,"test");
+        check(helper,!social.teams().setVip(leader,team.id,member.getUUID().toString(),false),"archived TEAM edited");
+        check(helper,team.archiveRoles.get(member.getUUID())==Role.VIP,"archive lost VIP");
+        social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.TEAM_RESTORE,team.id,"","test");
+        social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.TEAM_ASSIGN,leader.getUUID().toString(),team.id,"test");
+        social.teams().admin(com.takumistudios.socialmod.common.net.SocialAction.TEAM_ASSIGN,member.getUUID().toString(),team.id,"test");
+        check(helper,team.roleOf(member.getUUID())==Role.VIP,"restored TEAM lost VIP");
+        social.teams().archive(team.id,"test cleanup");helper.succeed();
+    }
     private static SocialServer social(GameTestHelper helper) {
         SocialServer social = SocialServer.get();
         if (social == null) {

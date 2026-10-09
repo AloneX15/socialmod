@@ -79,7 +79,9 @@ public final class TeamService {
         }
         record.teamId = team == null ? "" : team.id; record.teamChosen = team != null;
         if (team != null) {
-            team.members.put(record.id, team.members.isEmpty() ? Role.LEADER : Role.MEMBER); team.memberNames.put(record.id, record.name);
+            Role archived = team.archiveRoles.remove(record.id);
+            Role restored = archived == Role.VIP ? Role.VIP : archived == Role.LEADER && team.leader() == null ? Role.LEADER : team.members.isEmpty() ? Role.LEADER : Role.MEMBER;
+            team.members.put(record.id, restored); team.memberNames.put(record.id, record.name);
             record.touch(com.takumistudios.socialmod.common.model.ConversationId.group(team.id, team.defaultChannel()).key());
         }
         social.groups().nametags().update(record.id);
@@ -161,10 +163,25 @@ public final class TeamService {
         if (id.isBlank()) return fail(player, "select_team");
         if (team == null) return fail(player, "not_found");
         if (team.archived) return fail(player, "archived");
-        if (!(PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN) || player.getUUID().equals(team.leader()))) return fail(player, "banner_permission");
+        if (!(PermissionBridge.isStaff(player, PermissionBridge.TEAM_ADMIN) || player.getUUID().equals(team.leader()) || team.roleOf(player.getUUID()) == Role.VIP)) return fail(player, "banner_permission");
         try { var value = com.takumistudios.socialmod.common.model.TeamBanner.parse(json); validateBanner(value); team.banner = value; }
         catch (RuntimeException e) { return fail(player, "bad_banner"); }
         changed("BANNER " + player.getGameProfile().name() + " " + team.id); return true;
+    }
+    public boolean setVip(ServerPlayer actor, String id, String targetName, boolean enabled) {
+        Group team = find(id);
+        if (team == null) return fail(actor, "not_found");
+        if (team.archived) return fail(actor, "archived");
+        if (!actor.getUUID().equals(team.leader())) return fail(actor, "vip_permission");
+        PlayerRecord target = social.friends().resolve(targetName);
+        if (target == null || !team.isMember(target.id)) return fail(actor, "vip_member");
+        Role current = team.roleOf(target.id);
+        if (current == Role.LEADER) return fail(actor, "vip_leader");
+        if (enabled && current == Role.VIP || !enabled && current != Role.VIP) return fail(actor, "vip_role");
+        team.members.put(target.id, enabled ? Role.VIP : Role.MEMBER);
+        social.groups().nametags().update(target.id);
+        changed((enabled ? "VIP_GRANT " : "VIP_REVOKE ") + actor.getGameProfile().name() + " " + target.id + " " + team.id);
+        return true;
     }
     private void changed(String event) {
         social.storage().markPlayersDirty(); social.storage().markGroupsDirty(); social.storage().audit("TEAM_" + event);

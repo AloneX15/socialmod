@@ -69,8 +69,8 @@ public class SocialScreen extends Screen {
     private @Nullable String selected;
     private Tab tab = Tab.CHAT;
     private Layout layout = Layout.THREE;
-    private final Ui.RowList left = new Ui.RowList();
-    private final Ui.RowList right = new Ui.RowList();
+    private Ui.RowList left = new Ui.RowList();
+    private Ui.RowList right = new Ui.RowList();
     private final Ui.RowList chatRows = new Ui.RowList();
     private int chatScroll;
     /** Botón de silenciar canal en la cabecera del chat (-1 = no se muestra). */
@@ -131,6 +131,34 @@ public class SocialScreen extends Screen {
         int[] bounds = componentRegion(kind);
         try { drawBlock(kind, graphics, mouseX, mouseY, bounds[0], bounds[1], bounds[2], bounds[3], background); }
         finally { componentControls = previous; }
+    }
+    /** Geometry and scroll belong to the element, while the form retains selection and drafts. */
+    public <T> T withListViewport(String kind, int width, int height, Ui.RowList rows, boolean controls, java.util.function.Supplier<T> work) {
+        int cx=convX,cw=convW,px=playersX,pw=playersW,ch=chatW,t=top,b=bottom;
+        Ui.RowList oldLeft=left,oldRight=right; boolean oldControls=componentControls;
+        var widgets=net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(this);
+        var rectangles=new java.util.IdentityHashMap<net.minecraft.client.gui.components.AbstractWidget,int[]>();
+        var visibility=new java.util.IdentityHashMap<net.minecraft.client.gui.components.AbstractWidget,Boolean>();
+        top=0;bottom=Math.max(1,height);chatW=0;convX=playersX=0;convW=kind.equals("conversations")?width:0;playersW=kind.equals("players")?width:0;
+        if(kind.equals("conversations"))left=rows;else right=rows;
+        componentControls=controls;
+        for(var widget:widgets) {
+            String id=com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identifier(widget);
+            boolean search=kind.equals("conversations") && id.equals("input_socialmod.panel.search");
+            boolean create=kind.equals("conversations") && id.equals("button_socialmod.panel.new_group");
+            boolean settings=kind.equals("conversations") && id.equals("button_socialmod.panel.settings");
+            visibility.put(widget,widget.visible);widget.visible=widget.visible && controls && (search || create || settings);
+            if(search || create || settings) {
+                rectangles.put(widget,new int[]{widget.getX(),widget.getY(),widget.getWidth(),widget.getHeight()});
+                if(search)widget.setRectangle(Math.max(1,width-6),18,3,1);
+                else {int half=Math.max(1,(width-9)/2);widget.setRectangle(half,mainButtonHeight(),create?3:6+half,height-mainButtonHeight()-3);}
+            }
+        }
+        try { return work.get(); }
+        finally {
+            convX=cx;convW=cw;playersX=px;playersW=pw;chatW=ch;top=t;bottom=b;left=oldLeft;right=oldRight;componentControls=oldControls;
+            for(var widget:widgets) {Boolean visible=visibility.get(widget);if(visible!=null)widget.visible=visible;int[] r=rectangles.get(widget);if(r!=null)widget.setRectangle(r[2],r[3],r[0],r[1]);}
+        }
     }
     public int[] componentRegion(String kind) {
         return switch (kind) {
@@ -1342,16 +1370,19 @@ public class SocialScreen extends Screen {
                 PresenceStatus status = PresenceStatus.byId(member.status);
                 if (RowTemplates.enabled("player")) {
                     UUID id = UUID.fromString(member.uuid);
-                    var data = new RowTemplates.Data(id, Map.of("name", Component.literal(member.name), "role", Component.literal(role == null ? "?" : role.letter()), "status", Component.literal(status.symbol())), -1, false, false);
+                    var data = new RowTemplates.Data(id, Map.of("name", Component.literal(member.name), "role", Component.literal(member.role), "status", Component.literal(status.symbol())), -1, false, false);
                     int height = RowTemplates.height("player", w, data); RowTemplates.draw(graphics, "player", x, rowY, w, data.state(false, Ui.inside(mouseX, mouseY, x, rowY, w, height)));
+                    if(Ui.inside(mouseX,mouseY,x,rowY,w,height))graphics.setTooltipForNextFrame(font,Component.literal(member.name+" · ").append(Component.translatable("socialmod.role."+member.role)),mouseX,mouseY);
                     right.rows.add(Ui.Row.of(playersX, y, playersW, height, () -> openChild(new ProfileScreen(this, id, member.name)))); y += height; continue;
                 }
-                VisualText.text(graphics, font, "[" + (role == null ? "?" : role.letter()) + "]", x, rowY, theme.colors().muted());
+                com.takumistudios.socialmod.client.RoleIcons.draw(graphics, member.role, x, rowY, 12);
+                if (Ui.inside(mouseX,mouseY,x,rowY,12,12)) graphics.setTooltipForNextFrame(font,Component.translatable("socialmod.role."+member.role),mouseX,mouseY);
                 Ui.status(graphics, font, status, x + 16, rowY);
                 VisualText.text(graphics, font, Ui.trim(font, member.name, w - 26), x + 24, rowY, member.online ? theme.colors().text() : theme.colors().muted());
                 UUID id = UUID.fromString(member.uuid);
-                right.rows.add(Ui.Row.of(playersX, y, playersW, ROW, () -> openChild(new ProfileScreen(this, id, member.name))));
-                y += ROW;
+                right.rows.add(Ui.Row.of(playersX, y, playersW, 16, () -> openChild(new ProfileScreen(this, id, member.name))));
+                if(Ui.inside(mouseX,mouseY,x+24,rowY,Math.max(1,w-24),16))graphics.setTooltipForNextFrame(font,Component.literal(member.name),mouseX,mouseY);
+                y += 16;
             }
             if (!group.events.isEmpty()) {
                 y += 3;
@@ -1393,18 +1424,18 @@ public class SocialScreen extends Screen {
                 VisualText.text(graphics, font, "·", x + 11, rowY, theme.colors().muted());
             }
             String label = (state.isFriend(id) ? "★ " : "") + name;
-            VisualText.text(graphics, font, Ui.trim(font, label, w - 20), x + 18, rowY, theme.colors().text());
             Payloads.TagEntry tag = state.tagOf(id);
-            if (tag != null && playersW > 110) {
-                String glyph = com.takumistudios.socialmod.common.model.GroupIcon.glyphOf(tag.icon());
-                String tagText = (glyph.isEmpty() ? "" : glyph + " ") + "[" + tag.tag() + "]";
-                int tagW = font.width(tagText);
-                if (font.width(label) + tagW + 22 < w) {
-                    VisualText.text(graphics, font, tagText, x + w - tagW, rowY, Ui.readable(tag.color()));
-                }
-            }
-            right.rows.add(Ui.Row.of(playersX, y, playersW, ROW, () -> openChild(new ProfileScreen(this, id, name))));
-            y += ROW;
+            String glyph=tag==null?"":com.takumistudios.socialmod.common.model.GroupIcon.glyphOf(tag.icon());
+            String tagText=tag==null?"":(glyph.isEmpty()?"":glyph+" ")+"["+tag.tag()+"]";
+            int available=Math.max(1,w-18),nameWidth=font.width(label);
+            boolean wrap=!tagText.isEmpty() && nameWidth+4+font.width(tagText)>available;
+            String displayed=Ui.trim(font,label,available);
+            VisualText.text(graphics,font,displayed,x+18,rowY,theme.colors().text());
+            int rowHeight=wrap?Math.max(24,font.lineHeight*2+4):ROW;
+            if(!tagText.isEmpty()) VisualText.text(graphics,font,Ui.trim(font,tagText,wrap?available:Math.max(1,available-nameWidth-4)),wrap?x+18:x+18+nameWidth+4,wrap?rowY+font.lineHeight+2:rowY,Ui.readable(tag.color()));
+            if(Ui.inside(mouseX,mouseY,x+18,rowY,available,rowHeight))graphics.setTooltipForNextFrame(font,Component.literal(label+(tagText.isEmpty()?"":" "+tagText)),mouseX,mouseY);
+            right.rows.add(Ui.Row.of(playersX,y,playersW,rowHeight,()->openChild(new ProfileScreen(this,id,name))));
+            y+=rowHeight;
         }
         graphics.disableScissor();
         right.end(y + 4);
@@ -1412,6 +1443,6 @@ public class SocialScreen extends Screen {
 
     private static int roleOrder(String role) {
         Role parsed = Role.byId(role);
-        return parsed == null ? 9 : parsed.ordinal();
+        return parsed == null ? 9 : parsed == Role.VIP ? 2 : parsed == Role.MEMBER ? 3 : parsed == Role.RECRUIT ? 4 : parsed.ordinal();
     }
 }

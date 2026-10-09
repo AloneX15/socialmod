@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Listas FancyMenu adaptables sin escalar texto, desplazamiento por elemento y TAG junto al nombre con ajuste a dos líneas.
+- VIP de TEAM concedido por el líder, limitado a editar estandarte, con PNG de corona, corazón verde y persona en la lista de miembros.
+
 - Fondo del panel editable y ocultable en FancyMenu; listas de conversaciones y jugadores sin controles integrados por defecto, con fondo opcional y miembros del TEAM en layouts estrechos.
 
 - FancyMenu Add Action incluye accesos individuales a todos los módulos, gestión de TEAM, personalización, editores, respuesta rápida, volver y subpaneles de estilo con borradores compartidos.

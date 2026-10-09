@@ -8,7 +8,8 @@ public enum Role {
     LEADER("leader", "L"),
     OFFICER("officer", "O"),
     MEMBER("member", "M"),
-    RECRUIT("recruit", "R");
+    RECRUIT("recruit", "R"),
+    VIP("vip", "V");
 
     private final String id;
     private final String letter;
@@ -27,13 +28,16 @@ public enum Role {
         return letter;
     }
 
+    /** VIP shares member chat access without changing persisted enum ordinals. */
+    public int rank() { return this == VIP ? MEMBER.ordinal() : ordinal(); }
+
     /** {@code true} si este rol es igual o superior a {@code other}. */
     public boolean atLeast(Role other) {
-        return ordinal() <= other.ordinal();
+        return rank() <= other.rank();
     }
 
     public boolean outranks(Role other) {
-        return ordinal() < other.ordinal();
+        return rank() < other.rank();
     }
 
     /** Un rango más (Recluta → Miembro → Oficial); el líder solo se cambia transfiriendo el grupo. */

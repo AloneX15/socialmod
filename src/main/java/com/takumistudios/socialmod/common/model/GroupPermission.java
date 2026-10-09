@@ -8,7 +8,8 @@ public enum GroupPermission {
     PIN("pin"),
     EDIT_INFO("edit_info"),
     MANAGE_ROLES("manage_roles"),
-    MANAGE_EVENTS("manage_events");
+    MANAGE_EVENTS("manage_events"),
+    EDIT_BANNER("edit_banner");
 
     private final String id;
 

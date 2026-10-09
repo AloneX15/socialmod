@@ -662,7 +662,7 @@
   "socialmod.team.player_not_found": "Player not found. Use a name registered on this server or their UUID.",
   "socialmod.team.invalid_action": "That action is not available for TEAMs.",
   "socialmod.team.no_permission": "You need TEAM administration permissions to perform this action.",
-  "socialmod.team.banner_permission": "Only the TEAM leader or an administrator can edit its banner.",
+  "socialmod.team.banner_permission": "Only the TEAM leader, VIP members or an administrator can edit this banner.",
   "socialmod.team.no_team": "You have no TEAM assigned. The white banner is a preview without a team.",
   "socialmod.team.editing": "Editing TEAM: %s",
   "socialmod.team.create_permission": "You do not have permission to create a TEAM on this server.",
@@ -676,5 +676,12 @@
   "socialmod.catalog.module.tag_banner": "Edit banner in tag draft",
   "socialmod.advanced.block.background": "Panel background",
   "socialmod.catalog.show_controls": "Show native controls: %s",
-  "socialmod.catalog.show_background": "Show panel background: %s"
+  "socialmod.catalog.show_background": "Show panel background: %s",
+  "socialmod.role.vip": "VIP",
+  "socialmod.profile.grant_vip": "Grant VIP",
+  "socialmod.profile.revoke_vip": "Revoke VIP",
+  "socialmod.team.vip_permission": "Only the TEAM leader can grant or revoke VIP.",
+  "socialmod.team.vip_member": "Choose a member of this TEAM.",
+  "socialmod.team.vip_leader": "The leader cannot be changed to VIP.",
+  "socialmod.team.vip_role": "Grant VIP to a member or revoke it from a VIP."
 }

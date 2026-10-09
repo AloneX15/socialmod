@@ -46,7 +46,7 @@ public final class SocialElements {
     private static boolean enabled() { return SocialComponents.supported(host()) && ClientState.get().connected() && !AppearanceMode.original(); }
     private static boolean openBanner(String context,String target) {
         Screen parent=host();
-        String error=SocialComponents.teamEditError(parent,context,target);
+        String error=SocialComponents.teamBannerError(parent,context,target);
         if(!error.isEmpty()) {
             ClientCompat.setScreen(new net.minecraft.client.gui.screens.AlertScreen(()->ClientCompat.setScreen(parent),Component.translatable("socialmod.banner.title"),Component.translatable(error)));
             return true;
@@ -96,6 +96,7 @@ public final class SocialElements {
         private String textSource = "";
         private boolean failed, focused;
         private int scroll;
+        public final Ui.RowList listRows=new Ui.RowList();
         private int[] region = {0,0,540,340};
         private final AbstractWidget input = new AbstractWidget(0,0,1,1,Component.empty()) {
             @Override public void extractWidgetRenderState(GuiGraphicsExtractor graphics,int x,int y,float delta) { }
@@ -140,7 +141,7 @@ public final class SocialElements {
                 } else {
                     var next = SocialComponents.form(host(),module,context,target,form);
                     if (next != session) { session = next; scroll = 0; }
-                    if (session != null) { session.tick(FancyBackend.hudTick); region = session.region(); selectedControl=isControl()?session.control(control):null; if (selectedControl != null) { input.setMessage(selectedControl.getMessage()); input.active=selectedControl.active && selectedControl.visible; } else if (isControl()) input.active=false; if (selectedControl != null && hideOriginal) session.detach(selectedControl, FancyBackend.hudTick); }
+                    if (session != null) { session.tick(FancyBackend.hudTick); region = adaptiveList() ? new int[]{0,0,Math.max(1,getAbsoluteWidth()),Math.max(1,getAbsoluteHeight())} : session.region(); selectedControl=isControl()?session.control(control):null; if (selectedControl != null) { input.setMessage(selectedControl.getMessage()); input.active=selectedControl.active && selectedControl.visible; } else if (isControl()) input.active=false; if (selectedControl != null && hideOriginal) session.detach(selectedControl, FancyBackend.hudTick); }
                 }
             } catch (RuntimeException | LinkageError e) { fail(e); }
         }
@@ -151,7 +152,9 @@ public final class SocialElements {
             return current instanceof LayoutEditorScreen || !SocialComponents.supported(current) && LayoutEditorScreen.getCurrentInstance()!=null;
         }
         private AbstractWidget widget() { return session == null ? null : selectedControl; }
-        private float scale() { return getAbsoluteWidth() / (float)Math.max(1,region[2]); }
+        private boolean adaptiveList() { return !isControl() && List.of("conversations","players").contains(module); }
+        private <T> T inViewport(java.util.function.Supplier<T> work) { return adaptiveList() && session.screen instanceof SocialScreen social ? social.withListViewport(module,Math.max(1,getAbsoluteWidth()),Math.max(1,getAbsoluteHeight()),listRows,showControls,work) : work.get(); }
+        private float scale() { return adaptiveList() ? 1 : getAbsoluteWidth() / (float)Math.max(1,region[2]); }
         private double localX(double x) { return (x-getAbsoluteX()) / scale() + region[0]; }
         private double localY(double y) { return (y-getAbsoluteY()) / scale() + region[1] + scroll; }
         @Override public void render(GuiGraphicsExtractor graphics, int mx, int my, float delta) {
@@ -170,14 +173,14 @@ public final class SocialElements {
                     withWidgetBounds(widget, () -> FancyBridge.present(input, () -> widget.extractRenderState(graphics,mx,my,delta)));
                 } else {
                     graphics.pose().translate(x,y); graphics.pose().scale(scale(),scale()); graphics.pose().translate(-region[0],-region[1]-scroll);
-                    SocialComponents.scoped(() -> session.render(() -> {
+                    SocialComponents.scoped(() -> inViewport(() -> {session.render(() -> {
                         if (session.screen instanceof SocialScreen social) {
                             social.drawComponent(module, graphics, (int)localX(mx), (int)localY(my), showBackground, showControls);
                             if (showControls) for(var widget : session.controls())
                                 if (!(widget instanceof SocialBlockWidget) && !(widget instanceof SocialBackgroundWidget))
                                     widget.extractRenderState(graphics,(int)localX(mx),(int)localY(my),delta);
                         } else session.screen.extractRenderState(graphics,(int)localX(mx),(int)localY(my),delta);
-                    }, FancyBackend.hudTick));
+                    }, FancyBackend.hudTick);return null;}));
                 }
             } catch (RuntimeException | LinkageError e) { fail(e); }
             finally { graphics.pose().popMatrix(); graphics.disableScissor(); }
@@ -200,20 +203,20 @@ public final class SocialElements {
             focused = true;
             try {
                 if (isControl()) { var widget=widget(); if(widget==null) return false; session.screen.setFocused(widget); return withWidgetBounds(widget, () -> SocialComponents.scoped(() -> widget.mouseClicked(e,twice))); }
-                return SocialComponents.scoped(() -> session.originalControls(() -> !showControls && session.screen instanceof SocialScreen ? session.contentOnly(() -> session.screen.mouseClicked(mapped(e),twice)) : session.screen.mouseClicked(mapped(e),twice), FancyBackend.hudTick));
+                return SocialComponents.scoped(() -> inViewport(() -> session.originalControls(() -> !showControls && session.screen instanceof SocialScreen ? session.contentOnly(() -> session.screen.mouseClicked(mapped(e),twice)) : session.screen.mouseClicked(mapped(e),twice), FancyBackend.hudTick)));
             } catch (RuntimeException | LinkageError error) { fail(error); return false; }
         }
         @Override public boolean mouseReleased(MouseButtonEvent e) {
             if (session==null || !focused || !enabled()) return false;
-            var widget=widget(); return guardedInput(()->isControl() ? widget!=null && withWidgetBounds(widget,()->widget.mouseReleased(e)) : SocialComponents.scoped(()->session.screen.mouseReleased(mapped(e))));
+            var widget=widget(); return guardedInput(()->isControl() ? widget!=null && withWidgetBounds(widget,()->widget.mouseReleased(e)) : SocialComponents.scoped(()->inViewport(()->session.screen.mouseReleased(mapped(e)))));
         }
         @Override public boolean mouseDragged(MouseButtonEvent e,double dx,double dy) {
             if(session==null || !focused || !enabled()) return false;
-            var widget=widget(); return guardedInput(()->isControl() ? widget!=null && withWidgetBounds(widget,()->widget.mouseDragged(e,dx,dy)) : SocialComponents.scoped(()->session.screen.mouseDragged(mapped(e),dx/scale(),dy/scale())));
+            var widget=widget(); return guardedInput(()->isControl() ? widget!=null && withWidgetBounds(widget,()->widget.mouseDragged(e,dx,dy)) : SocialComponents.scoped(()->inViewport(()->session.screen.mouseDragged(mapped(e),dx/scale(),dy/scale()))));
         }
         @Override public boolean mouseScrolled(double x,double y,double dx,double dy) {
             if (session==null || !enabled() || !isMouseOver(x,y) || isControl()) return false;
-            if (guardedInput(()->SocialComponents.scoped(()->session.originalControls(()-> !showControls && session.screen instanceof SocialScreen ? session.contentOnly(()->session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy)) : session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy), FancyBackend.hudTick)))) return true;
+            if (guardedInput(()->SocialComponents.scoped(()->inViewport(()->session.originalControls(()-> !showControls && session.screen instanceof SocialScreen ? session.contentOnly(()->session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy)) : session.screen.mouseScrolled(localX(x),localY(y),dx/scale(),dy), FancyBackend.hudTick))))) return true;
             int maximum=Math.max(0,region[3]-(int)(getAbsoluteHeight()/scale())); scroll=Math.clamp(scroll-(int)(dy*20),0,maximum); return true;
         }
         @Override public boolean keyPressed(KeyEvent e) { return focused && session!=null && (showControls || !(session.screen instanceof SocialScreen)) && enabled() && guardedInput(()->SocialComponents.scoped(()->session.screen.keyPressed(e))); }

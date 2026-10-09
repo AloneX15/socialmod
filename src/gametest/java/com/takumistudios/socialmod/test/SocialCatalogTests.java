@@ -110,6 +110,8 @@ final class SocialCatalogTests {
             players.context="fixed";players.target=ClientState.get().snapshot().self.mainGroup;players.form="players_test";players.anchorPoint=ElementAnchorPoints.TOP_LEFT;
             players.posOffsetX=10;players.posOffsetY=310;players.baseWidth=180;players.baseHeight=140;players.showBackground=false;players.setInstanceIdentifier("catalog_players");
             layout.serializedElements.add(players.getBuilder().serializeElementInternal(players));
+            var wide=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_module_players").buildDefaultInstance();
+            wide.context="fixed";wide.target=players.target;wide.form=players.form;wide.anchorPoint=ElementAnchorPoints.TOP_LEFT;wide.posOffsetX=420;wide.posOffsetY=310;wide.baseWidth=400;wide.baseHeight=140;wide.showBackground=false;wide.setInstanceIdentifier("catalog_players_wide");layout.serializedElements.add(wide.getBuilder().serializeElementInternal(wide));
             var conversations=(SocialElements.Element)ElementRegistry.getBuilder("socialmod_module_conversations").buildDefaultInstance();
             conversations.anchorPoint=ElementAnchorPoints.TOP_LEFT;conversations.posOffsetX=200;conversations.posOffsetY=310;conversations.baseWidth=200;conversations.baseHeight=140;conversations.showBackground=false;conversations.setInstanceIdentifier("catalog_conversations");
             layout.serializedElements.add(conversations.getBuilder().serializeElementInternal(conversations));
@@ -160,8 +162,10 @@ final class SocialCatalogTests {
             if(players.showControls || conversations.showControls || players.showBackground || conversations.showBackground)throw new AssertionError("Content-only settings not restored");
             var playerForm=SocialComponents.form(host,"players","fixed",ClientState.get().snapshot().self.mainGroup,"players_test");
             if(playerForm.region()[2]<=1)throw new AssertionError("Embedded players column collapsed in narrow layout");
-            var rows=(Ui.RowList)read(playerForm.screen,"right");
+            var rows=players.listRows;
             if(rows.rows.size()<2)throw new AssertionError("Players module did not render group member and online self");
+            var wide=(SocialElements.Element)layer.getElementByInstanceIdentifier("catalog_players_wide");
+            if(players.listRows==wide.listRows || players.listRows.viewWidth!=players.getAbsoluteWidth() || wide.listRows.viewWidth!=wide.getAbsoluteWidth())throw new AssertionError("Shared form did not retain independent viewports");
             var convForm=SocialComponents.form(host,"conversations","self","","main");
             convForm.contentOnly(()-> {if(convForm.controls().stream().anyMatch(w->w.visible))throw new AssertionError("Content-only panel retained native controls");return null;});
             var background=layer.vanillaWidgetElements.stream().filter(e->"socialmod_panel_background".equals(e.getInstanceIdentifier())).findFirst().orElseThrow(()->new AssertionError("Panel background not discoverable in FancyMenu"));
@@ -170,6 +174,17 @@ final class SocialCatalogTests {
             if(!com.takumistudios.socialmod.client.compat.fancy.FancyBridge.hidden(widget))throw new AssertionError("Panel background cannot be hidden");
         });context.waitTicks(3);
         context.takeScreenshot("catalog_03_content_only_transparent_background");
+        context.runOnClient(client->{var element=(SocialElements.Element)ScreenCustomizationLayerHandler.getLayerOfScreen(ClientCompat.currentScreen()).getElementByInstanceIdentifier("catalog_players");element.baseWidth=90;element.baseHeight=36;});context.waitTicks(3);
+        context.runOnClient(client->{
+            var host=ClientCompat.currentScreen();var layer=ScreenCustomizationLayerHandler.getLayerOfScreen(host);
+            var element=(SocialElements.Element)layer.getElementByInstanceIdentifier("catalog_players");var wide=(SocialElements.Element)layer.getElementByInstanceIdentifier("catalog_players_wide");
+            if(element.listRows.viewWidth!=90 || element.listRows.viewHeight!=30 || wide.listRows.viewWidth!=400)throw new AssertionError("Resize did not reflow own list");
+            if(!host.mouseScrolled(element.getAbsoluteX()+10,element.getAbsoluteY()+20,0,-4) || element.listRows.scroll<=0 || wide.listRows.scroll!=0)throw new AssertionError("List scrolling leaked between elements");
+            host.mouseScrolled(element.getAbsoluteX()+10,element.getAbsoluteY()+20,0,4);
+            var row=element.listRows.rows.getFirst();
+            if(!host.mouseClicked(new MouseButtonEvent(element.getAbsoluteX()+10,element.getAbsoluteY()+element.listRows.viewY+row.y()+2,new MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT,0)),false) || !(ClientCompat.currentScreen() instanceof ProfileScreen))throw new AssertionError("Responsive member click lost its target");
+            ClientCompat.setScreen(host);element.baseWidth=180;element.baseHeight=140;
+        });context.waitTicks(3);
         context.runOnClient(client->{
             var host=ClientCompat.currentScreen();
             var background=net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(host).stream().filter(w->com.takumistudios.socialmod.client.compat.fancy.FancyBridge.identifier(w).equals("panel_background")).findFirst().orElseThrow();

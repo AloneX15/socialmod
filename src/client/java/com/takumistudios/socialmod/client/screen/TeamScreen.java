@@ -109,7 +109,7 @@ public class TeamScreen extends SocialChildScreen {
         }
         addRenderableWidget(Ui.button(Component.translatable("gui.back"), b -> onClose()).bounds(width / 2 - 45, height - 24, 90, 20).build());
         var target = state.teams.stream().filter(t -> t.id.equals(selected.isEmpty() ? state.self.teamId : selected)).findFirst();
-        if (target.isPresent() && !target.get().archived && (state.teamAdmin || target.get().leader.equals(state.self.uuid))) {
+        if (target.isPresent() && !target.get().archived && (state.teamAdmin || target.get().leader.equals(state.self.uuid) || ClientState.get().group(target.get().id) != null && ClientState.get().group(target.get().id).myRole.equals("vip"))) {
             var team = target.get();
             addRenderableWidget(Ui.button(Component.translatable("socialmod.banner.edit"), b -> { saveDrafts(); ClientCompat.setScreen(new BannerEditorScreen(this, team.banner, value -> ClientNet.action(SocialAction.TEAM_BANNER, team.id, com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(value)))); })
                 .bounds(x, height - 48, w, 20).build());

@@ -86,7 +86,7 @@ public final class RowTemplates {
             if (part.wrap) h = Math.max(h, Math.round(textLayout(part, data, Math.max(1, Math.round(partWidth(part, width) * 100f / part.scale))).lines.size() * (font.lineHeight + 1) * part.scale / 100f));
             height = Math.max(height, part.y + h + row.padding);
         }
-        return Math.min(4096, height);
+        return Math.min(4096, data.fields.containsKey("role") ? Math.max(16,height) : height);
     }
     private static int partWidth(RowDesign.Part part, int width) { return Math.max(1, part.width == 0 ? width - part.x - 3 : Math.min(part.width, width)); }
     private static Identifier resourceId(String value) {
@@ -127,7 +127,16 @@ public final class RowTemplates {
         for (var part : row.parts) if (part.visible) {
             int w = partWidth(part, width), px = x + (part.right ? width - part.x - w : part.x), py = y + part.y;
             if (!contrast && !part.texture.isEmpty()) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, resourceId(part.texture), px, py, w, part.height);
-            if (part.field.equals("avatar")) { Heads.draw(graphics, data.avatar, px, py, Math.min(w, part.height)); continue; }
+            if (part.field.equals("role") && data.fields.containsKey("role")) {
+                String role=data.fields.get("role").getString();
+                com.takumistudios.socialmod.client.RoleIcons.draw(graphics,role,px,py,Math.min(12,Math.min(w,part.height)));
+                continue;
+            }
+            if (part.field.equals("avatar")) {
+                if(data.fields.containsKey("role"))com.takumistudios.socialmod.client.RoleIcons.draw(graphics,data.fields.get("role").getString(),px,py,Math.min(12,Math.min(w,part.height)));
+                else Heads.draw(graphics, data.avatar, px, py, Math.min(w, part.height));
+                continue;
+            }
             if (part.field.equals("health")) { graphics.fill(px, py, px + w, py + part.height, 0xFF303030); if (data.health >= 0) graphics.fill(px, py, px + Math.round(w * Math.clamp(data.health, 0, 1)), py + part.height, part.color); continue; }
             float scale = part.scale / 100f; var text = textLayout(part, data, part.wrap ? Math.max(1,Math.round(w / scale)) : 32768);
             if (!part.wrap) graphics.enableScissor(px, py, px + w, py + part.height);

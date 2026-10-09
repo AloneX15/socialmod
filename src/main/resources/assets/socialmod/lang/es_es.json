@@ -662,7 +662,7 @@
   "socialmod.team.player_not_found": "No se encuentra ese jugador. Usa un nombre registrado en este servidor o su UUID.",
   "socialmod.team.invalid_action": "Esa acción no está disponible para los TEAM.",
   "socialmod.team.no_permission": "Necesitas permisos de administración de TEAM para realizar esta acción.",
-  "socialmod.team.banner_permission": "Solo el líder del TEAM o un administrador puede editar su estandarte.",
+  "socialmod.team.banner_permission": "Solo el líder, los VIP del TEAM o un administrador pueden editar este estandarte.",
   "socialmod.team.no_team": "No tienes un TEAM asignado. El estandarte blanco es una vista previa sin equipo.",
   "socialmod.team.editing": "Editando TEAM: %s",
   "socialmod.team.create_permission": "No tienes permiso para crear un TEAM en este servidor.",
@@ -676,5 +676,12 @@
   "socialmod.catalog.module.tag_banner": "Editar estandarte del borrador del TAG",
   "socialmod.advanced.block.background": "Fondo del panel",
   "socialmod.catalog.show_controls": "Mostrar controles nativos: %s",
-  "socialmod.catalog.show_background": "Mostrar fondo del panel: %s"
+  "socialmod.catalog.show_background": "Mostrar fondo del panel: %s",
+  "socialmod.role.vip": "VIP",
+  "socialmod.profile.grant_vip": "Conceder VIP",
+  "socialmod.profile.revoke_vip": "Retirar VIP",
+  "socialmod.team.vip_permission": "Solo el líder del TEAM puede conceder o retirar VIP.",
+  "socialmod.team.vip_member": "Elige un miembro de este TEAM.",
+  "socialmod.team.vip_leader": "No puedes convertir al líder en VIP.",
+  "socialmod.team.vip_role": "Concede VIP a un miembro o retíralo a un VIP."
 }

@@ -77,7 +77,7 @@ public final class SocialComponents {
         String key = module + "/" + name;
         String resolved = resolve(host,module,context,fixed);
         Form current = forms.get(key);
-        if (module.equals("basic") && !ClientState.get().snapshot().visualAdmin || module.equals("team_management") && !ClientState.get().snapshot().teamAdmin || List.of("banner","tag").contains(module) && !mayEditTeam(host,context,fixed)) {
+        if (module.equals("basic") && !ClientState.get().snapshot().visualAdmin || module.equals("team_management") && !ClientState.get().snapshot().teamAdmin || (module.equals("banner") ? !teamBannerError(host,context,fixed).isEmpty() : module.equals("tag") && !mayEditTeam(host,context,fixed))) {
             if(current!=null) { current.close();forms.remove(key); } return null;
         }
         if (current == null || !current.target.equals(resolved)) {
@@ -109,16 +109,22 @@ public final class SocialComponents {
         if(team.archived) return "socialmod.team.archived";
         return ClientState.get().snapshot().teamAdmin || team.leader.equals(ClientState.get().snapshot().self.uuid) ? "" : "socialmod.team.banner_permission";
     }
+    public static String teamBannerError(Screen host, String context, String fixed) {
+        String error = teamEditError(host, context, fixed);
+        var team = team(host, context, fixed);
+        var group = team == null ? null : ClientState.get().group(team.id);
+        return error.equals("socialmod.team.banner_permission") && group != null && group.myRole.equals("vip") ? "" : error;
+    }
     public static Screen create(Screen host, String module, String target) {
         String groupId = target.startsWith("g:") ? target.substring(2).split(":", 2)[0] : target;
         var group = ClientState.get().group(groupId);
         var team = ClientState.get().snapshot().teams.stream().filter(t -> t.id.equals(groupId)).findFirst().orElse(null);
         boolean teamEdit = team != null && !team.archived && (ClientState.get().snapshot().teamAdmin || team.leader.equals(ClientState.get().snapshot().self.uuid));
         return switch (module) {
-            case "conversations" -> new SocialScreen(null);
+            case "conversations" -> { var screen=new SocialScreen(null);screen.prepareComponent("conversations");yield screen; }
             case "players" -> {
                 String conversation = target.startsWith("g:") || target.startsWith("dm:") ? target : group == null || group.channels.isEmpty() ? null : "g:" + group.id + ":" + group.channels.getFirst().name;
-                yield new SocialScreen(conversation);
+                var screen=new SocialScreen(conversation);screen.prepareComponent("players");yield screen;
             }
             case "chat" -> {
                 String conversation = target.startsWith("g:") || target.startsWith("dm:") ? target : group == null || group.channels.isEmpty() ? null : "g:" + group.id + ":" + group.channels.getFirst().name;
@@ -137,7 +143,7 @@ public final class SocialComponents {
             case "appearance" -> new AppearanceScreen(host);
             case "basic" -> ClientState.get().snapshot().visualAdmin ? new VisualEditorScreen(host) : null;
             case "rows" -> new RowTemplateScreen(host);
-            case "banner" -> !teamEdit ? null : new BannerEditorScreen(host, team.banner, value -> ClientNet.action(SocialAction.TEAM_BANNER, team.id, com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(value)));
+            case "banner" -> !(teamEdit || team != null && !team.archived && group != null && group.myRole.equals("vip")) ? null : new BannerEditorScreen(host, team.banner, value -> ClientNet.action(SocialAction.TEAM_BANNER, team.id, com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(value)));
             case "tag" -> !teamEdit ? null : new TagStyleScreen(host, team.name, team.color, team.icon, "", (rgb, icon) -> ClientNet.action(SocialAction.TEAM_STYLE, team.id, icon + ";" + String.format("#%06X", rgb & 0xFFFFFF)), team.banner, value -> ClientNet.action(SocialAction.TEAM_BANNER, team.id, com.takumistudios.socialmod.common.model.VisualDesign.GSON.toJson(value)));
             default -> null;
         };

@@ -29,7 +29,8 @@ public enum SocialAction {
     // Chat de voz (Simple Voice Chat): a = id del grupo
     VOICE_JOIN, VOICE_LEAVE,
     TEAM_CREATE, TEAM_CHOOSE, TEAM_ASSIGN, TEAM_RESET, TEAM_ARCHIVE, TEAM_RESTORE, TEAM_RENAME, VISUAL_PUBLISH, TEAM_LIMIT, TEAM_STYLE, VISUAL_ROLLBACK,
-    TEAM_BANNER, VISUAL_ORIGINAL, VISUAL_PERSONAL_ORIGINAL;
+    TEAM_BANNER, VISUAL_ORIGINAL, VISUAL_PERSONAL_ORIGINAL,
+    TEAM_GRANT_VIP, TEAM_REVOKE_VIP;
 
     public static SocialAction byOrdinal(int ordinal) {
         SocialAction[] values = values();

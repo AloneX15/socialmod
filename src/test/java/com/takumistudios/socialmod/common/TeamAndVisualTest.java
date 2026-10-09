@@ -54,11 +54,19 @@ class TeamAndVisualTest {
         FileStorageBackend files = new FileStorageBackend(directory.resolve("world"));
         try (JdbcStorageBackend backend = JdbcStorageBackend.open("h2", "", "", "", "team_", directory.resolve("config"), files)) { roundTrip(backend); }
     }
+    @Test void vipRetainsMemberAccessWithoutManagementPermissions() {
+        var vip=com.takumistudios.socialmod.common.model.Role.VIP;
+        assertTrue(vip.atLeast(com.takumistudios.socialmod.common.model.Role.MEMBER));
+        assertFalse(vip.atLeast(com.takumistudios.socialmod.common.model.Role.OFFICER));
+        var config=new com.takumistudios.socialmod.server.config.ServerConfig();
+        config.roles.put("vip",java.util.List.of("kick","manage_roles"));
+        assertEquals(java.util.Set.of(com.takumistudios.socialmod.common.model.GroupPermission.EDIT_BANNER),config.rolePermissions().get(vip));
+    }
     private void roundTrip(StorageBackend backend) throws Exception {
-        UUID id = UUID.randomUUID(); Group team = new Group(); team.id = "tabcd1234"; team.team = true; team.archived = true; team.name = "Forest"; team.archiveReaders.add(id); team.archiveRoles.put(id, com.takumistudios.socialmod.common.model.Role.OFFICER);
+        UUID id = UUID.randomUUID(); Group team = new Group(); team.id = "tabcd1234"; team.team = true; team.archived = true; team.name = "Forest"; team.archiveReaders.add(id); team.archiveRoles.put(id, com.takumistudios.socialmod.common.model.Role.VIP);
         backend.write("groups", "teams-test", SocialStorage.gson().toJsonTree(team));
         Group restored = SocialStorage.gson().fromJson(backend.read("groups", "teams-test"), Group.class).normalize();
-        assertTrue(restored.team); assertTrue(restored.archived); assertTrue(restored.archiveReaders.contains(id)); assertTrue(restored.members.isEmpty()); assertEquals(com.takumistudios.socialmod.common.model.Role.OFFICER, restored.archiveRoles.get(id));
+        assertTrue(restored.team); assertTrue(restored.archived); assertTrue(restored.archiveReaders.contains(id)); assertTrue(restored.members.isEmpty()); assertEquals(com.takumistudios.socialmod.common.model.Role.VIP, restored.archiveRoles.get(id));
         PlayerRecord player = new PlayerRecord(id, "Alex", 1); player.teamId = team.id; player.teamChosen = true;
         backend.write("players", "team-test", SocialStorage.gson().toJsonTree(player));
         PlayerRecord loaded = SocialStorage.gson().fromJson(backend.read("players", "team-test"), PlayerRecord.class).normalize();

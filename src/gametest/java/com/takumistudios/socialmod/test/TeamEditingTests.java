@@ -47,7 +47,7 @@ final class TeamEditingTests {
             var social=SocialServer.get();var player=server.getPlayerList().getPlayers().getFirst();
             social.teams().archive(fixture.get(),"test cleanup");
             if(!previous.isEmpty())social.teams().admin(SocialAction.TEAM_ASSIGN,player.getUUID().toString(),previous,"test cleanup");
-        });context.setScreen(()->null);
+        });context.waitFor(client->ClientState.get().snapshot().self.teamId.equals(previous),100);context.setScreen(()->null);
     }
     private TeamEditingTests() { }
 }

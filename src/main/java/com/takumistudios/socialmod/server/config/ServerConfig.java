@@ -300,6 +300,8 @@ public final class ServerConfig {
             java.util.Set<GroupPermission> set = java.util.EnumSet.noneOf(GroupPermission.class);
             if (role == Role.LEADER) {
                 set.addAll(java.util.EnumSet.allOf(GroupPermission.class));
+            } else if (role == Role.VIP) {
+                set.add(GroupPermission.EDIT_BANNER);
             } else {
                 List<String> ids = roles.get(role.id());
                 if (ids != null) {

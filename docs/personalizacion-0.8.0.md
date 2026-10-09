@@ -155,3 +155,23 @@ En su configuración, **Mostrar controles nativos** permite recuperar la búsque
 Los controles independientes siguen disponibles aunque estén desactivados dentro del panel.
 Jugadores dispone de su propia columna en distribuciones estrechas o con pestañas y carga los miembros del
 TEAM del contexto configurado, además de los jugadores conectados. Usa `self`, `selected` o un ID `fixed`.
+
+## Listas adaptables y roles
+
+Conversaciones y Jugadores usan el ancho y alto reales del elemento FancyMenu sin escalar la fuente.
+Puedes mover y redimensionar cada lista; sus filas, zonas clicables y desplazamiento se mantienen independientes,
+incluso si dos elementos comparten formulario. El TAG se coloca a 4 píxeles del nombre y pasa a una segunda
+línea si no cabe. La ayuda muestra el nombre y TAG completos cuando el espacio es reducido.
+
+Los miembros se muestran con los PNG incluidos: corona para Líder, corazón verde para VIP y persona para
+Miembro, Oficial y Recluta. La ayuda distingue el rol. Las filas personalizadas usan estos iconos en los campos
+`role` y en el avatar de miembros; las filas de jugadores conectados conservan su cabeza.
+
+VIP existe exclusivamente en TEAM. Su líder puede abrir el perfil de un miembro desde la lista y pulsar
+**Conceder VIP** o **Retirar VIP**. VIP mantiene acceso al chat como Miembro y solo añade edición del estandarte,
+también desde el elemento o acción FancyMenu. No permite renombrar, cambiar color/icono ni gestionar roles.
+Retirar VIP devuelve a Miembro. El servidor comprueba todos los permisos y destinos.
+
+El rol se guarda con el TEAM. Al archivarlo conserva su rol histórico y lo recupera si vuelve a incorporarse
+al TEAM restaurado; restaurar no reasigna automáticamente a jugadores que hayan cambiado de TEAM.
+Los ordinales anteriores de roles y acciones se conservan. Actualiza cliente y servidor conjuntamente.

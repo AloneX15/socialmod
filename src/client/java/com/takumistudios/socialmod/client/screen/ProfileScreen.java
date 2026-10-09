@@ -140,7 +140,11 @@ public class ProfileScreen extends SocialChildScreen {
                 } else if (member != null && !group.party) {
                     Role mine = Role.byId(group.myRole);
                     Role theirs = Role.byId(member.role);
-                    boolean outranks = mine != null && theirs != null && mine.outranks(theirs);
+                    boolean isTeam = state.snapshot().teams.stream().anyMatch(t -> t.id.equals(group.id));
+                    if (isTeam && mine == Role.LEADER && theirs != null && theirs != Role.LEADER)
+                        row2.add(Ui.button(Component.translatable(theirs == Role.VIP ? "socialmod.profile.revoke_vip" : "socialmod.profile.grant_vip"),
+                            b -> ClientNet.action(theirs == Role.VIP ? SocialAction.TEAM_REVOKE_VIP : SocialAction.TEAM_GRANT_VIP, group.id, target.toString())).build());
+                    boolean outranks = !isTeam && mine != null && theirs != null && mine.outranks(theirs);
                     if (outranks && group.myPermissions.contains("manage_roles")) {
                         row2.add(Ui.button(Component.translatable("socialmod.profile.promote"),
                                 b -> ClientNet.action(SocialAction.GROUP_PROMOTE, group.id, target.toString())).build());
@@ -151,7 +155,7 @@ public class ProfileScreen extends SocialChildScreen {
                         row2.add(Ui.button(Component.translatable("socialmod.profile.kick"),
                                 b -> ClientNet.action(SocialAction.GROUP_KICK, group.id, target.toString())).build());
                     }
-                    if (mine == Role.LEADER) {
+                    if (!isTeam && mine == Role.LEADER) {
                         row2.add(Ui.button(Component.translatable("socialmod.profile.transfer"),
                                 b -> ClientNet.action(SocialAction.GROUP_TRANSFER, group.id, target.toString())).build());
                     }

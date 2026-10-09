@@ -102,7 +102,9 @@ public class GroupSettingsScreen extends SocialChildScreen {
             // Canales
             field("channel", left, y, boxW - 80, 16, "", channels);
             Button role = Ui.button(Component.translatable("socialmod.role." + channelRole.id()), b -> {
-                channelRole = Role.byOrdinal((channelRole.ordinal() + Role.values().length - 1) % Role.values().length);
+                // VIP is reserved for TEAM and is never a channel minimum.
+                int count=Role.RECRUIT.ordinal()+1;
+                channelRole = Role.byOrdinal((channelRole.ordinal() + count - 1) % count);
                 saveDrafts();
                 rebuildWidgets();
             }).bounds(left + boxW - 78, y, 76, 18).build();

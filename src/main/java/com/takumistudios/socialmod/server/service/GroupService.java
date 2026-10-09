@@ -413,7 +413,7 @@ public final class GroupService {
         }
         if (role == Role.LEADER) {
             UUID heir = group.members.entrySet().stream()
-                    .min((a, b) -> Integer.compare(a.getValue().ordinal(), b.getValue().ordinal()))
+                    .min((a, b) -> Integer.compare(a.getValue().rank(), b.getValue().rank()))
                     .map(Map.Entry::getKey).orElse(null);
             if (heir != null) {
                 group.members.put(heir, Role.LEADER);
@@ -637,6 +637,7 @@ public final class GroupService {
             return false;
         }
         Role role = minRole == null || minRole.isEmpty() ? Role.RECRUIT : Role.byId(minRole);
+        if (role == Role.VIP) return false;
         if (role == null) role = Role.RECRUIT;
         group.channels.add(new Group.Channel(name, role));
         social.storage().markGroupsDirty();

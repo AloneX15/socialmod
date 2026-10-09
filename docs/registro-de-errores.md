@@ -298,3 +298,20 @@ Conversaciones renderizaba toda la pantalla recortada, incluidos búsqueda y bot
 independiente de fondo, se prepara la columna y conversación de cada módulo y se renderiza su contenido
 con opciones persistentes para controles y fondo. El gametest comprueba el fondo ocultable, miembros y
 jugador conectado, las dimensiones y la restauración de las opciones, con captura del contenido transparente.
+
+### Escalado de listas y separación excesiva del TAG
+
+Las listas tomaban el ancho del formulario de 540 píxeles y escalaban todo el contenido al ancho FancyMenu.
+El TAG se alineaba al extremo derecho. Se añade una vista por elemento con geometría y scroll propios,
+fuente a escala nativa y nombre/TAG consecutivos, con segunda línea cuando es necesario. Las pruebas de
+cliente redimensionan dos vistas del mismo formulario y comprueban desplazamiento y clic independientes.
+
+### VIP e iconos de miembro
+
+Se incorpora VIP únicamente para TEAM, concedido y retirado por su líder y limitado a editar estandartes.
+Las comprobaciones del servidor y del cliente son independientes; editar color y TAG conserva su restricción.
+Se prueban paquetes manipulados, permisos, retirada, archivo y persistencia File/JDBC. Las capturas verifican
+los PNG originales de corona, corazón y persona, los controles de perfil y una GUI reducida.
+
+La prueba de reinicio falló al iniciar otra prueba de TEAM antes de recibir el snapshot de limpieza.
+Se espera explícitamente el TEAM restaurado tras limpiar cada fixture; la suite vuelve a pasar.

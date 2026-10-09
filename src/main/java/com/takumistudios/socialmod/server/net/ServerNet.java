@@ -84,6 +84,7 @@ public final class ServerNet {
         ServerConfig config = ServerConfig.get();
         PlayerRecord record = social.record(player);
         switch (action) {
+            case TEAM_GRANT_VIP, TEAM_REVOKE_VIP -> social.teams().setVip(player, a, b, action == SocialAction.TEAM_GRANT_VIP);
             case TEAM_BANNER -> social.teams().banner(player, a, b);
             case VISUAL_ORIGINAL -> {
                 if (PermissionBridge.isStaff(player, "admin.visuals") && (a.equals("true") || a.equals("false"))) social.visuals().setOriginalInterface(Boolean.parseBoolean(a), player.getGameProfile().name());
